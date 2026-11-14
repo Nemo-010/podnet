@@ -909,6 +909,21 @@ Done so far:
   whole body and caps its connections). `sh scripts/agent/check.sh`: each step 0, and `cargo test --workspace
   --no-fail-fast`: 1993 passed, 0 failed, 120 targets (`relay_reverse::resume::relay_session_moves_past_the_cap` failed once
   under load in the first run and passed alone three times). `cargo clippy --features full`: exit 0. Commit 27cdf19.
+- v0.47.0 (PodUtils/podcrates#160): each `pod-*` dependency names `tag = "v0.47.0"` (and `pod-todo` of
+  `crates/podnet-todo/Cargo.toml`). No new hand-off for podnet (`adoption/podnet/` holds the hand-off of `pod-warp` of
+  v0.37.0 only). Breaking for podnet: none that needs a change of code. podnet makes no struct literal of
+  `pod_relay::code::run::Ends` (the `Ends` of `src/transfer/mod.rs` is of `pod_wormhole`, with no new field). The call:
+  podnet does not fill `ntfy`, `relays` or `trackers`. These meeting points are asks of podssh, and podnet adds no
+  new hardcoded host of another party (`docs/decisions.md`, Services crate). `pod-devtunnel`: podnet gives a
+  `UserToken` to `Relay::connect`; `From<UserToken> for Credential` gives `Credential::User`, so the path of the user's
+  token does not change. `Credential::Access` (a tunnel access token) and `Credential::Anonymous` (a tunnel with
+  anonymous access) are a possible next entry of `devtunnel://` (a setting for the access token; no token when no
+  setting is given); podnet does not build them now. `pod-turn`: podnet makes each `Settings` with `Settings::udp` and
+  `Settings::tls`, so `Transport::Tls { alpn }` and `Settings::allocation` keep their defaults and the behaviour does
+  not change. podnet does not take `pod-guest`. `cargo update` keeps `webpki-roots` at 1.0.11, the value of
+  `pod_tls::ROOTS_VERSION` (also in `fuzz/Cargo.lock`); the lock gets `k256` (Nostr of `pod-wormhole`). What the tag
+  carries for podnet: `pod_link::s3::standin` behind the feature `s3-standin` (their entry 627; T-279), and the doors of
+  a new key record in `pod-warp` (their entry 624).
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
