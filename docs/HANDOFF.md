@@ -12,7 +12,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 ## Where the code is
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.46.0` (T-137, 27cdf19), with `pod-warp`: `src/warp/` is glue
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.47.0` (T-137, 1d4d7f1), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.12` (T-352, b6e7959).
 * The record is `TODO/`. `cargo todo check` agrees: 352 entries, 11 open, 9 partial, 23 blocked, 309 done.
@@ -39,6 +39,9 @@ For `v0.4.0-beta.11` (GitHub #563) that lookup gave the run of the publish itsel
 Each workflow passes on b6e7959, the tag `v0.4.0-beta.12` (GitHub #567): ci 43641661040, deny 43641664659, secrets
 43641667797, live 43641671768; fuzz 43632083716 passed on b7c3e90 (GitHub #565).
 
+The take of `v0.47.0` (1d4d7f1, T-137) and the stand-in of the S3 API from `pod-link` (556708a, T-279) have no CI run
+yet: put them into the next `[gh action] requested` issue. The take of `v0.47.0` needs a COORD issue `(to podcrates)`.
+
 ## Next steps
 
 1. Ask for runs of each new head with a `[gh action] requested` issue after a batch of changes.
@@ -60,7 +63,7 @@ Each workflow passes on b6e7959, the tag `v0.4.0-beta.12` (GitHub #567): ci 4364
 | Issue | Waits for |
 | --- | --- |
 | #522, #526, #532 (takes of v0.37.0, v0.39.0 and v0.40.0) | podcrates records the take. |
-| #564 (COORD-082, the take of v0.46.0) | podcrates records the take; the ask of a public stand-in of the S3 API. |
+| #564 (COORD-082, the take of v0.46.0) | podcrates records the take. The ask of a public stand-in of the S3 API is done in v0.47.0 (556708a). |
 | #560 (COORD-081, the take of v0.45.0) | The answer of podcrates on the ws listener (a refused pin: `Refused` or no peer). |
 | #555 (COORD-079) | The fuzz crash of `pod-proxy` is fixed in v0.45.0 (T-349); the crash of `pod-cloudflare` waits for its take (their entry 029). |
 | #413, #425, #437, #439, #440, #448, #460 | Older proposals and asks; see `TODO/issues.md`. |

@@ -7,7 +7,7 @@
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
-- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.46.0` (27cdf19): `pod-todo`, `pod-core`, `pod-tls`,
+- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.47.0` (1d4d7f1): `pod-todo`, `pod-core`, `pod-tls`,
   `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
   `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp`, `pod-wormhole`
   (the transfer), `pod-extract` and `pod-testkit`. Next
@@ -17,6 +17,8 @@
   `src/tunnel.rs`, `crates/podnet-netns/src/rules.rs` and `tests/test_host/mod.rs` (in `pod-testkit`).
 - The newest release is `v0.4.0-beta.12` (T-352).
 - The tag `v0.46.0` brings the S3 carrier (bcfae9e) and the split session (3623ec5); both are in `v0.4.0-beta.12`.
+- The tag `v0.47.0` (1d4d7f1) needs no change of code. The tests of the S3 carrier use the stand-in of `pod-link`
+  (556708a, T-279). These two commits have no CI run yet.
 - The goal (the owner, 2026-11-13): close each issue except the deferred ones, then a final complete beta. The takes
   follow the plan of podcrates (PodUtils/podcrates#133; `docs/decisions.md`, 2026-11-13).
 - Keep this section short. Write the current state only; git keeps the history.
@@ -73,7 +75,7 @@ not wait for a larger one.
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`), T-326 (a release of `russh` that takes `rsa` 0.10.0); T-163 is
     partial (its edge leg waits for `pod-cloudflare`); and the link entries T-294, T-295.
-12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** the open entries of `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. The carriers ws, h2, quic, udp, dns, icmp and the poll carriers are done (the glue of `pod-link` v0.40.0), and the record layer of E6; the seccomp rule of a raw socket in a pod is done (`pod --allow-raw icmp`); the ARQ is done (`podnet::link_arq`). The mesh keeps the two next hops of one round in a diamond. The S3 carrier is done (`pod_link::s3` of v0.46.0, proven against a stand-in). Go on with the services T-294 and T-295 (blocked on `pod-egress`), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-294 and T-295 (`pod-egress`, T-127), T-305 (the owner: Linux only, 2026-11-12). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
+12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** the open entries of `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. The carriers ws, h2, quic, udp, dns, icmp and the poll carriers are done (the glue of `pod-link` v0.40.0), and the record layer of E6; the seccomp rule of a raw socket in a pod is done (`pod --allow-raw icmp`); the ARQ is done (`podnet::link_arq`). The mesh keeps the two next hops of one round in a diamond. The S3 carrier is done (`pod_link::s3` of v0.46.0, proven against the stand-in of `pod-link` of v0.47.0). Go on with the services T-294 and T-295 (blocked on `pod-egress`), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-294 and T-295 (`pod-egress`, T-127), T-305 (the owner: Linux only, 2026-11-12). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
 13. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
     podssh first; cfb and githome wait):
     T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).

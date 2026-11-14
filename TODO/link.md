@@ -1168,8 +1168,7 @@ behind the feature `s3-standin` (their entry 627, call C552; the ask of PodUtils
 is removed. `pod-link` with the feature `s3-standin` is a dev-dependency of `podnet` (tag `v0.47.0`). `tests/link_s3.rs` starts
 the stand-in with `StandIn::start_thread` (its own thread and runtime, so a test that starts `podnet` processes can use it),
 gives `url()` to `--s3-endpoint` and to `Tune::s3_endpoint`, and reads the refusals from `counts().refused`. The text of the
-profile file stays in the test (the crate has no such function). Commit: "T-279: take the stand-in of the S3 API from
-pod-link". `cargo test --features s3 --test
+profile file stays in the test (the crate has no such function). Commit 556708a. `cargo test --features s3 --test
 link_s3` and `cargo test --features full --test link_s3`: 7 passed, 0 failed.
 
 ## Done

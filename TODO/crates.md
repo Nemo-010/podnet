@@ -922,8 +922,10 @@ Done so far:
   `Settings::tls`, so `Transport::Tls { alpn }` and `Settings::allocation` keep their defaults and the behaviour does
   not change. podnet does not take `pod-guest`. `cargo update` keeps `webpki-roots` at 1.0.11, the value of
   `pod_tls::ROOTS_VERSION` (also in `fuzz/Cargo.lock`); the lock gets `k256` (Nostr of `pod-wormhole`). What the tag
-  carries for podnet: `pod_link::s3::standin` behind the feature `s3-standin` (their entry 627; T-279), and the doors of
-  a new key record in `pod-warp` (their entry 624).
+  carries for podnet: `pod_link::s3::standin` behind the feature `s3-standin` (their entry 627; T-279, 556708a), and the
+  doors of a new key record in `pod-warp` (their entry 624). `sh scripts/agent/check.sh`: each step 0 (`cargo test
+  --workspace`: 2004 passed, 0 failed, 122 targets). `cargo clippy --features full`: exit 0. `CC_i686_unknown_linux_musl=clang cargo check
+  --workspace --target i686-unknown-linux-musl` (default and `--features full`): exit 0. Commit 1d4d7f1.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
