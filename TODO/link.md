@@ -1161,7 +1161,16 @@ nonce. TLS 1.3 with the pinned Ed25519 keys runs over the objects, as on the oth
 `docs/decisions.md`, Services crate). The profile file of the key can also come from `--s3-credentials FILE` (a path, not a
 key). A key that the bucket refuses (403, `CarrierErrorKind::Refused`) exits 77, as a missing key. The Prove names
 `tests/link_s3.rs` against a local S3-compatible server: the test server is a stand-in of the S3 API on the loopback
-(`tests/link_s3_standin/mod.rs`, a port of the stand-in of the tests of `pod-link`); it checks the SigV4 of each request.
+(tests/link_s3_standin/mod.rs, a port of the stand-in of the tests of `pod-link`); it checks the SigV4 of each request.
+
+2026-11-14, the stand-in of the crate: podcrates v0.47.0 gives the stand-in of the S3 API as `pod_link::s3::standin`
+behind the feature `s3-standin` (their entry 627, call C552; the ask of PodUtils/podnet#564). tests/link_s3_standin/mod.rs
+is removed. `pod-link` with the feature `s3-standin` is a dev-dependency of `podnet` (tag `v0.47.0`). `tests/link_s3.rs` starts
+the stand-in with `StandIn::start_thread` (its own thread and runtime, so a test that starts `podnet` processes can use it),
+gives `url()` to `--s3-endpoint` and to `Tune::s3_endpoint`, and reads the refusals from `counts().refused`. The text of the
+profile file stays in the test (the crate has no such function). Commit: "T-279: take the stand-in of the S3 API from
+pod-link". `cargo test --features s3 --test
+link_s3` and `cargo test --features full --test link_s3`: 7 passed, 0 failed.
 
 ## Done
 

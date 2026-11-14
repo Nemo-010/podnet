@@ -305,6 +305,8 @@ pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.47.0", 
 # The stand-in mailbox of magic-wormhole of the transfer tests
 # (tests/transfer_harness/mod.rs).
 pod-wormhole = { git = "https://github.com/PodUtils/podcrates", tag = "v0.47.0", version = "0.47.0", features = ["standin"] }
+# The stand-in of the S3 API on the loopback (tests/link_s3.rs).
+pod-link = { git = "https://github.com/PodUtils/podcrates", tag = "v0.47.0", version = "0.47.0", features = ["s3-standin"] }
 tempfile = "3"
 tokio = { version = "1", features = ["test-util"] }
 

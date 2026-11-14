@@ -1,6 +1,7 @@
 //! The object-storage carrier of the link (T-279): TLS 1.3 with the
 //! Ed25519 key of each end pinned, over the objects of a bucket of the S3
-//! API. The bucket is a stand-in on the loopback (`link_s3_standin`); no
+//! API. The bucket is the stand-in of `pod-link` on the loopback
+//! (`pod_link::s3::standin`, feature `s3-standin`); no
 //! test calls a real service. A test that needs the loopback prints
 //! `skipping, REASON` on a host that denies it, and does not fail.
 #![cfg(feature = "s3")]
@@ -11,21 +12,17 @@ mod test_host;
 #[path = "link_peer/mod.rs"]
 mod link_peer;
 
-#[path = "link_s3_standin/mod.rs"]
-mod standin;
-
 use std::path::{Path, PathBuf};
-use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use link_peer::{install, list_of, Case};
+use pod_link::s3::standin::{self, StandIn};
 use pod_link::s3::{Credentials, S3};
 use pod_link::{Carrier, Cost, Settings};
 use podnet::exit::code_of;
 use podnet::identity::{AllowList, Identity};
 use podnet::link_keyed::Tune;
 use podnet::link_s3;
-use standin::StandIn;
 
 const BUCKET: &str = "links";
 
@@ -36,14 +33,29 @@ fn address_of(key: &str, listen: &str) -> String {
 /// A profile file with the key of the stand-in, in `dir`.
 fn credentials_file(dir: &Path) -> PathBuf {
     let file = dir.join("credentials");
-    std::fs::write(&file, standin::profile_file()).unwrap();
+    std::fs::write(&file, profile_file()).unwrap();
     file
+}
+
+/// The text of a profile file with the key of the stand-in.
+fn profile_file() -> String {
+    let key = standin::key();
+    format!(
+        "[default]\naws_access_key_id = {}\naws_secret_access_key = {}\n",
+        key.access_key, key.secret_key
+    )
+}
+
+/// The stand-in with the bucket of the tests, on its own thread: a test
+/// that starts `podnet` processes can use it too.
+fn start() -> StandIn {
+    StandIn::start_thread(&[BUCKET]).expect("a stand-in on the loopback")
 }
 
 /// The tune of the carrier on `standin`, with the key in a profile file.
 fn tune(standin: &StandIn, dir: &Path) -> Tune {
     Tune {
-        s3_endpoint: Some(standin.endpoint()),
+        s3_endpoint: Some(standin.url()),
         s3_credentials: Some(credentials_file(dir)),
         ..Tune::default()
     }
@@ -53,7 +65,7 @@ fn tune(standin: &StandIn, dir: &Path) -> Tune {
 /// small objects, so that a stream spans many.
 fn carrier(me: &Identity, allow: &AllowList, standin: &StandIn, key: Credentials) -> S3 {
     let tune = Tune {
-        s3_endpoint: Some(standin.endpoint()),
+        s3_endpoint: Some(standin.url()),
         ..Tune::default()
     };
     let mut s3 = link_s3::carrier_with(me, allow, &tune, key).unwrap();
@@ -138,7 +150,7 @@ fn the_cli_refuses_no_endpoint_no_key_and_the_flags_for_another_carrier() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_link_crosses_s3_and_each_end_learns_the_key_of_the_other() {
     test_host::need_loopback!();
-    let standin = StandIn::start(&[BUCKET]);
+    let standin = start();
     let dir = tempfile::tempdir().unwrap();
     let (a, b) = (install(dir.path(), "a"), install(dir.path(), "b"));
     let far_carrier = carrier(&b, &list_of(&[&a]), &standin, standin::key());
@@ -163,7 +175,7 @@ async fn a_link_crosses_s3_and_each_end_learns_the_key_of_the_other() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_glue_of_link_keyed_carries_a_link_and_refuses_strangers() {
     test_host::need_loopback!();
-    let standin = StandIn::start(&[BUCKET]);
+    let standin = start();
     let dir = tempfile::tempdir().unwrap();
     let case = Case {
         name: "s3",
@@ -195,10 +207,10 @@ async fn the_glue_of_link_keyed_carries_a_link_and_refuses_strangers() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_key_that_the_bucket_refuses_exits_77_and_a_missing_bucket_69() {
     test_host::need_loopback!();
-    let standin = StandIn::start(&[BUCKET]);
+    let standin = start();
     let dir = tempfile::tempdir().unwrap();
     let (a, b) = (install(dir.path(), "a"), install(dir.path(), "b"));
-    let wrong = Credentials::new("PODNETTESTKEY", "another-secret");
+    let wrong = Credentials::new(&standin::key().access_key, "another-secret");
     let s3 = carrier(&b, &list_of(&[&a]), &standin, wrong.clone());
     let Err(e) = link_s3::listen(&s3, BUCKET).await else {
         panic!("the bucket refuses the key")
@@ -211,7 +223,7 @@ async fn a_key_that_the_bucket_refuses_exits_77_and_a_missing_bucket_69() {
         panic!("the bucket refuses the key")
     };
     assert_eq!(code_of(&e), 77, "{e:#}");
-    assert!(standin.refused.load(Ordering::SeqCst) >= 2);
+    assert!(standin.counts().refused >= 2);
     let s3 = carrier(&b, &list_of(&[&a]), &standin, standin::key());
     let Err(e) = link_s3::listen(&s3, "nobucket").await else {
         panic!("no such bucket")
@@ -222,10 +234,10 @@ async fn a_key_that_the_bucket_refuses_exits_77_and_a_missing_bucket_69() {
 #[test]
 fn link_listen_and_dial_check_meet_over_s3() {
     test_host::need_loopback!();
-    let standin = StandIn::start(&[BUCKET]);
+    let standin = start();
     let dir = tempfile::tempdir().unwrap();
     let file = credentials_file(dir.path());
-    let (endpoint, file) = (standin.endpoint(), file.to_str().unwrap().to_string());
+    let (endpoint, file) = (standin.url(), file.to_str().unwrap().to_string());
     let flags = [
         "--s3-endpoint",
         endpoint.as_str(),
