@@ -280,6 +280,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #588 | [gh action] requested: ci and deny on the take of v0.53.0 | closed: ci 43760786274 and deny 43760789619 passed on 34fe7e1 | none |
 | #589 | COORD-094: podnet took v0.54.0 and moved its help and manual onto pod-manual; four gaps of the crate; a text fix of frozen src/warp/ (to podcrates) | open (a COORD issue between sessions) | T-359 |
 | #590 | [gh action] requested: ci, deny and secrets on the move to pod-manual (T-359) and the documented commands (T-358, T-363) | closed: deny 43771977628 and secrets 43771980776 passed on aa8bae2; ci 43771973878 failed at the man page (groff -ww: cannot adjust line), fixed in 3aa1ee7 | none |
-| #591 | [gh action] requested: ci, deny, secrets and the dry run of issue-sync on the takes of v0.56.0 and the fix of the man page | open (a request of runs to the owner) | none |
+| #591 | [gh action] requested: ci, deny, secrets and the dry run of issue-sync on the takes of v0.56.0 and the fix of the man page | closed: ci 43774698575, deny 43774702318, secrets 43774705423 and the dry run of issue-sync 43774709310 passed on f2d96fc (the dry run: 196 status blocks, one close of #436, 76 notes of authors outside the team) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

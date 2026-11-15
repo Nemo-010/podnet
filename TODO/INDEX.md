@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**378 entries: 12 open, 11 partial, 37 blocked, 318 done.**
+**378 entries: 12 open, 10 partial, 37 blocked, 319 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 33 | 37 |
-| P2 | 6 | 5 | 10 | 164 | 185 |
+| P2 | 6 | 4 | 10 | 165 | 185 |
 | P3 | 6 | 4 | 25 | 120 | 155 |
-| **All** | 12 | 11 | 37 | 318 | 378 |
+| **All** | 12 | 10 | 37 | 319 | 378 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -408,7 +408,7 @@ M8 Overlays, M9 Later.
 | [T-360](fixes.md) | P2 | S | M5 | defect | open | install.sh: a second run with the same version changes nothing and says so |
 | [T-361](fixes.md) | P2 | S | M5 | defect | done | git init: make the root when it does not exist |
 | [T-362](fixes.md) | P3 | S | M5 | defect | done | docs/cli.md: the completion command writes to a directory that can be absent |
-| [T-363](fixes.md) | P2 | S | M5 | defect | partial | net passwd-shim: the home of the entry is $HOME, not /state/home |
+| [T-363](fixes.md) | P2 | S | M5 | defect | done | net passwd-shim: the home of the entry is $HOME, not /state/home |
 | [T-364](fixes.md) | P3 | S | M5 | measurement | done | live: two runs in a row failed at the quick tunnel; the rerun passed (GitHub #516) |
 | [T-365](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: carry a session in NTPv4 extension fields, SMTP and IMAP (GitHub #484) |
 | [T-366](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: carry a session through a TURN allocation, with RFC 6062 (GitHub #485) |

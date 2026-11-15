@@ -7075,7 +7075,7 @@ command exits 0 in a new HOME.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -7113,6 +7113,12 @@ python3 -I scripts/doc-commands.py --run --only docs/networks.md
 `HOME=/x/y podnet net passwd-shim` writes `u0:x:0:0:u0:/x/y:/bin/sh`; `passwd_shim_prints_the_preload` passes. Open:
 the documented block with `ssh-keygen` has not run (this host has no `ssh-keygen`). It runs in the step "The
 documented commands" of the job `test` of `ci.yml`; set the entry `done` when that step passes.
+
+## Done
+
+2026-11-15, eeac027 (the fix). ci 43774698575 on f2d96fc ran the documented block `docs/networks.md:337` (`net passwd-shim`,
+then `ssh-keygen`) in the step "The documented commands": `pass docs/networks.md:337`; `doc-commands: 4 passed, 0 failed,
+0 not run`.
 
 # T-364: live: two runs in a row failed at the quick tunnel; the rerun passed (GitHub #516)
 
