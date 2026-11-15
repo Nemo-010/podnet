@@ -15,7 +15,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 * podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.51.0` (T-137), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.12` (T-352, b6e7959).
-* The record is `TODO/`. `cargo todo check` agrees: 354 entries, 11 open, 9 partial, 23 blocked, 311 done.
+* The record is `TODO/`. `cargo todo check` agrees: 355 entries, 12 open, 9 partial, 23 blocked, 311 done.
 
 ## Unfinished work (not on `main`)
 
@@ -41,7 +41,7 @@ Each workflow passes on b6e7959, the tag `v0.4.0-beta.12` (GitHub #567): ci 4364
 
 Each workflow passes on 6536905, the take of `v0.47.0` (GitHub #569): ci 43654435897, deny 43654439784, secrets
 43654443103, live 43654446240, fuzz 43654449404. ci 43659845378 and deny 43659848188 pass on 34bb2cd, the take of `v0.48.0` (GitHub #571;
-862a6a9, a bump of the tag only). ci 43664113413 and deny 43664116501 pass on 0bda088, the take of `v0.49.0` (GitHub #573). ci 43673745417 and deny 43673748869 pass on d072007, the take of `v0.50.0` (GitHub #575). ci 43705620683, deny 43705623914 and secrets 43705627029 pass on 08802d8, T-354 (GitHub #576). GitHub #578 asks for ci and deny on the take of `v0.51.0`.
+862a6a9, a bump of the tag only). ci 43664113413 and deny 43664116501 pass on 0bda088, the take of `v0.49.0` (GitHub #573). ci 43673745417 and deny 43673748869 pass on d072007, the take of `v0.50.0` (GitHub #575). ci 43705620683, deny 43705623914 and secrets 43705627029 pass on 08802d8, T-354 (GitHub #576). ci 43708707139 and deny 43708710128 pass on f1327d6, the take of `v0.51.0` (GitHub #578). GitHub #579 is the release of `v0.4.0-beta.13` (T-355).
 
 ## Next steps
 

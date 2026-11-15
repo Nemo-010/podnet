@@ -6631,3 +6631,46 @@ cargo test --test docs
 2026-11-14, b6e7959 (the tag `v0.4.0-beta.12`). GitHub #567 on b6e7959: the dry run 43641676226, ci 43641661040, deny
 43641664659, secrets 43641667797 and live 43641671768 passed; the publish 43643432345 passed (the same run is the run on
 the tag); release-proofs 43645375545 passed.
+
+# T-355: Publish `v0.4.0-beta.13`: the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md`, Releases (2026-11-09): cut the next prerelease unattended when a batch of fixes is green. The
+batch since `v0.4.0-beta.12`: ci 43708707139 and deny 43708710128 on f1327d6 (GitHub #578); ci, deny and secrets on 08802d8
+(GitHub #576); live 43654446240 and fuzz 43654449404 on 6536905 (GitHub #569). The request of the release is GitHub #579.
+**Category:** release
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`v0.4.0-beta.12` has none of the work after it: `devtunnel://` with a tunnel access token or no token (T-354), the
+fix of a lost half of a split session (T-353, podcrates `v0.51.0`) and the takes of podcrates `v0.47.0` to `v0.51.0`.
+
+## Premise
+
+- The steps are `docs/maintenance.md`, "Release". A push of the cloud session starts no workflow run: each dispatch goes
+  to the owner as a `[gh action] requested` issue.
+- The run of `release.yml` on the tag is a `workflow_dispatch` run on the branch of the tag (`--branch TAG`).
+
+## Approach
+
+1. Set the version `0.4.0-beta.13` in `Cargo.toml`, `crates/podnet-capi/Cargo.toml`, `crates/podnet-serve/Cargo.toml`,
+   `crates/podnet-vnet/Cargo.toml`, `Cargo.lock` and `fuzz/Cargo.lock`, and regenerate the llms files.
+2. Write `docs/releases/v0.4.0-beta.13.md`, with `## Breaking`.
+3. Push, and ask in one request for `ci`, `deny`, `secrets` and `live` on that commit, the dry run of `release.yml`, the
+   publish with `publish=v0.4.0-beta.13`, and `release-proofs.yml`.
+4. Push nothing between the request and the tag.
+
+## Decision
+
+The owner (`CLAUDE.md`, Releases, 2026-11-09): betas are allowed, no crates.io; cut the next prerelease unattended when a
+batch is green.
+
+## Prove
+
+```sh
+cargo test --test docs
+# the runs of release.yml (dry run, publish) and release-proofs.yml pass
+```
