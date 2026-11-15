@@ -942,6 +942,11 @@ Done so far:
   `pod-piping`, `pod-opentunnel`, `pod-derp`) and changes no crate that podnet takes; podnet takes the new crates in their
   own entries: T-104 (the piping server), T-128 (DERP), T-129 (ACME); the transit is their entry 214. No new hand-off for podnet. `cargo update` keeps `webpki-roots`
   at 1.0.11, the value of `pod_tls::ROOTS_VERSION`, and changes no other crate than the crates of podcrates.
+- v0.51.0 (PodUtils/podcrates#172): each `pod-*` dependency names `tag = "v0.51.0"` and `version = "0.51.0"` (and
+  `pod-todo` of `crates/podnet-todo/Cargo.toml`). The tag adds `pod-egress` (part 1, from podssh; podnet takes it in
+  T-126 and T-127) and carries the fix of PodUtils/podnet#572 (their entry 639; podnet T-353): a closed half of a split
+  session gives `Lost`. No new hand-off for podnet. `cargo update` keeps `webpki-roots` at 1.0.11, the value of
+  `pod_tls::ROOTS_VERSION`, and changes no other crate than the crates of podcrates.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

@@ -3080,7 +3080,7 @@ Not proven: the static musl build and the zig builds (not run; the default featu
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -3110,6 +3110,11 @@ for i in $(seq 50); do cargo test --test link_split || break; done
 sh scripts/agent/check.sh
 ```
 
-## Blocker
+## Correction
 
-The fix is in `pod-link` of PodUtils/podcrates (the COORD issue of 2026-11-15).
+2026-11-15: the fix is in `pod-link` of PodUtils/podcrates (COORD-085, GitHub #572; their entry 639, tag `v0.51.0`).
+
+## Done
+
+2026-11-15, the take of podcrates `v0.51.0` (their entry 639, PodUtils/podcrates#172). `cargo test --test link_split`:
+50 runs of 50 passed alone, and 40 of 40 passed with four runs at once (10 rounds). No code of podnet changed.
