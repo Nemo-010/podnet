@@ -957,6 +957,11 @@ Done so far:
   resumable layer rides a new connection after a loss), `pod-services` (one `node-*` id less) and `pod-enter`; no call of
   podnet changes. No new hand-off for podnet. `cargo update` keeps `webpki-roots` at 1.0.11, the value of
   `pod_tls::ROOTS_VERSION`, and changes no other crate than the crates of podcrates.
+- v0.54.0 (PodUtils/podcrates#188): each `pod-*` dependency names `tag = "v0.54.0"` and `version = "0.54.0"` (and
+  `pod-todo` of `crates/podnet-todo/Cargo.toml`). The tag adds `pod-lab` (part 1) and `pod-manual` (part 1; podnet takes
+  it in T-359), and changes `pod-hostprobe` and the tests of `pod-enter`; podnet takes none of these at the bump, so no
+  code changes. No new hand-off for podnet. `cargo update` keeps `webpki-roots` at 1.0.11, the value of
+  `pod_tls::ROOTS_VERSION` (also in `fuzz/Cargo.lock`), and changes no other crate than the crates of podcrates.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
