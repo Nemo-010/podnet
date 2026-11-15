@@ -271,6 +271,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #579 | [gh action] requested: the release of v0.4.0-beta.13 (checks, dry run, publish, release proofs) | closed: `v0.4.0-beta.13` is out on 0a0f3e5 (release-proofs 43716868782) | T-355 |
 | #580 | COORD-088: podnet took v0.52.0 (to podcrates) | closed (podcrates closed PodUtils/podcrates#176) | none |
 | #581 | [gh action] requested: ci and deny on the take of v0.52.0 | closed: ci 43718529045 and deny 43718532371 passed on f6aaeca | none |
-| #582 | COORD-089: the vnet shim for a .NET payload in a podvm unit: TCP to a unix socket (to podrunner) | open (a COORD issue between sessions; the answer to PodUtils/podrunner#170) | none |
+| #582 | COORD-089: the vnet shim for a .NET payload in a podvm unit: TCP to a unix socket (to podrunner) | open (a COORD issue between sessions; the answer to PodUtils/podrunner#170): T-356 and T-357 are done | T-356, T-357 |
+| #583 | [gh action] requested: ci, deny and secrets on T-356 and T-357 (the vnet shim) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

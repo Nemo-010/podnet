@@ -15,7 +15,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 * podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.52.0` (T-137), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.13` (T-355, 0a0f3e5).
-* The record is `TODO/`. `cargo todo check` agrees: 355 entries, 11 open, 9 partial, 23 blocked, 312 done.
+* The record is `TODO/`. `cargo todo check` agrees: 357 entries, 11 open, 9 partial, 23 blocked, 314 done.
 
 ## Unfinished work (not on `main`)
 
@@ -38,7 +38,7 @@ For `v0.4.0-beta.11` and `beta.12` that lookup gave the run of the publish itsel
 
 Each workflow passes on 0a0f3e5, the tag `v0.4.0-beta.13` (GitHub #579): ci 43711402086, deny 43711405265, secrets
 43711407779, live 43711410272; fuzz 43654449404 passed on 6536905 (GitHub #569). ci 43718529045 and deny 43718532371 pass on f6aaeca,
-the take of podcrates `v0.52.0` (GitHub #581).
+the take of podcrates `v0.52.0` (GitHub #581). GitHub #583 asks for ci, deny and secrets on T-356 and T-357 (the vnet shim: an IPv4-mapped address, `PODNET_VNET_FORWARD`).
 
 ## Next steps
 
