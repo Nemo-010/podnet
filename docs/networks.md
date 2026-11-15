@@ -270,6 +270,13 @@ ChannelData. podnet has no TURN code of its own.
 export PODNET_DEVTUNNEL_TOKEN_FILE=/etc/podnet/devtunnel-token   # the first line is the token
 podnet forward -L 127.0.0.1:5432=127.0.0.1:5432 --network devtunnel://lab
 podnet forward -L 127.0.0.1:8080=127.0.0.1:80 --network devtunnel://bcd123.usw2
+
+# No account: a tunnel access token that the owner of the tunnel gives
+export PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE=/etc/podnet/devtunnel-access   # the first line is the token
+podnet forward -L 127.0.0.1:5432=127.0.0.1:5432 --network devtunnel://lab
+
+# No token: a tunnel with anonymous access
+PODNET_DEVTUNNEL_ANONYMOUS=1 podnet forward -L 127.0.0.1:8080=127.0.0.1:80 --network devtunnel://lab
 ```
 
 A host that reaches only TCP 443 can still reach a port of a Microsoft Dev Tunnels tunnel host through the relay
@@ -283,10 +290,22 @@ authentication, and opens the channels.
   secret.
 * The port of the target is the port on the tunnel host. The host of the target is the local address of the
   tunnel host: `127.0.0.1`, `::1` or `localhost`. Another host is refused by name.
-* The management token is a setting, not a part of the spec, because a spec goes into `argv`, into logs and into
-  JSON. `PODNET_DEVTUNNEL_TOKEN_FILE` is a file whose first line is the token. `PODNET_DEVTUNNEL_TOKEN` is the
-  token itself (give one of them). `PODNET_DEVTUNNEL_SCHEME` is `github` (default), `aad` or `bearer`. A missing
-  token is a usage error. The token is read when the network comes up. The connect token comes from the connect
+* The credential is a setting, not a part of the spec, because a spec goes into `argv`, into logs and into
+  JSON. Give one of three forms:
+  * A user token (the management token): `PODNET_DEVTUNNEL_TOKEN_FILE` is a file whose first line is the token.
+    `PODNET_DEVTUNNEL_TOKEN` is the token itself (give one of them). `PODNET_DEVTUNNEL_SCHEME` is `github`
+    (default), `aad` or `bearer`.
+  * A tunnel access token that the owner of the tunnel gives (`devtunnel token TUNNEL --scopes connect`):
+    `PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE` is a file whose first line is the token. `PODNET_DEVTUNNEL_ACCESS_TOKEN`
+    is the token itself (give one of them). The client needs no account.
+  * No token, for a tunnel with anonymous access: `PODNET_DEVTUNNEL_ANONYMOUS=1`. podnet sends no token only when
+    you set this variable.
+
+  Each form goes to the management API, so no form needs another. More than one form is a usage error (exit 64)
+  that names the variables and not the values. `PODNET_DEVTUNNEL_SCHEME` with no user token is a usage error. No
+  form is a usage error that names each setting. A refused token or a refused anonymous caller fails at the
+  management API with the class `refused`; the error names the form of the credential, never the token. The
+  credential is read when the network comes up. The connect token comes from the connect
   information for each attempt, inside the crate. Neither token is in a log line, an error or `--json`.
 * The management host, the API version and the SSH facts are facts of `pod-services` (`microsoft-devtunnel`).
   The relay URI comes from the connect information. `PODNET_DEVTUNNEL_MANAGEMENT` replaces the base of the
@@ -295,7 +314,7 @@ authentication, and opens the channels.
   the roots of podnet (`--ca-file`). A way below the network carries them.
 * `up` reads the connect information and opens the first relay session. A fault names the step: the management
   API (a refused token, an unknown tunnel), the relay WebSocket, the SSH session or the channel. The status of
-  the link has the scheme, the spec, the tunnel ids and the session count.
+  the link has the scheme, the spec, the tunnel ids, the form of the credential and the session count.
 * A relay session that ends ends each open stream with an error of the kind `ConnectionAborted` ("the relay
   session of the stream ended"). The next stream connects again, within a bounded number of tries, each with a
   fresh connect token. After the last try the error names the reconnect step.

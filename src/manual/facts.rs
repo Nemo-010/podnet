@@ -272,10 +272,13 @@ pub const ENVIRONMENT: &[EnvVar] = &[
             "PODNET_DEVTUNNEL_TOKEN_FILE",
             "PODNET_DEVTUNNEL_TOKEN",
             "PODNET_DEVTUNNEL_SCHEME",
+            "PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE",
+            "PODNET_DEVTUNNEL_ACCESS_TOKEN",
+            "PODNET_DEVTUNNEL_ANONYMOUS",
             "PODNET_DEVTUNNEL_MANAGEMENT",
         ],
         used_by: "the network devtunnel://TUNNEL (forward --network, a networks: entry of route)",
-        meaning: "The management token of Microsoft Dev Tunnels and its scheme. The token is the first line of the file in PODNET_DEVTUNNEL_TOKEN_FILE, else the value of PODNET_DEVTUNNEL_TOKEN (give one of them). PODNET_DEVTUNNEL_SCHEME is github (default), aad or bearer. PODNET_DEVTUNNEL_MANAGEMENT replaces the base of the management API (https://HOST[:PORT], or http:// to a loopback host); the default is the fact of pod-services. A spec holds no token, and no token is in a log line, an error or --json. A missing token is a usage error (exit 64).",
+        meaning: "The credential of Microsoft Dev Tunnels: give one form. A user token (the management token): the first line of the file in PODNET_DEVTUNNEL_TOKEN_FILE, else the value of PODNET_DEVTUNNEL_TOKEN (give one of them); PODNET_DEVTUNNEL_SCHEME is github (default), aad or bearer. A tunnel access token that the owner of the tunnel gives: the first line of the file in PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE, else the value of PODNET_DEVTUNNEL_ACCESS_TOKEN. No token, for a tunnel with anonymous access: PODNET_DEVTUNNEL_ANONYMOUS=1. More than one form is a usage error (exit 64) that names the variables. PODNET_DEVTUNNEL_MANAGEMENT replaces the base of the management API (https://HOST[:PORT], or http:// to a loopback host); the default is the fact of pod-services. A spec holds no token, and no token is in a log line, an error or --json. A missing token is a usage error (exit 64).",
     },
     EnvVar {
         names: &[

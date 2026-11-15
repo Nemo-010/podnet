@@ -28,7 +28,8 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
   proxy variables, else direct.
 * `devtunnel://TUNNEL` carries a TCP forward through a Microsoft Dev Tunnels relay to a port of the tunnel host:
   `-L 127.0.0.1:5432=127.0.0.1:5432 --network devtunnel://lab`. The target host is the local address of the tunnel
-  host. The token is in `PODNET_DEVTUNNEL_TOKEN_FILE` ([networks.md](networks.md)).
+  host. The token is in `PODNET_DEVTUNNEL_TOKEN_FILE` or `PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE`, or none with
+  `PODNET_DEVTUNNEL_ANONYMOUS=1` ([networks.md](networks.md)).
 * UDP: `-L udp:PORT=HOST:PORT` (or `udp:ADDR:PORT`) carries UDP over the datagrams of the network. Each
   client has its own flow. A flow ends after 60 s with no datagram. A datagram for a full flow is dropped.
   A SOCKS5 or HTTP proxy network carries no UDP: the forward logs the refusal and ends the flow. `direct`

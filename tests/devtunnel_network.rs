@@ -29,6 +29,9 @@ fn podnet(sub: &[&str], args: &[&str]) -> Command {
         "PODNET_DEVTUNNEL_TOKEN_FILE",
         "PODNET_DEVTUNNEL_SCHEME",
         "PODNET_DEVTUNNEL_MANAGEMENT",
+        "PODNET_DEVTUNNEL_ACCESS_TOKEN",
+        "PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE",
+        "PODNET_DEVTUNNEL_ANONYMOUS",
         "PODNET_PROXY",
         "RUST_LOG",
     ] {
@@ -130,6 +133,92 @@ fn a_devtunnel_network_with_no_token_is_a_usage_error_that_names_the_variables()
     assert_eq!(out.status.code(), Some(64), "{out:?}");
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(err.contains("PODNET_DEVTUNNEL_TOKEN_FILE"), "{err}");
+}
+
+/// T-354: two forms of the credential are a usage error that names the
+/// variables and holds no value.
+#[test]
+fn two_devtunnel_credentials_are_a_usage_error_that_holds_no_token() {
+    let out = forward(&[
+        "-L",
+        "127.0.0.1:5399=127.0.0.1:22",
+        "--network",
+        "devtunnel://lab",
+    ])
+    .env("PODNET_DEVTUNNEL_TOKEN", TOKEN)
+    .env("PODNET_DEVTUNNEL_ACCESS_TOKEN", "made-up-access-token")
+    .output()
+    .unwrap();
+    assert_eq!(out.status.code(), Some(64), "{out:?}");
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("PODNET_DEVTUNNEL_ACCESS_TOKEN"), "{err}");
+    assert!(err.contains("PODNET_DEVTUNNEL_ANONYMOUS"), "{err}");
+    assert!(
+        !err.contains(TOKEN) && !err.contains("made-up-access-token"),
+        "{err}"
+    );
+}
+
+/// T-354: a tunnel access token from its file carries a stream; the
+/// output holds no token.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_tcp_forward_with_a_tunnel_access_token_reaches_the_tunnel_host() {
+    test_host::need_loopback!();
+    let access = "made-up-access-token-of-the-tests";
+    let plan = Plan {
+        access: Some(access.into()),
+        ..Plan::echo("github", TOKEN)
+    };
+    let standin = Standin::start(plan).await.unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("access");
+    std::fs::write(&file, format!("{access}\n")).unwrap();
+    let port = free_tcp_port();
+    let listen = format!("127.0.0.1:{port}=127.0.0.1:22");
+    let mut cmd = forward(&[
+        "-L",
+        &listen,
+        "--network",
+        "devtunnel://standin-box",
+        "--run-for",
+        "60",
+    ]);
+    cmd.env("PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE", &file)
+        .env("PODNET_DEVTUNNEL_MANAGEMENT", standin.base())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = Proc(cmd.spawn().unwrap());
+    let mut stdout = BufReader::new(child.0.stdout.take().unwrap());
+    let mut first = String::new();
+    stdout.read_line(&mut first).unwrap();
+    assert!(first.starts_with("podnet: forward"), "{first:?}");
+    let mut client = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    client
+        .set_read_timeout(Some(Duration::from_secs(15)))
+        .unwrap();
+    client.write_all(b"ping").unwrap();
+    let mut back = [0u8; 4];
+    client
+        .read_exact(&mut back)
+        .expect("an echo through the relay");
+    assert_eq!(&back, b"ping");
+    assert_eq!(standin.seen().forms, ["access"]);
+    let _ = child.0.kill();
+    let mut output = first;
+    stdout.read_to_string(&mut output).unwrap();
+    let mut err = String::new();
+    child
+        .0
+        .stderr
+        .take()
+        .unwrap()
+        .read_to_string(&mut err)
+        .unwrap();
+    output.push_str(&err);
+    assert!(
+        !output.contains(access),
+        "a token is in the output: {output}"
+    );
 }
 
 #[test]

@@ -1,12 +1,13 @@
-//! `devtunnel://TUNNEL` (T-320): the spec, the account, and the streams
-//! against the stand-in of `pod-devtunnel` on the loopback (no account and
-//! no live service).
+//! `devtunnel://TUNNEL` (T-320, T-354): the spec, the account, and the
+//! streams against the stand-in of `pod-devtunnel` on the loopback (no
+//! account and no live service).
 
 use std::io::ErrorKind;
 use std::time::Duration;
 
 use pod_core::Class;
 use pod_devtunnel::standin::{Plan, Standin};
+use pod_devtunnel::{AccessToken, Credential};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::time::Instant;
 
@@ -15,6 +16,7 @@ use super::*;
 use crate::network::Connected;
 
 const TOKEN: &str = "made-up-user-token-of-the-tests";
+const ACCESS: &str = "made-up-access-token-of-the-tests";
 const WAIT: Duration = Duration::from_secs(10);
 
 fn env<'a>(pairs: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<String> + 'a {
@@ -216,4 +218,178 @@ async fn devtunnel_target_host_is_the_local_address_of_the_tunnel_host() {
         .dial(&local, Instant::now() + WAIT)
         .await
         .unwrap();
+}
+
+#[test]
+fn devtunnel_account_reads_each_form_and_its_debug_and_errors_hold_no_token() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("access");
+    std::fs::write(&file, format!("{ACCESS}\n")).unwrap();
+    let file = file.to_str().unwrap();
+    for (pairs, form) in [
+        (
+            vec![("PODNET_DEVTUNNEL_TOKEN", TOKEN)],
+            "a GitHub user token",
+        ),
+        (
+            vec![("PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE", file)],
+            "a tunnel access token",
+        ),
+        (
+            vec![("PODNET_DEVTUNNEL_ACCESS_TOKEN", ACCESS)],
+            "a tunnel access token",
+        ),
+        (vec![("PODNET_DEVTUNNEL_ANONYMOUS", "1")], "no token"),
+        (
+            vec![
+                ("PODNET_DEVTUNNEL_ANONYMOUS", "0"),
+                ("PODNET_DEVTUNNEL_ACCESS_TOKEN", ACCESS),
+            ],
+            "a tunnel access token",
+        ),
+    ] {
+        let account = devtunnel::account(&env(&pairs)).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(account.form(), form, "{pairs:?}");
+        let shown = format!("{account:?}");
+        assert!(!shown.contains(TOKEN) && !shown.contains(ACCESS), "{shown}");
+        assert!(shown.contains(form), "{shown}");
+    }
+}
+
+#[test]
+fn devtunnel_account_refuses_two_forms_and_names_the_variables_not_the_values() {
+    for pairs in [
+        vec![
+            ("PODNET_DEVTUNNEL_TOKEN", TOKEN),
+            ("PODNET_DEVTUNNEL_ACCESS_TOKEN", ACCESS),
+        ],
+        vec![
+            ("PODNET_DEVTUNNEL_TOKEN", TOKEN),
+            ("PODNET_DEVTUNNEL_ANONYMOUS", "1"),
+        ],
+        vec![
+            ("PODNET_DEVTUNNEL_ACCESS_TOKEN", ACCESS),
+            ("PODNET_DEVTUNNEL_ANONYMOUS", "1"),
+        ],
+        vec![
+            ("PODNET_DEVTUNNEL_ACCESS_TOKEN", ACCESS),
+            ("PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE", "/nonexistent"),
+        ],
+    ] {
+        let err = devtunnel::account(&env(&pairs)).unwrap_err();
+        assert_eq!(err.class, Class::Usage, "{pairs:?}: {err}");
+        let text = format!("{err} {err:?}");
+        assert!(!text.contains(TOKEN) && !text.contains(ACCESS), "{text}");
+        assert!(text.contains("PODNET_DEVTUNNEL_ACCESS_TOKEN"), "{text}");
+    }
+    // No form: the message names each setting.
+    let none = devtunnel::account(&env(&[])).unwrap_err();
+    for name in [
+        "PODNET_DEVTUNNEL_TOKEN_FILE",
+        "PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE",
+        "PODNET_DEVTUNNEL_ANONYMOUS=1",
+    ] {
+        assert!(none.to_string().contains(name), "{none}");
+    }
+    // A scheme with no user token, a bad switch, a bad access token.
+    for (pairs, name) in [
+        (
+            vec![
+                ("PODNET_DEVTUNNEL_SCHEME", "aad"),
+                ("PODNET_DEVTUNNEL_ANONYMOUS", "1"),
+            ],
+            "PODNET_DEVTUNNEL_SCHEME",
+        ),
+        (
+            vec![("PODNET_DEVTUNNEL_ANONYMOUS", "yes")],
+            "PODNET_DEVTUNNEL_ANONYMOUS",
+        ),
+        (
+            vec![("PODNET_DEVTUNNEL_ACCESS_TOKEN", "has a space")],
+            "PODNET_DEVTUNNEL_ACCESS_TOKEN",
+        ),
+    ] {
+        let err = devtunnel::account(&env(&pairs)).unwrap_err();
+        assert_eq!(err.class, Class::Usage, "{pairs:?}: {err}");
+        assert!(err.to_string().contains(name), "{err}");
+        assert!(!err.to_string().contains("has a space"), "{err}");
+    }
+}
+
+/// The stand-in tunnel that takes the tunnel access token `ACCESS` and,
+/// with `anonymous`, a caller with no token.
+fn open_plan(anonymous: bool, mints_for_all: bool) -> Plan {
+    Plan {
+        access: Some(ACCESS.into()),
+        anonymous,
+        mints_for_all,
+        ..Plan::echo("github", TOKEN)
+    }
+}
+
+async fn up_with(standin: &Standin, credential: Credential) -> Result<Link, Failure> {
+    let spec = devtunnel::parse("devtunnel://standin-box").unwrap();
+    let account = Account::with(credential, Some(&standin.base()));
+    devtunnel::up(&spec, account, None).await
+}
+
+async fn echo(link: &Link) {
+    let mut io = open(link, 22).await.unwrap_or_else(|e| panic!("{e}")).io;
+    io.write_all(b"hello").await.unwrap();
+    let mut back = [0u8; 5];
+    io.read_exact(&mut back).await.unwrap();
+    assert_eq!(&back, b"hello");
+}
+
+#[tokio::test]
+async fn devtunnel_a_tunnel_access_token_dials_and_the_status_names_the_form() {
+    crate::test_host::need_loopback!();
+    for mints in [false, true] {
+        let standin = Standin::start(open_plan(false, mints)).await.unwrap();
+        let access = AccessToken::new(ACCESS).unwrap();
+        let link = up_with(&standin, access.into())
+            .await
+            .unwrap_or_else(|e| panic!("{e}"));
+        let status = link.status.to_string();
+        assert!(status.contains("a tunnel access token"), "{status}");
+        assert!(!status.contains(ACCESS), "{status}");
+        echo(&link).await;
+        let seen = standin.seen();
+        assert_eq!(seen.forms, ["access"], "{seen:?}");
+        let relay = if mints { "fresh" } else { "access" };
+        assert_eq!(seen.relay_tokens, [relay], "{seen:?}");
+    }
+}
+
+#[tokio::test]
+async fn devtunnel_no_token_dials_a_tunnel_with_anonymous_access() {
+    crate::test_host::need_loopback!();
+    let standin = Standin::start(open_plan(true, false)).await.unwrap();
+    let link = up_with(&standin, Credential::Anonymous)
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!(link.status.to_string().contains("no token"));
+    echo(&link).await;
+    let seen = standin.seen();
+    assert_eq!(seen.forms, ["none"], "{seen:?}");
+    assert_eq!(seen.relay_tokens, ["none"], "{seen:?}");
+}
+
+#[tokio::test]
+async fn devtunnel_a_refused_access_token_or_no_token_is_refused_with_its_form() {
+    crate::test_host::need_loopback!();
+    // The tunnel takes ACCESS and no anonymous caller.
+    let standin = Standin::start(open_plan(false, false)).await.unwrap();
+    let other = "another-made-up-access-token";
+    let err = up_with(&standin, AccessToken::new(other).unwrap().into())
+        .await
+        .unwrap_err();
+    // The class of a refused user token (`devtunnel_failures_name_their_step`).
+    assert_eq!(err.class, Class::Refused, "{err}");
+    let text = format!("{err} {err:?}");
+    assert!(text.contains("Dev Tunnels management API"), "{text}");
+    assert!(!text.contains(other) && !text.contains(ACCESS), "{text}");
+    let err = up_with(&standin, Credential::Anonymous).await.unwrap_err();
+    assert_eq!(err.class, Class::Refused, "{err}");
+    assert!(!err.to_string().contains(ACCESS), "{err}");
 }

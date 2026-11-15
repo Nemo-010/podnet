@@ -102,6 +102,8 @@ fn the_manual_names_the_devtunnel_network_and_its_variables() {
     for name in [
         "PODNET_DEVTUNNEL_TOKEN",
         "PODNET_DEVTUNNEL_SCHEME",
+        "PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE",
+        "PODNET_DEVTUNNEL_ANONYMOUS",
         "PODNET_DEVTUNNEL_MANAGEMENT",
     ] {
         assert!(names.contains(name), "{names}");

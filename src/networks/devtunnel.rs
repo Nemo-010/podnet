@@ -11,12 +11,21 @@
 //! * The port of the target is the port on the tunnel host. The host of the
 //!   target is the local address of the tunnel host: `127.0.0.1`, `::1` or
 //!   `localhost`.
-//! * The management token is a setting, not a part of the spec (a spec goes
-//!   into `argv`, logs and JSON): `PODNET_DEVTUNNEL_TOKEN_FILE` or
-//!   `PODNET_DEVTUNNEL_TOKEN`. `PODNET_DEVTUNNEL_SCHEME` (`github`, `aad` or
-//!   `bearer`; default `github`) is the scheme of the token. The connect
-//!   token comes from the connect information for each attempt, inside the
-//!   crate. No text of this module holds a token.
+//! * The credential is a setting, not a part of the spec (a spec goes into
+//!   `argv`, logs and JSON). Give one form (T-354):
+//!   * a user token: `PODNET_DEVTUNNEL_TOKEN_FILE` or
+//!     `PODNET_DEVTUNNEL_TOKEN`, with `PODNET_DEVTUNNEL_SCHEME` (`github`,
+//!     `aad` or `bearer`; default `github`);
+//!   * a tunnel access token that the owner of the tunnel gives:
+//!     `PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE` or
+//!     `PODNET_DEVTUNNEL_ACCESS_TOKEN`;
+//!   * no token, for a tunnel with anonymous access:
+//!     `PODNET_DEVTUNNEL_ANONYMOUS=1`.
+//!
+//!   More than one form is a usage error that names the variables. The
+//!   crate sends each form to the management API, so no form needs
+//!   another. The connect token comes from the connect information for
+//!   each attempt, inside the crate. No text of this module holds a token.
 //! * `PODNET_DEVTUNNEL_MANAGEMENT` replaces the management API (a base
 //!   `https://HOST[:PORT]`, or `http://` to a loopback host): the default is
 //!   the fact of `pod-services`.
@@ -27,7 +36,9 @@
 use std::fmt;
 use std::sync::Arc;
 
-use pod_devtunnel::{Base, Locator, Relay, Scheme, Settings, UserToken, Way};
+use pod_devtunnel::{
+    AccessToken, Base, Credential, Locator, Relay, Scheme, Settings, UserToken, Way,
+};
 use tokio::time::Instant;
 
 use super::usage;
@@ -40,6 +51,12 @@ pub const TOKEN_FILE_VARIABLE: &str = "PODNET_DEVTUNNEL_TOKEN_FILE";
 pub const TOKEN_VARIABLE: &str = "PODNET_DEVTUNNEL_TOKEN";
 /// The variable of the scheme of the token: `github`, `aad` or `bearer`.
 pub const SCHEME_VARIABLE: &str = "PODNET_DEVTUNNEL_SCHEME";
+/// The variable of the file that holds a tunnel access token (one line).
+pub const ACCESS_FILE_VARIABLE: &str = "PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE";
+/// The variable of a tunnel access token. The file is the better choice.
+pub const ACCESS_VARIABLE: &str = "PODNET_DEVTUNNEL_ACCESS_TOKEN";
+/// The variable that selects no token (`1`): a tunnel with anonymous access.
+pub const ANONYMOUS_VARIABLE: &str = "PODNET_DEVTUNNEL_ANONYMOUS";
 /// The variable of the base of the management API.
 pub const MANAGEMENT_VARIABLE: &str = "PODNET_DEVTUNNEL_MANAGEMENT";
 
@@ -81,30 +98,65 @@ pub(super) fn parse(spec: &str) -> Result<Spec, Failure> {
     Ok(Spec { locator })
 }
 
-/// The management token, its scheme and the base of the management API.
+/// The credential of the caller and the base of the management API.
 #[derive(Clone)]
 pub(super) struct Account {
-    token: UserToken,
+    credential: Credential,
     management: Option<Base>,
 }
 
 impl Account {
     #[cfg(test)]
     pub(super) fn new(token: &str, management: Option<&str>) -> Account {
+        let token = UserToken::new(Scheme::Github, token).unwrap();
+        Account::with(token.into(), management)
+    }
+
+    #[cfg(test)]
+    pub(super) fn with(credential: Credential, management: Option<&str>) -> Account {
         Account {
-            token: UserToken::new(Scheme::Github, token).unwrap(),
+            credential,
             management: management.map(|m| Base::parse(m).unwrap()),
         }
     }
+
+    /// The form of the credential, with no byte of a token.
+    pub(super) fn form(&self) -> &'static str {
+        self.credential.form()
+    }
 }
 
-/// The scheme alone: the token never leaves the value as text.
+/// The form of the credential alone: the token never leaves the value as
+/// text.
 impl fmt::Debug for Account {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Account")
-            .field("token", &self.token)
+            .field("credential", &self.credential.form())
             .field("management", &self.management)
             .finish()
+    }
+}
+
+/// The text of a secret from the file variable `file_name` (its first
+/// line) or the variable `name`; `None` when neither is set. A fault names
+/// the variables and never holds the text.
+fn secret(
+    set: &dyn Fn(&str) -> Option<String>,
+    file_name: &str,
+    name: &str,
+) -> Result<Option<String>, Failure> {
+    match (set(file_name), set(name)) {
+        (Some(_), Some(_)) => Err(usage(format!(
+            "set one of {file_name} and {name}, not both"
+        ))),
+        (Some(file), None) => {
+            let text = std::fs::read_to_string(&file)
+                .map_err(|e| usage(format!("{file_name}: cannot read {file}: {e}")))?;
+            let line = text.lines().next().unwrap_or_default();
+            Ok(Some(line.trim().to_string()))
+        }
+        (None, Some(token)) => Ok(Some(token)),
+        (None, None) => Ok(None),
     }
 }
 
@@ -112,37 +164,61 @@ impl fmt::Debug for Account {
 /// names the variables and never holds a value.
 pub(super) fn account(get: &dyn Fn(&str) -> Option<String>) -> Result<Account, Failure> {
     let set = |name: &str| get(name).filter(|v| !v.is_empty());
-    let text = match (set(TOKEN_FILE_VARIABLE), set(TOKEN_VARIABLE)) {
-        (Some(_), Some(_)) => {
-            return Err(usage(format!(
-                "set one of {TOKEN_FILE_VARIABLE} and {TOKEN_VARIABLE}, not both"
-            )))
+    let user = secret(&set, TOKEN_FILE_VARIABLE, TOKEN_VARIABLE)?;
+    let access = secret(&set, ACCESS_FILE_VARIABLE, ACCESS_VARIABLE)?;
+    let anonymous = match set(ANONYMOUS_VARIABLE).as_deref() {
+        None | Some("0") => false,
+        Some("1") => true,
+        Some(_) => return Err(usage(format!("{ANONYMOUS_VARIABLE}: use 1 or 0"))),
+    };
+    let forms = [
+        user.is_some().then_some(TOKEN_FILE_VARIABLE),
+        access.is_some().then_some(ACCESS_FILE_VARIABLE),
+        anonymous.then_some(ANONYMOUS_VARIABLE),
+    ];
+    let given: Vec<&str> = forms.into_iter().flatten().collect();
+    if given.len() > 1 {
+        return Err(usage(format!(
+            "Dev Tunnels takes one credential: a user token ({TOKEN_FILE_VARIABLE} or {TOKEN_VARIABLE}), a tunnel access token ({ACCESS_FILE_VARIABLE} or {ACCESS_VARIABLE}) or {ANONYMOUS_VARIABLE}=1; more than one is set"
+        )));
+    }
+    if user.is_none() && set(SCHEME_VARIABLE).is_some() {
+        return Err(usage(format!(
+            "{SCHEME_VARIABLE} is the scheme of a user token; set {TOKEN_FILE_VARIABLE} or {TOKEN_VARIABLE} with it"
+        )));
+    }
+    let credential = match (user, access, anonymous) {
+        (Some(text), _, _) => {
+            let scheme = match set(SCHEME_VARIABLE) {
+                None => Scheme::Github,
+                Some(word) => Scheme::parse(&word)
+                    .ok_or_else(|| usage(format!("{SCHEME_VARIABLE}: use github, aad or bearer")))?,
+            };
+            // The crate names the rule and never the text.
+            let token = UserToken::new(scheme, text).map_err(|e| {
+                usage(format!(
+                    "{TOKEN_FILE_VARIABLE} or {TOKEN_VARIABLE}: {}",
+                    e.chain()
+                ))
+            })?;
+            Credential::User(token)
         }
-        (Some(file), None) => {
-            let text = std::fs::read_to_string(&file)
-                .map_err(|e| usage(format!("{TOKEN_FILE_VARIABLE}: cannot read {file}: {e}")))?;
-            let line = text.lines().next().unwrap_or_default();
-            line.trim().to_string()
+        (None, Some(text), _) => {
+            let token = AccessToken::new(text).map_err(|e| {
+                usage(format!(
+                    "{ACCESS_FILE_VARIABLE} or {ACCESS_VARIABLE}: {}",
+                    e.chain()
+                ))
+            })?;
+            Credential::Access(token)
         }
-        (None, Some(token)) => token,
-        (None, None) => {
+        (None, None, true) => Credential::Anonymous,
+        (None, None, false) => {
             return Err(usage(format!(
-                "Dev Tunnels needs a management token: set {TOKEN_FILE_VARIABLE} (a file with one line) or {TOKEN_VARIABLE}"
+                "Dev Tunnels needs a management token: set {TOKEN_FILE_VARIABLE} (a file with one line) or {TOKEN_VARIABLE}; for a tunnel access token, {ACCESS_FILE_VARIABLE} or {ACCESS_VARIABLE}; for a tunnel with anonymous access, {ANONYMOUS_VARIABLE}=1"
             )))
         }
     };
-    let scheme = match set(SCHEME_VARIABLE) {
-        None => Scheme::Github,
-        Some(word) => Scheme::parse(&word)
-            .ok_or_else(|| usage(format!("{SCHEME_VARIABLE}: use github, aad or bearer")))?,
-    };
-    // The crate names the rule and never the text.
-    let token = UserToken::new(scheme, text).map_err(|e| {
-        usage(format!(
-            "{TOKEN_FILE_VARIABLE} or {TOKEN_VARIABLE}: {}",
-            e.chain()
-        ))
-    })?;
     let management = match set(MANAGEMENT_VARIABLE) {
         None => None,
         Some(base) => Some(
@@ -150,7 +226,10 @@ pub(super) fn account(get: &dyn Fn(&str) -> Option<String>) -> Result<Account, F
                 .map_err(|e| usage(format!("{MANAGEMENT_VARIABLE}: {}", e.chain())))?,
         ),
     };
-    Ok(Account { token, management })
+    Ok(Account {
+        credential,
+        management,
+    })
 }
 
 /// True for the local address of the tunnel host.
@@ -218,6 +297,7 @@ pub(super) async fn up(
     below: Option<&Arc<dyn Dial>>,
 ) -> Result<Link, Failure> {
     let label = spec.label();
+    let form = account.form();
     let dial = below.cloned().unwrap_or_else(crate::dialers::process);
     let agent = format!("podnet/{}", env!("CARGO_PKG_VERSION"));
     let tls = crate::trust::context().clone();
@@ -236,12 +316,20 @@ pub(super) async fn up(
         events: Arc::new(|event: pod_core::Event| eprintln!("podnet: {event}")),
         ..Default::default()
     };
-    let relay = Relay::connect(way, settings, spec.locator.clone(), account.token, report).await?;
-    // The status holds no token.
+    let relay = Relay::connect(
+        way,
+        settings,
+        spec.locator.clone(),
+        account.credential,
+        report,
+    )
+    .await?;
+    // The status holds no token: the form of the credential alone.
     let status = serde_json::json!({
         "scheme": "devtunnel",
         "spec": label,
         "tunnel": relay.tunnel().shown(),
+        "credential": form,
         "sessions": relay.sessions(),
     });
     let dialer = Arc::new(DevtunnelDialer { label, relay });

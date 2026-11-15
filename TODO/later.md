@@ -2091,3 +2091,59 @@ of the allocation), `turn_a_stale_nonce_does_not_lose_the_datagram` (a 438 answe
 test failed; with the `--egress` refusal off and the usage mapping off, the `way` test and the exit-code test failed (exit 1, not 64).
 Not proven: a live TURN server.
 
+
+# T-354: net: `devtunnel://` with a tunnel access token, or with no token
+
+**Source:** T-137, the take of `PodUtils/podcrates` v0.47.0 (`TODO/crates.md`, the v0.47.0 line): "a possible next
+entry of `devtunnel://`".
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** S
+**Status:** partial
+
+## Problem
+
+The call of T-137 at the take of v0.47.0: "`Credential::Access` (a tunnel access token) and `Credential::Anonymous` (a
+tunnel with anonymous access) are a possible next entry of `devtunnel://` (a setting for the access token; no token when
+no setting is given); podnet does not build them now." `devtunnel://NAME` (T-320) needs a user token
+(`PODNET_DEVTUNNEL_TOKEN_FILE` or `PODNET_DEVTUNNEL_TOKEN`). A user with no Dev Tunnels account, who has a tunnel access
+token from the owner of the tunnel, or who connects to a tunnel with anonymous access, cannot use the network.
+
+## Premise
+
+- `pod-devtunnel` v0.50.0 (the tag of `Cargo.toml`): `Relay::connect` takes `impl Into<Credential>`.
+  `Credential::{User(UserToken), Access(AccessToken), Anonymous}`; `AccessToken::new(secret)`; `Credential::form()`
+  names the form with no byte of a token; the `Debug` of each token is `<hidden>`.
+- The crate sends each form to the management API: a user token with its scheme, a tunnel access token with the
+  scheme `tunnel`, no `Authorization` for `Anonymous` (the crate README, "The protocol, with its sources"). An answer
+  with no connect token takes the caller's tunnel access token to the relay, or no token. So no form needs a user token
+  for the connect information.
+- A 401 or 403 of the management API is the class `refused`, for each form. podnet maps a refused user token to the
+  class `refused` today, and `forward` exits with its existing code for that class.
+- The stand-in of the crate (feature `standin`) has `Plan::access`, `Plan::anonymous`, `Plan::mints_for_all` and
+  `Seen::forms`, `Seen::relay_tokens`.
+- Not measured: the live Dev Tunnels service.
+
+## Approach
+
+1. A tunnel access token is a setting, never a part of the spec: `PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE` (preferred; the
+   first line of the file) or `PODNET_DEVTUNNEL_ACCESS_TOKEN`.
+2. No token: `PODNET_DEVTUNNEL_ANONYMOUS=1`, an explicit opt-in (`0` or empty is off; another value is a usage error).
+   With no form set, podnet exits 64 with the message that names each setting.
+3. The call on precedence: none. The crate takes each form at the management API, so no form needs another. More than
+   one form set (a user token, an access token, `PODNET_DEVTUNNEL_ANONYMOUS=1`) is a usage error (exit 64) that names
+   the variables, never the values. `PODNET_DEVTUNNEL_SCHEME` with no user token is a usage error.
+4. No text of podnet holds a token: the `Debug` of the account shows the form of the credential; the status of the
+   link adds the member `credential` with the form; errors name the variables and the form.
+5. A refused access token or a refused anonymous caller has the class `refused`, as a refused user token.
+6. Tests in `src/networks/devtunnel_tests.rs` and `tests/devtunnel_network.rs`; the docs in `docs/networks.md`,
+   `docs/forward.md`, `docs/egress.md`, the manual (`src/manual/facts.rs`) and the `forward --network` help.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib networks::devtunnel
+cargo test -p podnet --test devtunnel_network
+cargo test -p podnet --test cli manual
+```
