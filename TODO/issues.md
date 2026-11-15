@@ -257,7 +257,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #565 | [gh action] requested: ci, deny, secrets, live and fuzz on the take of v0.46.0 (T-137, T-279, T-302) | closed: ci 43632069484, deny 43632072542, secrets 43632076272 and fuzz 43632083716 passed on b7c3e90; live 43632080404 failed: each WARP proxy download of speed.cloudflare.com gave 1 byte and no warning (no code of the WARP path changed since the pass of 43619120794); the step now prints the HTTP status and the start of a short body | none |
 | #566 | [gh action] requested: live again (the WARP proxy download of #565) | closed: live 43638808808 passed on 5db015c | none |
 | #567 | [gh action] requested: the release of v0.4.0-beta.12 (checks, dry run, publish, release proofs) | closed: `v0.4.0-beta.12` is out on b6e7959 (release-proofs 43645375545) | T-352 |
-| #568 | COORD-083: podnet took v0.47.0 at 1d4d7f1; the stand-in of the S3 API at 556708a (to podcrates) | open (a COORD issue between sessions) | none |
+| #568 | COORD-083: podnet took v0.47.0 at 1d4d7f1; the stand-in of the S3 API at 556708a (to podcrates) | closed (podcrates closed PodUtils/podcrates#160) | none |
 | #569 | [gh action] requested: ci, deny, secrets, live and fuzz on the take of v0.47.0 | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
