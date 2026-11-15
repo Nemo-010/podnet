@@ -41,7 +41,7 @@ Each workflow passes on 0a0f3e5, the tag `v0.4.0-beta.13` (GitHub #579): ci 4371
 the take of podcrates `v0.52.0` (GitHub #581). ci 43728239022, deny 43728242664 and secrets 43728245947 pass on 78a3911, T-356 and T-357 (GitHub #583). Read the runs (`watch-runs.py`, below), not only the comment of a request: the runs of #583 ended an hour before any comment.
 
 Watch the runs as well as the issues (PodUtils/podssh#270): `scripts/agent/watch-runs.py` of PodUtils/podssh at
-`cc0caa2` prints a line when a run of this repository starts, ends (with its failed jobs) or is run again. Fetch it into
+`7870c2b` prints a line when a run of this repository starts, ends (with its failed jobs) or is run again. Fetch it into
 `.work/watch-runs/`, run `python3 -I .work/watch-runs/watch-runs.py --self-test`, then keep
 `python3 -I .work/watch-runs/watch-runs.py PodUtils/podnet .work/agent/runs.json 120` under the Monitor tool beside the
 watcher of issues. When a run of a request ends, record it and go on: do not wait for the comment of the request.
