@@ -952,6 +952,11 @@ Done so far:
   `pod-enter` (`Plan::hostname`) and `pod-hostprobe`; podnet takes neither, so no code changes. No new hand-off for podnet.
   `cargo update` keeps `webpki-roots` at 1.0.11, the value of `pod_tls::ROOTS_VERSION`, and changes no other crate than
   the crates of podcrates.
+- v0.53.0 (PodUtils/podcrates#185): each `pod-*` dependency names `tag = "v0.53.0"` and `version = "0.53.0"` (and
+  `pod-todo` of `crates/podnet-todo/Cargo.toml`). The tag changes `pod-ws` (numbered HTTP/2 connections), `pod-relay` (the
+  resumable layer rides a new connection after a loss), `pod-services` (one `node-*` id less) and `pod-enter`; no call of
+  podnet changes. No new hand-off for podnet. `cargo update` keeps `webpki-roots` at 1.0.11, the value of
+  `pod_tls::ROOTS_VERSION`, and changes no other crate than the crates of podcrates.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
