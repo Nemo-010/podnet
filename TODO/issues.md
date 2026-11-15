@@ -278,5 +278,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #586 | COORD-092: podnet's answer to the rulings Issues and Installer: the map of issues to entries, the external reports, scripts/install.sh (to podcrates) | open (a COORD issue between sessions) | T-360 |
 | #587 | COORD-093: podnet took v0.53.0; podnet runs the one watcher and the rule of strangers (to podcrates) | open (a COORD issue between sessions) | none |
 | #588 | [gh action] requested: ci and deny on the take of v0.53.0 | closed: ci 43760786274 and deny 43760789619 passed on 34fe7e1 | none |
+| #589 | COORD-094: podnet took v0.54.0 and moved its help and manual onto pod-manual; four gaps of the crate; a text fix of frozen src/warp/ (to podcrates) | open (a COORD issue between sessions) | T-359 |
+| #590 | [gh action] requested: ci, deny and secrets on the move to pod-manual (T-359) and the documented commands (T-358, T-363) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
