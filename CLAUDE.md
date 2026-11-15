@@ -166,8 +166,10 @@ issues are the channel, and each session watches them
   result) in the same commit or the next one.
 - GitHub issues are an inbox. Each new issue becomes one or more entries;
   `TODO/issues.md` and `TODO/github.txt` map it, in the same commit. The
-  entry keeps the text of the issue. Close the issue when each of its
-  entries is done, with the commits and the CI runs.
+  entry keeps the text of the issue. Close the issue through the record
+  when each of its entries is done (its row and its line `closed`, with the
+  commits and the CI runs); `.github/workflows/issue-sync.yml` sets the
+  state on GitHub. Do not close it by hand.
 - At the start of a session, read `docs/HANDOFF.md` first when it exists
   (the state of unfinished work), then `TODO/PROGRESS.md`, then
   `docs/maintenance.md` (the procedures, the tools in `scripts/agent/`,
@@ -199,8 +201,8 @@ issues are the channel, and each session watches them
   signature of the cosign bundle over SHA256SUMS, with own code. The Rekor
   inclusion proof is not checked.
 - Issues: a watcher polls for new issues. A Sonnet agent triages each new
-  issue into record entries. Close each issue with evidence (commits, CI
-  runs, test output).
+  issue into record entries. Close each issue through the record, with
+  evidence (commits, CI runs, test output) in the Done sections.
 - Breaking changes are allowed (beta). No feature or capability of the
   code may be lost: tick `docs/research/podnet/parity-checklist.md` areas
   after each large refactor.

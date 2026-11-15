@@ -1,0 +1,40 @@
+name: issue-sync
+
+# The state of each issue comes from the record (the owner's ruling
+# "Issues"; PodUtils/podcrates docs/session-protocol.md, item 5). The
+# workflow of podcrates writes the status block of each issue from
+# TODO/issues.md and TODO/github.txt, closes an issue that the record
+# closes, and opens again an issue that the record opens. It does not edit
+# an issue of an author outside the team that has no label `confirmed`.
+# Do not close an issue by hand: change the record (TODO/RULES.md).
+#
+# `uses:` names the commit of the tag v0.56.0 of podcrates
+# (scripts/check-workflows.py: each `uses:` names a commit);
+# `podcrates_ref` names the same tag. Move both at each take (T-137).
+# A dispatch is a dry run unless `dry_run` is false.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Each day at 06:17 UTC, off the hour.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print each change and change nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  issues:
+    permissions:
+      contents: read
+      issues: write
+    uses: PodUtils/podcrates/.github/workflows/issue-sync.yml@93bf133ab8b636505d035dfda5c7a1ce21b27eb4 # v0.56.0
+    with:
+      podcrates_ref: v0.56.0
+      dry_run: ${{ inputs.dry_run || false }}

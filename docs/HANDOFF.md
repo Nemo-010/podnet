@@ -50,8 +50,8 @@ comment of the request.
 1. Ask for runs of each new head with a `[gh action] requested` issue after a batch of changes.
 2. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
 3. Go on with the work order of `TODO/PROGRESS.md`. The disk holds one build: run one agent at a time in this checkout,
-   with `CARGO_INCREMENTAL=0`. Close the GitHub issues whose entries are done, with the commits and the CI runs
-   (`docs/maintenance.md`, "The issue loop"). Issues #484 to #501 are deferred by the owner: leave them open.
+   with `CARGO_INCREMENTAL=0`. Close each issue whose entries are done through the record (its row and its line
+   `closed`, with the commits and the CI runs); `issue-sync.yml` sets the state on GitHub (`docs/maintenance.md`, "The issue loop"). Issues #484 to #501 are deferred by the owner: leave them open.
 4. When each non-deferred issue is closed and `live` is green: cut the final complete beta (the steps of T-331).
 
 ## Known flakes under load

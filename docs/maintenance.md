@@ -187,12 +187,24 @@ into `TODO/github.txt`, and its row in `TODO/issues.md` has the entries
 6. Watch the runs of the commit (`watch-runs.sh`). Read the evidence in the
    job log.
 7. Set each entry to `done` (`cargo todo set`), with its Done section.
-   Close the issue when each of its entries is done, with a comment: the commit, the cause, the change, the
-   tests, and the CI run and the live run with the lines of the log that
-   prove the fix. Say what is not proven.
+   The record sets the state of each issue (the owner's ruling "Issues";
+   `issue_rules = "on"` in `TODO/todo.toml`). Close an issue through the
+   record, not by hand: when each of its entries is done, set the State of
+   its row in `TODO/issues.md` to `closed` with the commit, and set its line
+   in `TODO/github.txt` to `closed`, in the commit that closes the last
+   entry. `.github/workflows/issue-sync.yml` (the workflow of podcrates at
+   a tag) then writes the status block, closes the issue and writes one
+   comment with each entry and its tag. It opens again an issue that the
+   record says is open. Do not edit the status block by hand, and do not
+   write the state of an issue in a comment. Write the evidence (the
+   cause, the change, the tests, the CI run and the live run with the
+   lines of the log that prove the fix, and what is not proven) into the
+   Done section of the entry. A COORD issue, a run request and a
+   `[Reference]` issue close by hand, not on entries.
 8. The job report of `live` opens an issue "live: two runs in a row failed"
-   after two failed runs. Close it with the cause of each failure and the
-   run that passed.
+   after two failed runs. Map it to an entry. Write the cause of each
+   failure and the run that passed into the Done section, and close it
+   through the record (step 7).
 
 ## The workflows
 
@@ -206,6 +218,7 @@ into `TODO/github.txt`, and its row in `TODO/issues.md` has the entries
 | `release-proofs.yml` | after a release | checks the release files, SHA256SUMS and the signatures |
 | `fuzz.yml`, `upstream.yml` | on a schedule | fuzz targets; changes of cloudflared |
 | `record-issues.yml` | each day, by hand | `TODO/github.txt` against GitHub (`scripts/check-github-numbers.py`) |
+| `issue-sync.yml` | push to `main`, each day, by hand (a dry run by default) | the state and the status block of each issue from the record (`issue-sync.yml` of podcrates at the tag of T-137) |
 
 Facts about `live.yml`:
 
