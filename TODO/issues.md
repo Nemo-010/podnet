@@ -262,6 +262,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #570 | COORD-084: podnet took v0.48.0 at 862a6a9 (to podcrates) | closed (podcrates closed PodUtils/podcrates#162) | none |
 | #571 | [gh action] requested: ci and deny on the take of v0.48.0 | closed: ci 43659845378 and deny 43659848188 passed on 34bb2cd | none |
 | #572 | COORD-085: podnet took v0.49.0; a closed half can end the listener of a split session with "the carrier of the link ended" (T-353) (to podcrates) | open (a COORD issue between sessions) | T-353 |
-| #573 | [gh action] requested: ci and deny on the take of v0.49.0 | open (a request of runs to the owner) | none |
+| #573 | [gh action] requested: ci and deny on the take of v0.49.0 | closed: ci 43664113413 and deny 43664116501 passed on 0bda088 | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

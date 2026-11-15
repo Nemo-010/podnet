@@ -271,4 +271,4 @@
 570 issue closed
 571 issue closed
 572 issue open
-573 issue open
+573 issue closed
