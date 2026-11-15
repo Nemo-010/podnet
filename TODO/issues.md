@@ -261,10 +261,12 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #569 | [gh action] requested: ci, deny, secrets, live and fuzz on the take of v0.47.0 | closed: ci 43654435897, deny 43654439784, secrets 43654443103, live 43654446240 and fuzz 43654449404 passed on 6536905 | none |
 | #570 | COORD-084: podnet took v0.48.0 at 862a6a9 (to podcrates) | closed (podcrates closed PodUtils/podcrates#162) | none |
 | #571 | [gh action] requested: ci and deny on the take of v0.48.0 | closed: ci 43659845378 and deny 43659848188 passed on 34bb2cd | none |
-| #572 | COORD-085: podnet took v0.49.0; a closed half can end the listener of a split session with "the carrier of the link ended" (T-353) (to podcrates) | open (a COORD issue between sessions): the take is recorded (podcrates closed PodUtils/podcrates#163); the ask of T-353 is open | T-353 |
+| #572 | COORD-085: podnet took v0.49.0; a closed half can end the listener of a split session with "the carrier of the link ended" (T-353) (to podcrates) | closed: the take is recorded (PodUtils/podcrates#163); v0.51.0 carries the fix of T-353 | T-353 |
 | #573 | [gh action] requested: ci and deny on the take of v0.49.0 | closed: ci 43664113413 and deny 43664116501 passed on 0bda088 | none |
 | #574 | COORD-086: podnet took v0.50.0 (to podcrates) | closed (podcrates closed PodUtils/podcrates#164) | none |
 | #575 | [gh action] requested: ci and deny on the take of v0.50.0 | closed: ci 43673745417 and deny 43673748869 passed on d072007 | none |
-| #576 | [gh action] requested: ci, deny and secrets on T-354 (devtunnel:// with an access token or no token) | open (a request of runs to the owner) | none |
+| #576 | [gh action] requested: ci, deny and secrets on T-354 (devtunnel:// with an access token or no token) | closed: ci 43705620683, deny 43705623914 and secrets 43705627029 passed on 08802d8 | T-354 |
+| #577 | COORD-087: podnet took v0.51.0; the fix of #572 holds (to podcrates) | open (a COORD issue between sessions) | none |
+| #578 | [gh action] requested: ci and deny on the take of v0.51.0 | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
