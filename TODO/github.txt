@@ -269,4 +269,4 @@
 568 issue closed
 569 issue closed
 570 issue closed
-571 issue open
+571 issue closed
