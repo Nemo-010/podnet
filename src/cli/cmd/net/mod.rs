@@ -171,6 +171,13 @@ pub(crate) struct ShimArgs {
     /// example of podnet net tailscale).
     #[arg(long, value_name = "PATH", default_value = podnet::vnet::shim::DEFAULT_SOCKS_SOCKET, requires = "socks_routes")]
     socks_socket: String,
+    /// Send a stream connect to ADDR:PORT to the unix socket PATH, with no
+    /// SOCKS step, repeatable: IPV4:PORT=unix:/PATH or
+    /// [IPV6]:PORT=unix:/PATH (PODNET_VNET_FORWARD). A forward comes
+    /// before --socks-route. An IPv4-mapped IPv6 address matches its IPv4
+    /// entry.
+    #[arg(long = "forward", value_name = "ADDR:PORT=unix:/PATH")]
+    forwards: Vec<String>,
     /// Print the environment as JSON instead of shell assignments.
     #[arg(long)]
     json: bool,

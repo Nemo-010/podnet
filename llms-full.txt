@@ -3064,6 +3064,13 @@ COMMANDS
             The unix socket of the SOCKS5 front door of --socks-route (for
             example of podnet net tailscale). Default: /tmp/podnet-socks.sock.
 
+        --forward <ADDR:PORT=unix:/PATH>
+            Send a stream connect to ADDR:PORT to the unix socket PATH, with
+            no SOCKS step, repeatable: IPV4:PORT=unix:/PATH or
+            [IPV6]:PORT=unix:/PATH (PODNET_VNET_FORWARD). A forward comes
+            before --socks-route. An IPv4-mapped IPv6 address matches its IPv4
+            entry
+
         --json
             Print the environment as JSON instead of shell assignments
 
@@ -11094,14 +11101,18 @@ ENVIRONMENT
         build. (net shim, net socksify)
     PODNET_VNET_LOG, PODNET_VNET_MAP_LOOPBACK, PODNET_VNET_LOCAL_ADDR,
     PODNET_VNET_PREFIX, PODNET_VNET_HOSTS, PODNET_VNET_CONTROL,
-    PODNET_VNET_MAX_FDS, PODNET_VNET_SOCKS, PODNET_VNET_SOCKS_ROUTES
+    PODNET_VNET_MAX_FDS, PODNET_VNET_SOCKS, PODNET_VNET_SOCKS_ROUTES,
+    PODNET_VNET_FORWARD
         The shim of the virtual network: log each translation; map 127.0.0.1
         to the local virtual address; the local virtual IPv4 address; the
         prefix of the abstract names; a name=address table; the abstract name
         of the control socket; the size of the descriptor table; the unix
         socket of a SOCKS5 front door; the comma list of destinations
         (tailnet, ADDR, ADDR/BITS, IPV4:PORT, [IPV6]:PORT) whose stream
-        connects go to that door (net shim --socks-route). (libpodnet-vnet.so)
+        connects go to that door (net shim --socks-route); the comma list of
+        forwards IPV4:PORT=unix:/PATH or [IPV6]:PORT=unix:/PATH, whose stream
+        connects go to the unix socket PATH before a SOCKS route (net shim
+        --forward, 16 at most). (libpodnet-vnet.so)
     PODNET_SOCKS_PROXY, PODNET_SOCKS_LOG, PODNET_SOCKS_ALL,
     PODNET_SOCKS_CIDRS, PODNET_SOCKS_MAX_FDS
         The socks shim: the unix socket of the SOCKS5 front door; log each
@@ -16132,6 +16143,37 @@ podnet net shim --socks-route 192.168.1.5:5432 --socks-socket /tmp/podnet-socks.
 
 podnet checks each route and exits 64 at a bad route. The C shims ignore a
 bad route of the environment, and log it with the log variable.
+
+### 5.6 Forward to a unix socket
+
+A host can refuse each `AF_INET` and `AF_INET6` `bind` and `connect`
+(`EACCES`, also on loopback), and allow `AF_UNIX`. A program under the
+shim can then reach a service that listens on a unix socket path, at a TCP
+address (T-357). Give each forward with `--forward ADDR:PORT=unix:/PATH`
+(`PODNET_VNET_FORWARD`, a comma list):
+
+```sh
+podnet net shim \
+  --forward 127.0.0.1:7001=unix:/run/podrunner/broker.sock \
+  --forward 127.0.0.1:3128=unix:/run/podrunner/proxy.sock
+```
+
+* `ADDR:PORT` is `IPV4:PORT` or `[IPV6]:PORT`. An IPv4-mapped IPv6 address
+  (`[::ffff:127.0.0.1]:7001`) matches its IPv4 forward.
+* `PATH` is absolute and has 107 bytes at most (`sun_path`). The shim keeps
+  16 forwards at most.
+* A stream `connect` to a listed destination connects the descriptor to
+  `PATH`. There is no SOCKS step and no other process. `getpeername` gives
+  the TCP address that the program asked for. A `PATH` with no socket gives
+  `ECONNREFUSED`.
+* The order is: the forwards, then the SOCKS routes (5.5), then the
+  abstract name.
+* The shim does not check the user of the peer of a forward. The file
+  permissions of `PATH` control the access.
+
+`net shim` checks each forward and exits 64 at a bad forward. The C shim
+ignores a bad forward of the environment, and logs it with
+`PODNET_VNET_LOG`.
 
 ## 6. Resolver, policy and capture
 

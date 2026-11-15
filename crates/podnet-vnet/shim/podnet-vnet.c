@@ -19,6 +19,10 @@
  * ADDR/BITS, IPV4:PORT or [IPV6]:PORT). A stream connect to a listed
  * destination goes to that door, not to an abstract name.
  *
+ * PODNET_VNET_FORWARD is a comma list of ADDR:PORT=unix:/PATH. A stream
+ * connect to a listed destination goes to the unix socket PATH (T-357). The
+ * forwards come first, then the SOCKS routes, then the abstract name.
+ *
  * This file is compiled from the embedded copy in crates/podnet-vnet/src/shim.rs, so a
  * podnet binary can build it anywhere. It is deliberately C: interposition has
  * to happen at the libc symbol boundary, before any Rust constructor runs.
@@ -249,6 +253,121 @@ static int route_match(const struct sockaddr *sa) {
     return 0;
 }
 
+/* ── forwards to a unix socket path (T-357) ───────────────────────────────── */
+
+/* PODNET_VNET_FORWARD: a comma list of ADDR:PORT=unix:/PATH (IPV4:PORT or
+   [IPV6]:PORT). A stream connect to ADDR:PORT connects to the unix socket
+   /PATH, with no SOCKS step. crates/podnet-vnet/src/shim.rs parse_forward
+   checks the same form. */
+#define MAX_FORWARDS 16
+
+struct forward {
+    int family;              /* AF_INET or AF_INET6 */
+    unsigned char addr[16];
+    unsigned port;
+    char path[sizeof(((struct sockaddr_un *)0)->sun_path)];
+};
+
+static struct forward forwards[MAX_FORWARDS];
+static int forwards_len;
+
+static void forward_parse(const char *item) {
+    char host[64];
+    unsigned char addr[16];
+    long port = 0;
+    int family;
+    const char *eq = strchr(item, '=');
+    if (!eq || (size_t)(eq - item) >= sizeof host) goto bad;
+    memcpy(host, item, (size_t)(eq - item));
+    host[eq - item] = '\0';
+    const char *path = eq + 1;
+    if (strncmp(path, "unix:", 5) != 0) goto bad;
+    path += 5;
+    if (path[0] != '/' || strlen(path) >= sizeof forwards[0].path) goto bad;
+    char *mark;
+    if (host[0] == '[') {
+        char *end = strchr(host, ']');
+        if (!end || end[1] != ':') goto bad;
+        *end = '\0';
+        if (parse_number(end + 2, 1, 65535, &port) < 0) goto bad;
+        if (inet_pton(AF_INET6, host + 1, addr) != 1) goto bad;
+        family = AF_INET6;
+        if (IN6_IS_ADDR_V4MAPPED((struct in6_addr *)addr)) {
+            /* A mapped address matches its IPv4 form. */
+            memmove(addr, addr + 12, 4);
+            family = AF_INET;
+        }
+    } else {
+        if (!(mark = strrchr(host, ':'))) goto bad;
+        *mark = '\0';
+        if (parse_number(mark + 1, 1, 65535, &port) < 0) goto bad;
+        if (inet_pton(AF_INET, host, addr) != 1) goto bad;
+        family = AF_INET;
+    }
+    if (forwards_len >= MAX_FORWARDS) {
+        logf_("forward %s: the table is full (%d forwards); it is ignored\n", item, MAX_FORWARDS);
+        return;
+    }
+    struct forward *f = &forwards[forwards_len++];
+    memset(f, 0, sizeof *f);
+    f->family = family;
+    memcpy(f->addr, addr, family == AF_INET ? 4 : 16);
+    f->port = (unsigned)port;
+    snprintf(f->path, sizeof f->path, "%s", path);
+    logf_("forward %s\n", item);
+    return;
+bad:
+    logf_("forward %s: not IPV4:PORT=unix:/PATH or [IPV6]:PORT=unix:/PATH (a path of at most %u bytes); "
+          "it is ignored\n",
+          item, (unsigned)(sizeof forwards[0].path - 1));
+}
+
+static void forward_parse_list(const char *list) {
+    char *copy = strdup(list);
+    if (!copy) return;
+    char *save = NULL;
+    for (char *tok = strtok_r(copy, ",", &save); tok; tok = strtok_r(NULL, ",", &save)) {
+        while (*tok == ' ') tok++;
+        size_t n = strlen(tok);
+        while (n && tok[n - 1] == ' ') tok[--n] = '\0';
+        if (*tok) forward_parse(tok);
+    }
+    free(copy);
+}
+
+/* The forward of sa, or NULL. An IPv4-mapped IPv6 address matches as
+   IPv4. */
+static const struct forward *forward_match(const struct sockaddr *sa, socklen_t len) {
+    int family;
+    const unsigned char *addr;
+    unsigned port;
+    if (!forwards_len || !sa) return NULL;
+    if (sa->sa_family == AF_INET && len >= (socklen_t)sizeof(struct sockaddr_in)) {
+        const struct sockaddr_in *s = (const struct sockaddr_in *)sa;
+        family = AF_INET;
+        addr = (const unsigned char *)&s->sin_addr;
+        port = ntohs(s->sin_port);
+    } else if (sa->sa_family == AF_INET6 && len >= (socklen_t)sizeof(struct sockaddr_in6)) {
+        const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)sa;
+        family = AF_INET6;
+        addr = s->sin6_addr.s6_addr;
+        port = ntohs(s->sin6_port);
+        if (IN6_IS_ADDR_V4MAPPED(&s->sin6_addr)) {
+            family = AF_INET;
+            addr += 12;
+        }
+    } else {
+        return NULL;
+    }
+    for (int i = 0; i < forwards_len; i++) {
+        const struct forward *f = &forwards[i];
+        if (f->family == family && f->port == port &&
+            memcmp(f->addr, addr, family == AF_INET ? 4 : 16) == 0)
+            return f;
+    }
+    return NULL;
+}
+
 static void parse_config(void) {
     const char *v;
     memset(&cfg, 0, sizeof cfg);
@@ -272,6 +391,8 @@ static void parse_config(void) {
         long n = strtol(v, NULL, 10);
         if (n > 0) cfg.max_fds = (int)n;
     }
+    forwards_len = 0;
+    if ((v = getenv("PODNET_VNET_FORWARD")) && *v) forward_parse_list(v);
     if ((v = getenv("PODNET_VNET_SOCKS")) && *v) {
         snprintf(cfg.socks, sizeof cfg.socks, "%s", v);
         if ((v = getenv("PODNET_VNET_SOCKS_ROUTES")) && *v) route_parse_list(v);
@@ -986,9 +1107,50 @@ static int connect_through_door(int fd, const struct sockaddr *sa, socklen_t len
     return 0;
 }
 
+/* T-357: connect the virtual stream socket fd to the unix socket path of a
+   forward. The peer is the TCP address that the program asked for. A
+   missing path gives ECONNREFUSED, as a TCP port with no listener does.
+   The owner of the path decides with its file permissions: no same-user
+   check. */
+static int connect_forward(int fd, const struct sockaddr *sa, socklen_t len,
+                           const struct forward *f) {
+    struct sockaddr_un un;
+    memset(&un, 0, sizeof un);
+    un.sun_family = AF_UNIX;
+    snprintf(un.sun_path, sizeof un.sun_path, "%s", f->path);
+    socklen_t un_len = (socklen_t)(offsetof(struct sockaddr_un, sun_path) + strlen(un.sun_path) + 1);
+    autobind(fd);
+    /* A blocking step, as for the door: a full backlog waits, and does not
+       give EAGAIN to a program that expects EINPROGRESS. */
+    int flags = r_fcntl(fd, F_GETFL);
+    if (flags >= 0 && (flags & O_NONBLOCK)) r_fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
+    int rc = r_connect(fd, (struct sockaddr *)&un, un_len);
+    int err = errno;
+    if (flags >= 0 && (flags & O_NONBLOCK)) r_fcntl(fd, F_SETFL, flags);
+    errno = err;
+    if (rc < 0) {
+        int saved = errno == ENOENT ? ECONNREFUSED : errno;
+        logf_("connect -> forward %s failed: %s\n", f->path, strerror(errno));
+        errno = saved;
+        return -1;
+    }
+    fd_record_peer(fd, sa, len);
+    logf_("connect -> forward %s\n", f->path);
+    return 0;
+}
+
 int connect(int fd, const struct sockaddr *sa, socklen_t len) {
     ensure_init();
     if (!fd_is_virtual(fd)) return r_connect(fd, sa, len);
+    const struct forward *f = forward_match(sa, len);
+    if (f) {
+        int type = 0;
+        socklen_t type_len = sizeof type;
+        if (r_getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &type_len) == 0 &&
+            type == SOCK_STREAM) {
+            return connect_forward(fd, sa, len, f);
+        }
+    }
     if (cfg.socks[0] && routes_len > 0 && sa &&
         (sa->sa_family == AF_INET || sa->sa_family == AF_INET6) && route_match(sa)) {
         int type = 0;

@@ -47,6 +47,10 @@ pub struct ShimOptions {
     pub socks_routes: Vec<String>,
     /// The unix socket of the front door of `socks_routes`.
     pub socks_socket: String,
+    /// The forwards of [`parse_forward`] (T-357): a stream connect to the
+    /// destination goes to the unix socket path. They come before the
+    /// SOCKS routes.
+    pub forwards: Vec<String>,
 }
 
 /// The default unix socket of the SOCKS5 front door (`net tailscale`).
@@ -121,6 +125,60 @@ pub fn socks_route_list(routes: &[String]) -> Result<String> {
     Ok(checked.join(","))
 }
 
+/// The most forwards that the C shim keeps (`MAX_FORWARDS`).
+pub const MAX_FORWARDS: usize = 16;
+
+/// The longest path of a forward: `sun_path` less its NUL.
+pub const MAX_FORWARD_PATH: usize = 107;
+
+/// Check one forward of `PODNET_VNET_FORWARD` (T-357):
+/// `IPV4:PORT=unix:/PATH` or `[IPV6]:PORT=unix:/PATH`. The path is
+/// absolute and has [`MAX_FORWARD_PATH`] bytes at most. Gives the forward as
+/// the shim reads it.
+pub fn parse_forward(text: &str) -> Result<String> {
+    let text = text.trim();
+    let forms = "give IPV4:PORT=unix:/PATH or [IPV6]:PORT=unix:/PATH";
+    let Some((dest, target)) = text.split_once('=') else {
+        bail!("the forward {text:?} has no =: {forms}");
+    };
+    match dest.parse::<std::net::SocketAddr>() {
+        Ok(addr) if addr.port() != 0 && !dest.contains('%') => {}
+        _ => bail!("the forward {text:?} has no IPV4:PORT or [IPV6]:PORT before =: {forms}"),
+    }
+    let Some(path) = target.strip_prefix("unix:") else {
+        bail!("the forward {text:?} has no unix: after =: {forms}");
+    };
+    if !path.starts_with('/') {
+        bail!("the forward {text:?} has a path that is not absolute: {forms}");
+    }
+    if path.len() > MAX_FORWARD_PATH {
+        bail!(
+            "the forward {text:?} has a path of {} bytes: the most is {MAX_FORWARD_PATH}",
+            path.len()
+        );
+    }
+    if path.contains(',') {
+        bail!("the forward {text:?} has a comma in its path");
+    }
+    Ok(text.to_string())
+}
+
+/// Check each forward and join them for the environment. More than
+/// [`MAX_FORWARDS`] is an error.
+pub fn forward_list(forwards: &[String]) -> Result<String> {
+    if forwards.len() > MAX_FORWARDS {
+        bail!(
+            "{} forwards: the shim keeps {MAX_FORWARDS} at most",
+            forwards.len()
+        );
+    }
+    let checked = forwards
+        .iter()
+        .map(|f| parse_forward(f))
+        .collect::<Result<Vec<_>>>()?;
+    Ok(checked.join(","))
+}
+
 impl Default for ShimOptions {
     fn default() -> Self {
         Self {
@@ -132,6 +190,7 @@ impl Default for ShimOptions {
             max_fds: 65536,
             socks_routes: Vec::new(),
             socks_socket: DEFAULT_SOCKS_SOCKET.into(),
+            forwards: Vec::new(),
         }
     }
 }
@@ -168,6 +227,9 @@ impl ShimOptions {
             env.push(("PODNET_VNET_HOSTS".into(), table));
         }
         env.push(("PODNET_VNET_MAX_FDS".into(), self.max_fds.to_string()));
+        if !self.forwards.is_empty() {
+            env.push(("PODNET_VNET_FORWARD".into(), self.forwards.join(",")));
+        }
         if !self.socks_routes.is_empty() {
             env.push(("PODNET_VNET_SOCKS".into(), self.socks_socket.clone()));
             env.push((
@@ -539,6 +601,51 @@ mod tests {
             .collect();
         assert_eq!(env["PODNET_VNET_SOCKS"], DEFAULT_SOCKS_SOCKET);
         assert_eq!(env["PODNET_VNET_SOCKS_ROUTES"], "127.0.0.1:3000");
+    }
+
+    // T-357: the forms of a forward of PODNET_VNET_FORWARD.
+    #[test]
+    fn forwards_are_checked() {
+        for good in [
+            "127.0.0.1:7001=unix:/run/podrunner/broker.sock",
+            "[::1]:80=unix:/tmp/a.sock",
+            "[::ffff:127.0.0.1]:3128=unix:/tmp/proxy.sock",
+        ] {
+            assert_eq!(parse_forward(good).unwrap(), good);
+        }
+        let long = format!("127.0.0.1:1=unix:/{}", "a".repeat(MAX_FORWARD_PATH));
+        for bad in [
+            "",
+            "127.0.0.1:7001",
+            "127.0.0.1=unix:/a",
+            "127.0.0.1:0=unix:/a",
+            "web:80=unix:/a",
+            "::1:80=unix:/a",
+            "[::1]=unix:/a",
+            "127.0.0.1:80=/a",
+            "127.0.0.1:80=unix:a",
+            "127.0.0.1:80=tcp:/a",
+            long.as_str(),
+        ] {
+            assert!(parse_forward(bad).is_err(), "{bad:?}");
+        }
+        let edge = format!("127.0.0.1:1=unix:/{}", "a".repeat(MAX_FORWARD_PATH - 1));
+        assert!(parse_forward(&edge).is_ok());
+        let many: Vec<String> = (1..=17).map(|i| format!("127.0.0.1:{i}=unix:/a")).collect();
+        assert!(forward_list(&many).is_err());
+        let options = ShimOptions {
+            forwards: vec![forward_list(&many[..2]).unwrap()],
+            ..ShimOptions::default()
+        };
+        let env: std::collections::HashMap<_, _> = options
+            .environment(Path::new("/tmp/libpodnet-vnet.so"))
+            .into_iter()
+            .collect();
+        assert_eq!(
+            env["PODNET_VNET_FORWARD"],
+            "127.0.0.1:1=unix:/a,127.0.0.1:2=unix:/a"
+        );
+        assert!(!env.contains_key("PODNET_VNET_SOCKS"));
     }
 
     #[test]

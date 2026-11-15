@@ -244,6 +244,37 @@ podnet net shim --socks-route 192.168.1.5:5432 --socks-socket /tmp/podnet-socks.
 podnet checks each route and exits 64 at a bad route. The C shims ignore a
 bad route of the environment, and log it with the log variable.
 
+### 5.6 Forward to a unix socket
+
+A host can refuse each `AF_INET` and `AF_INET6` `bind` and `connect`
+(`EACCES`, also on loopback), and allow `AF_UNIX`. A program under the
+shim can then reach a service that listens on a unix socket path, at a TCP
+address (T-357). Give each forward with `--forward ADDR:PORT=unix:/PATH`
+(`PODNET_VNET_FORWARD`, a comma list):
+
+```sh
+podnet net shim \
+  --forward 127.0.0.1:7001=unix:/run/podrunner/broker.sock \
+  --forward 127.0.0.1:3128=unix:/run/podrunner/proxy.sock
+```
+
+* `ADDR:PORT` is `IPV4:PORT` or `[IPV6]:PORT`. An IPv4-mapped IPv6 address
+  (`[::ffff:127.0.0.1]:7001`) matches its IPv4 forward.
+* `PATH` is absolute and has 107 bytes at most (`sun_path`). The shim keeps
+  16 forwards at most.
+* A stream `connect` to a listed destination connects the descriptor to
+  `PATH`. There is no SOCKS step and no other process. `getpeername` gives
+  the TCP address that the program asked for. A `PATH` with no socket gives
+  `ECONNREFUSED`.
+* The order is: the forwards, then the SOCKS routes (5.5), then the
+  abstract name.
+* The shim does not check the user of the peer of a forward. The file
+  permissions of `PATH` control the access.
+
+`net shim` checks each forward and exits 64 at a bad forward. The C shim
+ignores a bad forward of the environment, and logs it with
+`PODNET_VNET_LOG`.
+
 ## 6. Resolver, policy and capture
 
 * `vnet::dns::Resolver` answers A and AAAA queries for a name table at

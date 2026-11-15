@@ -399,3 +399,47 @@ fn socksify_takes_cidrs() {
     let alone = podnet(&["net", "shim", "--socks-socket", "/tmp/door.sock"]);
     assert_eq!(alone.status.code(), Some(64), "{}", stderr(&alone));
 }
+
+/// T-357: `net shim --forward` checks each forward and puts them in
+/// PODNET_VNET_FORWARD. A bad forward is exit 64 before a build.
+#[test]
+fn shim_takes_forwards() {
+    for bad in [
+        "127.0.0.1:7001",
+        "web:80=unix:/a",
+        "127.0.0.1:80=unix:relative",
+        "127.0.0.1:80=tcp:/a",
+    ] {
+        let out = podnet(&["net", "shim", "--forward", bad, "--json"]);
+        assert_eq!(out.status.code(), Some(64), "{bad}: {}", stderr(&out));
+        assert!(stderr(&out).contains(bad), "{}", stderr(&out));
+    }
+    let long = format!("127.0.0.1:80=unix:/{}", "a".repeat(120));
+    let out = podnet(&["net", "shim", "--forward", &long, "--json"]);
+    assert_eq!(out.status.code(), Some(64), "{}", stderr(&out));
+    if podnet::vnet::shim::compiler().is_err() {
+        eprintln!("skipping the build: no C compiler");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().to_str().unwrap();
+    let shim = podnet(&[
+        "net",
+        "shim",
+        "--out",
+        out,
+        "--forward",
+        "127.0.0.1:7001=unix:/run/podrunner/broker.sock",
+        "--forward",
+        "[::1]:3128=unix:/run/podrunner/proxy.sock",
+        "--json",
+    ]);
+    assert_eq!(shim.status.code(), Some(0), "{}", stderr(&shim));
+    let doc: serde_json::Value = serde_json::from_slice(&shim.stdout).unwrap();
+    assert_eq!(
+        doc["PODNET_VNET_FORWARD"],
+        "127.0.0.1:7001=unix:/run/podrunner/broker.sock,[::1]:3128=unix:/run/podrunner/proxy.sock",
+        "{doc}"
+    );
+    assert!(doc.get("PODNET_VNET_SOCKS").is_none(), "{doc}");
+}
