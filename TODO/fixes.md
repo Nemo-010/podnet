@@ -2472,7 +2472,7 @@ cargo test -p podnet-netns tailscale
 
 ## Problem
 
-`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs`, before this entry) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:119-120` say `host:port`. The dial is a bare `TcpStream::connect` (same file): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`crates/podnet-vnet/src/proxy.rs:210`). Measured by the issue: a dead `--proxy` changed nothing.
+`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs`, before this entry) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:127-128` say `host:port`. The dial is a bare `TcpStream::connect` (same file): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`crates/podnet-vnet/src/proxy.rs:210`). Measured by the issue: a dead `--proxy` changed nothing.
 
 ## Premise
 
@@ -2688,7 +2688,7 @@ cargo test -p podnet --test cli
 
 ## Problem
 
-`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:27-38`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:241-246` and `net addresses` advertise the resolver.
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:27-38`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:249-254` and `net addresses` advertise the resolver.
 
 ## Premise
 
@@ -2700,7 +2700,7 @@ cargo test -p podnet --test cli
 1. Build one `Resolver` from `--map`. Pass it as `StackConfig.dns` (switch path) and to the door through `hosts_pairs()`.
 2. `net shim --map NAME=ADDR` (repeatable) fills `ShimOptions::hosts`.
 3. `--map-file PATH` with `Resolver::from_lines`. Validate each address against the subnet at parse time.
-4. Update the help and `docs/virtual-network.md:241-246`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
+4. Update the help and `docs/virtual-network.md:249-254`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
 
 ## Prove
 
@@ -6680,3 +6680,80 @@ cargo test --test docs
 2026-11-15, 0a0f3e5 (the tag `v0.4.0-beta.13`). GitHub #579 on 0a0f3e5: the dry run 43711413173, ci 43711402086, deny
 43711405265, secrets 43711407779 and live 43711410272 passed; the publish 43713471880 and the run on the tag 43714213695
 passed; release-proofs 43716868782 passed.
+
+# T-356: vnet shim: an IPv4-mapped IPv6 address gets the IPv4 abstract name
+
+**Source:** PodUtils/podrunner#170 (COORD-058 of podrunner), data from a peer session.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+podrunner#170: "`to_abstract` in `podnet-vnet.c` does not map an IPv4-mapped IPv6 address: a connect to
+`[::ffff:127.0.0.1]:7001` becomes `\0podnet-vnet/6/::ffff:127.0.0.1/7001`, not `\0podnet-vnet/4/127.0.0.1/7001`."
+.NET's `SocketsHttpHandler` uses dual-mode `AF_INET6` sockets and connects to the mapped form (PodUtils/podrunner#69,
+T-317 for the seccomp backend). Thus a .NET client under the shim does not meet a listener on `127.0.0.1:PORT`.
+
+## Premise
+
+- `crates/podnet-vnet/shim/podnet-vnet.c`: `route_match` already reads a mapped address as IPv4. `to_abstract`,
+  `ctl_register`, `finish_accept`, `recvfrom` and `recvmsg` do not.
+- An `AF_INET6` descriptor must get an `AF_INET6` address back (the mapped form) from `accept`, `recvfrom` and
+  `recvmsg`, and an `AF_INET` descriptor an `AF_INET` address.
+- Not measured: the official GitHub runner in a podvm unit.
+
+## Approach
+
+1. In `to_abstract`, make a mapped address (and `::1` with `PODNET_VNET_MAP_LOOPBACK`) a `sockaddr_in` first. Thus
+   bind, connect, sendto and sendmsg agree.
+2. Send the IPv4 form to the control socket.
+3. On the reverse path, give the address in the family of the descriptor.
+
+## Prove
+
+```sh
+cargo test --test shim_direct
+```
+
+# T-357: vnet shim: `PODNET_VNET_FORWARD` sends a TCP destination to a unix socket path
+
+**Source:** PodUtils/podrunner#170 (COORD-058 of podrunner), data from a peer session.
+**Category:** feature
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+podrunner#170: on a host that refuses each `AF_INET`/`AF_INET6` `bind` and `connect` with `EACCES` (loopback too)
+but allows `AF_UNIX`, the GitHub runner (a dynamic .NET program) must reach the broker at `http://127.0.0.1:PORT/` and
+an egress proxy at `http://127.0.0.1:PROXYPORT`. podrunner serves both on unix socket paths (for example
+`/run/podrunner/broker.sock`). Ask: "`PODNET_VNET_FORWARD`, a comma list of `ADDR:PORT=unix:/PATH`. A stream `connect`
+to a listed destination connects the descriptor to that AF_UNIX path, with no SOCKS step and no other process.
+Precedence: the forward list first, then the SOCKS routes, then the abstract name."
+
+## Premise
+
+- The shim already sends a listed destination to a SOCKS5 door on a unix path (T-167, `connect_through_door`). A
+  forward is the same connect with no SOCKS step.
+- A bad entry: the C shim ignores it and logs it (`PODNET_VNET_LOG`); `podnet net shim --forward` exits 64.
+- Not measured: a run inside a podvm unit next to the `LD_PRELOAD` interposer of podvm.
+
+## Approach
+
+1. Parse `PODNET_VNET_FORWARD` in the C shim: 16 entries at most, an absolute path that fits `sun_path`.
+2. In `connect`, match the forward list before the SOCKS routes. A mapped IPv6 address matches its IPv4 entry.
+3. Add `--forward ADDR:PORT=unix:/PATH` to `net shim`, with a check in `crates/podnet-vnet/src/shim.rs`.
+4. Document it in `docs/virtual-network.md`, the manual and the help.
+
+## Prove
+
+```sh
+cargo test --test shim_socks
+cargo test -p podnet-vnet --lib shim
+cargo test --test cli net::
+```

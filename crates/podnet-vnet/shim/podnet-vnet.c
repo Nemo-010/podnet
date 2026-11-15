@@ -7,6 +7,8 @@
  *
  *     \0podnet-vnet/<family>/<address>/<port>
  *
+ * An IPv4-mapped IPv6 address gets the IPv4 name (T-356).
+ *
  * Two interposed programs on the same host therefore talk over AF_UNIX with
  * no host process at all ("direct mode"). When PODNET_VNET_CONTROL names the
  * stack's control socket, bind(2) also registers the endpoint so the stack
@@ -403,6 +405,14 @@ static int fd_is_virtual(int fd) {
     return result;
 }
 
+static int fd_family(int fd) {
+    int result = 0;
+    pthread_mutex_lock(&fd_lock);
+    if (fd >= 0 && (size_t)fd < fd_table_len) result = fd_table[fd].family;
+    pthread_mutex_unlock(&fd_lock);
+    return result;
+}
+
 static void fd_mark(int fd, int family, int type) {
     pthread_mutex_lock(&fd_lock);
     if (table_ensure(fd) == 0) {
@@ -489,11 +499,65 @@ static void format_v6(const unsigned char *addr, char *out, size_t out_len) {
     snprintf(out, out_len, "%s", buf);
 }
 
+/* T-356: an IPv4-mapped IPv6 address (::ffff:A.B.C.D) is an IPv4
+   endpoint. Give its sockaddr_in in *v4 and 1, or 0 for each other
+   address. A dual-mode AF_INET6 socket (.NET) connects to the mapped form
+   of 127.0.0.1, and must meet a listener of 127.0.0.1. */
+static int unmap_v4(const struct sockaddr *sa, socklen_t len, struct sockaddr_in *v4) {
+    if (!sa || sa->sa_family != AF_INET6 || len < (socklen_t)sizeof(struct sockaddr_in6)) return 0;
+    const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)sa;
+    if (!IN6_IS_ADDR_V4MAPPED(&s->sin6_addr)) return 0;
+    memset(v4, 0, sizeof *v4);
+    v4->sin_family = AF_INET;
+    v4->sin_port = s->sin6_port;
+    memcpy(&v4->sin_addr, s->sin6_addr.s6_addr + 12, 4);
+    return 1;
+}
+
+/* T-356: give an address in the family of the descriptor. An AF_INET6
+   descriptor gets an IPv4 address in the mapped form, an AF_INET
+   descriptor a mapped address in the IPv4 form. */
+static void fit_family(int family, struct sockaddr_storage *ss, socklen_t *len) {
+    if (family == AF_INET6 && ss->ss_family == AF_INET) {
+        struct sockaddr_in v4 = *(struct sockaddr_in *)ss;
+        struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)ss;
+        memset(ss, 0, sizeof *ss);
+        s6->sin6_family = AF_INET6;
+        s6->sin6_port = v4.sin_port;
+        s6->sin6_addr.s6_addr[10] = 0xff;
+        s6->sin6_addr.s6_addr[11] = 0xff;
+        memcpy(s6->sin6_addr.s6_addr + 12, &v4.sin_addr, 4);
+        *len = sizeof *s6;
+    } else if (family == AF_INET) {
+        struct sockaddr_in v4;
+        if (unmap_v4((struct sockaddr *)ss, *len, &v4)) {
+            memset(ss, 0, sizeof *ss);
+            memcpy(ss, &v4, sizeof v4);
+            *len = sizeof v4;
+        }
+    }
+}
+
 static int to_abstract(const struct sockaddr *sa, socklen_t len,
                        struct sockaddr_un *un, socklen_t *un_len) {
     char ip[64];
     unsigned port;
     int family;
+    struct sockaddr_in v4;
+    if (unmap_v4(sa, len, &v4)) {
+        sa = (const struct sockaddr *)&v4;
+        len = sizeof v4;
+    } else if (sa->sa_family == AF_INET6 && len >= (socklen_t)sizeof(struct sockaddr_in6) &&
+               cfg.map_loopback &&
+               IN6_IS_ADDR_LOOPBACK(&((const struct sockaddr_in6 *)sa)->sin6_addr)) {
+        /* ::1 maps to the local IPv4 address, as 127.0.0.1 does. */
+        memset(&v4, 0, sizeof v4);
+        v4.sin_family = AF_INET;
+        v4.sin_port = ((const struct sockaddr_in6 *)sa)->sin6_port;
+        v4.sin_addr = cfg.local_v4;
+        sa = (const struct sockaddr *)&v4;
+        len = sizeof v4;
+    }
     if (sa->sa_family == AF_INET) {
         if (len < (socklen_t)sizeof(struct sockaddr_in)) {
             errno = EINVAL;
@@ -513,18 +577,7 @@ static int to_abstract(const struct sockaddr *sa, socklen_t len,
             return -1;
         }
         const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)sa;
-        struct in6_addr addr = s->sin6_addr;
-        if (cfg.map_loopback && IN6_IS_ADDR_LOOPBACK(&addr)) {
-            /* Address ::ffff:<local_v4>, formatted by the same RFC 5952 code
-             * as every other v6 literal, so it matches the Rust encoder. */
-            unsigned char mapped[16] = {0};
-            mapped[10] = 0xff;
-            mapped[11] = 0xff;
-            memcpy(mapped + 12, &cfg.local_v4, 4);
-            format_v6(mapped, ip, sizeof ip);
-        } else {
-            format_v6(addr.s6_addr, ip, sizeof ip);
-        }
+        format_v6(s->sin6_addr.s6_addr, ip, sizeof ip);
         port = ntohs(s->sin6_port);
         family = 6;
     } else {
@@ -636,6 +689,8 @@ static void ctl_register(int op, int id, const struct sockaddr *sa) {
     if (fd < 0) return;
     unsigned char payload[64];
     size_t off = 0;
+    struct sockaddr_in v4;
+    if (unmap_v4(sa, sizeof(struct sockaddr_in6), &v4)) sa = (const struct sockaddr *)&v4;
     payload[off++] = (unsigned char)(id >> 24);
     payload[off++] = (unsigned char)(id >> 16);
     payload[off++] = (unsigned char)(id >> 8);
@@ -999,6 +1054,7 @@ static int finish_accept(int listener, int client, const struct sockaddr_storage
     if (peer_from_unix((const struct sockaddr *)raw, raw_len, &peer, &peer_len) != 0) {
         peer_len = wildcard_addr(family ? family : AF_INET, &peer);
     }
+    fit_family(family ? family : AF_INET, &peer, &peer_len);
     fd_record_peer(client, (struct sockaddr *)&peer, peer_len);
     if (sa && len) {
         /* Truncate to the caller's buffer and report the true length, as
@@ -1277,6 +1333,7 @@ ssize_t recvfrom(int fd, void *buf, size_t n, int flags,
     struct sockaddr_storage logical;
     socklen_t logical_len = 0;
     if (peer_from_unix((struct sockaddr *)&src, src_len, &logical, &logical_len) == 0) {
+        fit_family(fd_family(fd), &logical, &logical_len);
         if (*len >= logical_len) {
             memcpy(sa, &logical, logical_len);
             *len = logical_len;
@@ -1329,6 +1386,7 @@ ssize_t recvmsg(int fd, struct msghdr *msg, int flags) {
     struct sockaddr_storage logical;
     socklen_t logical_len = 0;
     if (peer_from_unix((struct sockaddr *)&src, copy.msg_namelen, &logical, &logical_len) == 0) {
+        fit_family(fd_family(fd), &logical, &logical_len);
         socklen_t capacity = msg->msg_namelen;
         memcpy(msg->msg_name, &logical, logical_len < capacity ? logical_len : capacity);
         msg->msg_namelen = logical_len;

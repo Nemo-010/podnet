@@ -15942,6 +15942,14 @@ An IP endpoint becomes an abstract socket name:
 
 The IPv6 address is in the RFC 5952 form. The longest name is 60 bytes.
 
+An IPv4-mapped IPv6 address (`::ffff:A.B.C.D`) gets the IPv4 name (T-356).
+Thus a dual-mode `AF_INET6` client (for example .NET) that connects to
+`[::ffff:127.0.0.1]:7001` meets a listener of `127.0.0.1:7001`, and the
+other way. With `PODNET_VNET_MAP_LOOPBACK`, `::1` gets the name of the local
+IPv4 address, as `127.0.0.1` does. `accept`, `recvfrom` and `recvmsg` give
+the address in the family of the descriptor: an `AF_INET6` descriptor gets
+an IPv4 peer in the mapped form.
+
 ### 3.2 Interposed calls
 
 | Call | Action on a virtual descriptor |

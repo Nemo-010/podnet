@@ -207,10 +207,10 @@ fn piped_output_is_small() {
     assert_eq!(sink, b"podnet-vnet");
 }
 
-/// `PODNET_VNET_MAP_LOOPBACK` must encode `::1` as the same RFC 5952 literal the
-/// Rust side would produce for the v4-mapped local address.
+/// `PODNET_VNET_MAP_LOOPBACK` maps `::1` to the local IPv4 address, as it
+/// maps 127.0.0.1 (T-356: a mapped address gets the IPv4 name).
 #[test]
-fn ipv6_loopback_mapping_matches_the_rust_encoder() {
+fn ipv6_loopback_maps_to_the_local_ipv4_name() {
     if !have_compiler() {
         eprintln!("skipping: no C compiler");
         return;
@@ -275,10 +275,10 @@ int main(void){
     );
     assert!(server_output.status.success(), "v6 server failed");
     assert!(String::from_utf8_lossy(&output.stdout).contains("got 9B: v6 mapped"));
-    // ::1 maps to ::ffff:10.66.0.2, which RFC 5952 renders ::ffff:a42:2.
+    // ::1 maps to 10.66.0.2, the name of the IPv4 family.
     let client_stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        client_stderr.contains("podnet-vnet/6/::ffff:a42:2/18081"),
+        client_stderr.contains("podnet-vnet/4/10.66.0.2/18081"),
         "unexpected abstract name: {client_stderr}"
     );
 }
