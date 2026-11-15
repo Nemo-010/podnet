@@ -265,5 +265,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #573 | [gh action] requested: ci and deny on the take of v0.49.0 | closed: ci 43664113413 and deny 43664116501 passed on 0bda088 | none |
 | #574 | COORD-086: podnet took v0.50.0 (to podcrates) | closed (podcrates closed PodUtils/podcrates#164) | none |
 | #575 | [gh action] requested: ci and deny on the take of v0.50.0 | closed: ci 43673745417 and deny 43673748869 passed on d072007 | none |
+| #576 | [gh action] requested: ci, deny and secrets on T-354 (devtunnel:// with an access token or no token) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
