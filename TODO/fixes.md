@@ -6885,3 +6885,41 @@ podcrates builds `pod-manual` (their entry 700, PodUtils/podcrates#181): the fir
 ## Correction
 
 2026-11-15: podcrates takes `src/manual/` and `scripts/gen-llms.py` of podnet at `78a3911` as `pod-manual` (their entry 700, PodUtils/podcrates#181); they are frozen (fixes only) until the take. podssh (PodUtils/podssh#267) and podvm (PodUtils/podvm#425) need a model that each program fills (neither uses `clap`); podnet's reader of `clap` becomes one way to fill it (GitHub #584). The owner's ruling "Discipline" asks for a test that fails when the code gives an exit code that has no fact: podnet has the test of the variables (`src/manual/facts.rs`, `each_variable_in_the_source_is_in_the_manual` and its reverse) but none of the exit codes; it comes with the take.
+
+# T-360: install.sh: a second run with the same version changes nothing and says so
+
+**Source:** the owner's ruling "Installer", 2026-11-15 (PodUtils/podcrates#182; `docs/decisions.md`, 2026-11-15, Installer).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The ruling asks for an installer that is hermetic, idempotent and fast: "a second run changes nothing and says so. An
+interrupted run leaves no half install". `scripts/install.sh` downloads and replaces the binary at each run.
+
+## Premise
+
+- Read on 2026-11-15 (`scripts/install.sh`, 501 lines): it checks `SHA256SUMS` and moves the new binary into place with
+  `mv -f` after it runs it, so an interrupted run leaves the old binary. It has no check of the installed version, no
+  `--dry-run`, no offline install from a file, and issue numbers in its comments. The tests are `tests/install_script.rs`
+  and `tests/install_script/strict.rs`. Not measured: the time of a run, and `dash`, `busybox sh`, `shellcheck --shell=sh`.
+- podcrates builds a shared POSIX core (their entry 702). If it comes first, podnet takes it in place of this fix.
+
+## Approach
+
+1. Before the download: when the installed binary prints the version of the release (`podnet --version`), and the
+   binary's SHA256 matches the line of `SHA256SUMS`, print that the version is installed and exit 0 with no change.
+2. A test: two runs against a local release; the second downloads only `SHA256SUMS` and changes no file (the mtime and
+   the inode of the binary stay).
+3. Remove the issue numbers from the comments and the text of the script.
+4. Run it under `dash` and `busybox sh` in the test, and `shellcheck --shell=sh` in CI.
+
+## Prove
+
+```sh
+cargo test --test install_script
+shellcheck --shell=sh scripts/install.sh
+```

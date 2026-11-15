@@ -15,7 +15,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 * podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.52.0` (T-137), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.13` (T-355, 0a0f3e5).
-* The record is `TODO/`. `cargo todo check` agrees: 359 entries, 12 open, 9 partial, 24 blocked, 314 done.
+* The record is `TODO/`. `cargo todo check` agrees: 360 entries, 13 open, 9 partial, 24 blocked, 314 done.
 
 ## Unfinished work (not on `main`)
 
