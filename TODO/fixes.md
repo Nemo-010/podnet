@@ -6837,6 +6837,10 @@ gh workflow run gate.yml -R PodUtils/podnet --ref main
 # the gate passes on the head; a planted defect (the vnet shim without T-356) fails it
 ```
 
+## Correction
+
+2026-11-15: podcrates takes the shared lab as `pod-lab` (their entry 692, PodUtils/podcrates#180, the owner's ruling "Discipline"). Part 1 (the tag after `v0.53.0`): the profiles as data, `podlab check` and `podlab run PROFILE -- CMD` on a host with no root. Part 2: the step of GitHub Actions, the machine tier of podvm, and the network profiles, which podnet holds (`proxy-only`, `bind-denied`). Step 1 of the Approach runs in the profiles of `pod-lab`, not in a lab of podnet's own; podnet writes the network profiles for part 2 (COORD-091, GitHub #585).
+
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 
 **Source:** the owner, 2026-11-15: "it is time everyone shared a single crate for cli help/man".
@@ -6876,4 +6880,8 @@ sh scripts/agent/check.sh
 
 ## Blocker
 
-podcrates builds the crate (the COORD issue of 2026-11-15).
+podcrates builds `pod-manual` (their entry 700, PodUtils/podcrates#181): the first tag after `pod-lab` part 1.
+
+## Correction
+
+2026-11-15: podcrates takes `src/manual/` and `scripts/gen-llms.py` of podnet at `78a3911` as `pod-manual` (their entry 700, PodUtils/podcrates#181); they are frozen (fixes only) until the take. podssh (PodUtils/podssh#267) and podvm (PodUtils/podvm#425) need a model that each program fills (neither uses `clap`); podnet's reader of `clap` becomes one way to fill it (GitHub #584). The owner's ruling "Discipline" asks for a test that fails when the code gives an exit code that has no fact: podnet has the test of the variables (`src/manual/facts.rs`, `each_variable_in_the_source_is_in_the_manual` and its reverse) but none of the exit codes; it comes with the take.

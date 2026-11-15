@@ -274,5 +274,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #582 | COORD-089: the vnet shim for a .NET payload in a podvm unit: TCP to a unix socket (to podrunner) | open (a COORD issue between sessions; the answer to PodUtils/podrunner#170): T-356 and T-357 are done | T-356, T-357 |
 | #583 | [gh action] requested: ci, deny and secrets on T-356 and T-357 (the vnet shim) | open (a request of runs to the owner) | none |
 | #584 | COORD-090: one shared crate for the help and the manual of each command line; podnet's src/manual as a source (to all) | open (a COORD issue between sessions) | T-359 |
+| #585 | COORD-091: podnet's answer to pod-lab and pod-manual: the host classes of podnet's users, the network profiles, the freeze of src/manual (to podcrates) | open (a COORD issue between sessions) | T-358, T-359 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
