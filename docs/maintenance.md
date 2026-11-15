@@ -160,7 +160,7 @@ merge; a conflict in podnet's own code is podnet's to solve.
 
 **Talk with the other sessions.** `CLAUDE.md`, "Talk with the other
 sessions of PodUtils": the watcher of the organization
-(`.work/podcrates-agent/watch-org.sh`) under the Monitor tool; podnet
+(`.work/podcrates-agent/watch.py`) under the Monitor tool; podnet
 writes `COORD-NNN: subject (to OTHER)` issues in `PodUtils/podnet` only:
 the commit of each take, each fix of frozen code, a fault of a patch. A
 COORD issue is not a defect: it gets no record entry. Its number goes
