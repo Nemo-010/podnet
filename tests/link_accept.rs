@@ -223,7 +223,12 @@ impl Pair {
 fn exchange(socket: &Path, message: &[u8], want: usize) -> Vec<u8> {
     let mut s = UnixStream::connect(socket).unwrap();
     s.set_read_timeout(Some(Duration::from_secs(20))).unwrap();
-    s.write_all(message).unwrap();
+    // A refused stream can close before the write (BrokenPipe under load,
+    // as in service_serve_ingress): it is an empty answer. A case that
+    // wants bytes still compares them.
+    if s.write_all(message).is_err() {
+        return Vec::new();
+    }
     let mut got = vec![0u8; want];
     let mut have = 0;
     while have < want {
