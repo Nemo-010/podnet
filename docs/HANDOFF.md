@@ -12,7 +12,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 ## Where the code is
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.47.0` (T-137, 1d4d7f1), with `pod-warp`: `src/warp/` is glue
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.48.0` (T-137), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.12` (T-352, b6e7959).
 * The record is `TODO/`. `cargo todo check` agrees: 352 entries, 11 open, 9 partial, 23 blocked, 309 done.
@@ -39,8 +39,8 @@ For `v0.4.0-beta.11` (GitHub #563) that lookup gave the run of the publish itsel
 Each workflow passes on b6e7959, the tag `v0.4.0-beta.12` (GitHub #567): ci 43641661040, deny 43641664659, secrets
 43641667797, live 43641671768; fuzz 43632083716 passed on b7c3e90 (GitHub #565).
 
-The take of `v0.47.0` (1d4d7f1, T-137) and the stand-in of the S3 API from `pod-link` (556708a, T-279) have no CI run
-yet: put them into the next `[gh action] requested` issue. The take of `v0.47.0` needs a COORD issue `(to podcrates)`.
+GitHub #569 asks for ci, deny, secrets, live and fuzz on 6536905: the take of `v0.47.0` (1d4d7f1, COORD-083 #568) and
+the stand-in of the S3 API from `pod-link` (556708a). The take of `v0.48.0` (a bump of the tag only, 2026-11-15) goes into the next request.
 
 ## Next steps
 

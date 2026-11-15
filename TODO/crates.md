@@ -926,6 +926,11 @@ Done so far:
   doors of a new key record in `pod-warp` (their entry 624). `sh scripts/agent/check.sh`: each step 0 (`cargo test
   --workspace`: 2004 passed, 0 failed, 122 targets). `cargo clippy --features full`: exit 0. `CC_i686_unknown_linux_musl=clang cargo check
   --workspace --target i686-unknown-linux-musl` (default and `--features full`): exit 0. Commit 1d4d7f1.
+- v0.48.0 (PodUtils/podcrates#162): each `pod-*` dependency names `tag = "v0.48.0"` and `version = "0.48.0"` (and
+  `pod-todo` of `crates/podnet-todo/Cargo.toml`). The tag changes `pod-guest` only (`ready::Sign::After`, the screen
+  sign); podnet does not take `pod-guest`, so no code changes. No new hand-off for podnet. `cargo update` keeps
+  `webpki-roots` at 1.0.11, the value of `pod_tls::ROOTS_VERSION` (also in `fuzz/Cargo.lock`), and changes no other
+  crate than the crates of podcrates.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
