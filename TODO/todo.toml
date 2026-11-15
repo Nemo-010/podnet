@@ -13,3 +13,7 @@ root_files = [
 documents = ["README.md", "CLAUDE.md", "SECURITY.md", "crates/*/README.md"]
 document_dirs = ["TODO", "docs"]
 readings = ["docs/releases/", "docs/reports/", "docs/research/"]
+# The state of each issue follows its entries (the owner's ruling "Issues";
+# TODO/RULES.md of podcrates, section 4). .github/workflows/issue-sync.yml
+# makes GitHub agree with the record.
+issue_rules = "on"

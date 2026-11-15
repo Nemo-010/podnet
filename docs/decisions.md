@@ -112,6 +112,7 @@ form of the rulings that apply to each session.
 | 2026-11-15 | Help and manual | The owner: each command line of PodUtils shares one crate for its help and its manual. podnet offers `src/manual/` as a source to podcrates and takes the crate when it is at a tag (T-359). |
 | 2026-11-15 | Lab harness | The owner: podrunner proposes a shared harness for a lab and test environment. podnet takes part, and builds its release gate on it (T-358). |
 | 2026-11-15 | The release gate | A call of the lead after the owner's question on overconfidence: a beta passes a scenario run of its own release binary on hosts that copy the target environments, the documented commands and the real use of each consumer (T-358). No beta after `v0.4.0-beta.13` until the gate runs. A feature with no passing scenario is marked experimental. A flake is a defect. The owner can rule otherwise. |
+| 2026-11-15 | The sync of the issues (a call of the session; the owner can rule otherwise) | podnet takes podcrates v0.56.0 and turns on `issue_rules` (T-137). `.github/workflows/issue-sync.yml` calls the workflow of podcrates at the commit of the tag v0.56.0, with `podcrates_ref: v0.56.0`; a dispatch is a dry run by default. The repair of the map: GitHub #436, #467, #468, #470 and #473 are closed in the record (each entry is done). GitHub #475 is open in the record: T-305 is blocked on the owner (the ruling of 2026-11-12), and only a ruling of the owner removes an entry; Q2 asks. Each deferred issue #484 to #501 holds one entry (T-365 to T-378, blocked on the owner), and the text of the issues is `docs/reports/deferred-issues-2026-11-12.md`. |
 
 ## Superseded
 
@@ -139,3 +140,4 @@ Write each new question here, with the part of the work that it blocks.
   each operator), it breaks each operator of an older podnet, and the connect token already decides who reaches the
   node. Make it the default when `relay pair` can give the node fingerprint with the connect token, so that an
   operator gets the pin with no extra step.
+- Q2 (T-305, GitHub #475): the record opens GitHub #475 again, because T-305 is blocked and not removed. The recommendation: remove T-305 by a ruling (the ruling "Platforms: Linux only" stands); then the issue closes in the record as not planned, and a later ask of a platform becomes a new issue. Until the ruling, the issue is open in the record.

@@ -446,3 +446,842 @@ answers 200. The owner published the placeholder `podnet` 0.0.0 (repository
 
 Measured on 2026-11-11: `https://crates.io/api/v1/crates/NAME` gives the placeholder 0.0.0 for `podnet`,
 `podnet-core`, `podnet-netns`, `podnet-vnet` and `podnet-serve`. The owner action of the names is done.
+
+
+# T-365: Deferred: carry a session in NTPv4 extension fields, SMTP and IMAP (GitHub #484)
+
+**Source:** GitHub #484 (https://github.com/PodUtils/podnet/issues/484), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #484 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+Some networks permit time synchronisation and mail, and nothing else. Both services are already present on the network, and both can carry a payload.
+
+| Carrier | Service | Status | What is missing |
+| --- | --- | --- | --- |
+| NTPv4 extension field | UDP 123 | absent | the carrier, the field type rule, the poll loop, the clock discipline |
+| SMTP submission | TCP 587 with STARTTLS, TCP 465 implicit TLS | absent | the carrier, batch framing, size-limit reporting |
+| IMAP retrieval | TCP 143 with STARTTLS, TCP 993 implicit TLS | absent | the carrier, fetch framing, size-limit reporting |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #484".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #484`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #484' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.
+
+
+# T-366: Deferred: carry a session through a TURN allocation, with RFC 6062 (GitHub #485)
+
+**Source:** GitHub #485 (https://github.com/PodUtils/podnet/issues/485), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #485 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+A conferencing network permits TURN. A TURN allocation is a relay the network already trusts, and it carries a session when every other path is closed.
+
+| Capability | Status | What is missing |
+| --- | --- | --- |
+| UDP allocation (RFC 8656) | absent | allocation, permission, refresh, channel data |
+| TCP allocation to a peer (RFC 6062) | absent | the relayed stream and its framing |
+| Traversal with a relay fallback | partial | #469 scopes traversal; the relay fallback path does not exist |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #485".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #485`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #485' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.
+
+
+# T-367: Deferred: close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID (GitHub #486)
+
+**Source:** GitHub #486 (https://github.com/PodUtils/podnet/issues/486), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #486 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+The QUIC roads share one stack. Four gaps remain on it: the MASQUE client is bound to one provider, the HTTP/3 shape is not a server shape, the UDP-over-QUIC-stream roads stop at one protocol version, and the connection ID never rotates.
+
+| Capability | Status | What is missing |
+| --- | --- | --- |
+| MASQUE `CONNECT-IP` and `CONNECT-UDP` to any endpoint | partial | `--masque-endpoint`, one client split from the enrolment |
+| HTTP/3 server shape | partial | a selectable shape and a conformance check |
+| Juicity | absent | the road |
+| Connection-ID rotation and migration | absent | the schedule, the migration path, the fallback |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #486".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #486`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #486' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.
+
+
+# T-368: Deferred: register third-party services as roads, with a watch, a date and a count (GitHub #489)
+
+**Source:** GitHub #489 (https://github.com/PodUtils/podnet/issues/489), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #489 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+Third-party services are free capacity that somebody else operates. Each is a road, and each is also a dependency that can vanish. The tree has the mechanisms and no register: a road with no watch, no date and no count is a road that fails without warning.
+
+| Capability | Status | What is missing |
+| --- | --- | --- |
+| IRC as a registered road | partial | the road registration and the cost class |
+| MQTT and Syncthing relays as roads | absent | the roads |
+| Watch every third-party road | partial | a watch entry per road, and the date in `status` |
+| `front=` health for a fronted road | partial | a refusal that names a dead front |
+| Network adapters as a fallback class | partial | one class, and a prohibition on default selection |
+| Dependency count in `status` | absent | the count |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #489".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #489`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #489' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.
+
+
+# T-369: Deferred: switch after a real handshake, with a cover script and multiplexed cover (GitHub #491)
+
+**Source:** GitHub #491 (https://github.com/PodUtils/podnet/issues/491), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #491 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+A handshake that completes and then switches defeats a scanner that only opens a connection and looks. A TLS-in-TLS form defeats a scanner that completes a handshake and then looks at the record layer. Both are the same idea applied at two depths, and one cover site serves both.
+
+| Capability | Status | What is missing |
+| --- | --- | --- |
+| Real handshake, then switch on an authenticated byte | absent | the HMAC, the timestamp window, the fall-through |
+| Cover script for the record layer | absent | the script format and its loader |
+| Multiplexed cover with a volume budget | absent | the multiplexer |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #491".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #491`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #491' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.
+
+
+# T-370: Deferred: shape the record layer: padding profiles, entropy, first flight, pacing (GitHub #493)
+
+**Source:** GitHub #493 (https://github.com/PodUtils/podnet/issues/493), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #493 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+A record layer that pads to one fixed bucket is a record layer with a signature. Padding has to follow the protocol it claims to be, and the session has to know what shape it declared.
+
+| Capability | Status | What is missing |
+| --- | --- | --- |
+| Padding profiles as data per protocol | absent | the profile files and the selector |
+| Content-entropy control | absent | the band and the printable run |
+| First-flight sizing | partial | the coalesce target and the rate bound |
+| Pacing with jittered keepalives | partial | a per-channel window pacer for SSH (`podssh-ssh/src/pace/`, PodUtils/podssh@T-661); record pacing by measured rate and keepalive jitter are absent |
+| Declared versus observed shape in `doctor` | absent | the check and its three states |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #493".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #493`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #493' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.
+
+
+# T-371: Deferred: shape the application: deferred responses, a generator, carriers in the payload (GitHub #494)
+
+**Source:** GitHub #494 (https://github.com/PodUtils/podnet/issues/494), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #494 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+A tunnel that answers a request faster than the origin could is a tunnel. A tunnel that answers from a prepared copy, on the next request, is not. The first is a detector's easiest case, and the second is a change at the application layer with no new cryptography.
+
+| Capability | Status | What is missing |
+| --- | --- | --- |
+| Deferred response replacement | absent | the cache, the serve-next rule, the overhead bound |
+| Traffic generator with an application profile | absent | the generator and its profile files |
+| Carriers inside an application's own bytes | absent | the class and its first member |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #494".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #494`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #494' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.
+
+
+# T-372: Deferred: add a packet sidecar: desync search, disagreement probe, fake TCP, bonding (GitHub #495)
+
+**Source:** GitHub #495 (https://github.com/PodUtils/podnet/issues/495), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #495 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+A network that rewrites packets cannot be trusted to carry a flow unmangled, and a network that refuses UDP cannot be trusted to carry a datagram. Both answers need a component that sits below the stream and above the link, and neither exists in the tree.
+
+| Capability | Status | What is missing |
+| --- | --- | --- |
+| Desync sidecar with a genetic search | absent | the crate, the middlebox simulator, the search |
+| Disagreement probe with a third outcome | partial | the probe and its third value |
+| Split-and-tamper as one library | absent | the library and one config format |
+| Fake TCP datagram channel | absent | the channel and its framing |
+| Link bonding | absent | the scheduler |
+| Stated limits | absent | the page and the conditions (`podvm/docs/limits.md` covers the chroot, not the carriers) |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #495".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #495`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #495' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.
+
+
+# T-373: Deferred: keep the session end to end: opaque destination and keys from the ends (GitHub #496)
+
+**Source:** GitHub #496 (https://github.com/PodUtils/podnet/issues/496), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #496 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+A relay that can read the session is a relay that can be asked for it. The tree already has the end-to-end handshake; the record layer does not use its keys, and the destination is in the request path.
+
+| Capability | Status | What is missing |
+| --- | --- | --- |
+| End-to-end session authentication under the relay | absent | the dependency and the handshake |
+| Opaque destination | absent | the envelope and the identifier |
+| Record keys from the ends | absent | the key source |
+| A stated table of what each hop learns | absent | the table and the check |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #496".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #496`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #496' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.
+
+
+# T-374: Deferred: make the pool live, the budget per deployment, tokens expiring, hosts movable (GitHub #497)
+
+**Source:** GitHub #497 (https://github.com/PodUtils/podnet/issues/497), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #497 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+A relay pool that is chosen once at startup is a pool of one, whatever it lists. Three defects share one cause: the alternates are read and never re-read, the budget is a compile-time constant, and the reverse road's calls reach one host.
+
+| Capability | Status | What is missing |
+| --- | --- | --- |
+| Live pool with a health score | partial | the re-read, the score, the attribution |
+| Per-deployment budget | absent | the configuration key and the override |
+| Tokens with a lifetime | absent | expiry, scope, renewal |
+| A deployment that moves hosts | partial | the state file and the pair rule |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #497".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #497`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #497' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.
+
+
+# T-375: Deferred: resume a session across hours, and serve the full service surface at a peer (GitHub #498)
+
+**Source:** GitHub #498 (https://github.com/PodUtils/podnet/issues/498), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #498 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+A session that survives a ten-minute gap is a session that survives a network hiccup. A deployment on a satellite link or a scheduled radio window is offline for eight to twelve hours by design. The same session layer has to serve both, and it has to survive losing its carrier rather than its connection.
+
+| Capability | Status | What is missing |
+| --- | --- | --- |
+| Resume measured in hours | partial | the policy value and the bound |
+| Carrier handover without a new session | absent | the identity, the sequence, the inherit |
+| Degraded-link profile with three carriers | absent | the profile and its derived timeouts |
+| Store-and-forward shell | absent | the queue and the collect-by-id client |
+| Framing for lossy carriers | partial | the shared layer |
+| Full SOCKS5 surface at a peer | partial | `BIND` refused by the ruleset; tests for `UDP ASSOCIATE`, the header cap and the half-close |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #498".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #498`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #498' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.
+
+
+# T-376: Deferred: carry a session with no network: serial, HF, spool, discovery, pairing (GitHub #499)
+
+**Source:** GitHub #499 (https://github.com/PodUtils/podnet/issues/499), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #499 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+A host with no path has a serial port, a radio and a disk. Those three carriers are what a disconnected deployment actually has, and each one needs the session layer to work without a network at all.
+
+| Capability | Status | What is missing |
+| --- | --- | --- |
+| Serial line as a `--carrier` address | partial | the `serial:` parse arm; the end itself exists in `pipe` |
+| AX.25/KISS framing over that line | absent | the framing and the baud-derived timer |
+| HF radio carrier | absent | the modem driver and the busy handling |
+| Store-and-forward spool | absent | the spool and its checksum |
+| Local discovery and one radio interface | absent | the signed announcement |
+| Offline bundle | absent | the manifest and the delta update |
+| Capture sinks | absent | the record format and the merge |
+| Pairing with a short code | partial | `pod-wormhole` and the relay mailbox exist; the code is not wired to the peer identity |
+| Replication across a partition | absent | the model and the merge rule |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #499".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #499`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #499' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.
+
+
+# T-377: Deferred: state the host runtime: no open port, classified egress, stated limits (GitHub #500)
+
+**Source:** GitHub #500 (https://github.com/PodUtils/podnet/issues/500), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #500 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+A runtime that opens a port nobody asked for is a runtime that is reachable because it exists. A runtime that classifies its egress before it dials is a runtime whose policy is checkable. Both are configuration and plumbing, and both are prerequisites for putting this on a host that someone else owns.
+
+| Capability | Status | What is missing |
+| --- | --- | --- |
+| Filesystem expectations stated | absent | the five properties and the mount probe |
+| Crash logs safe to send | absent | the hook, the redaction, the bound |
+| Measurement from outside | absent | the observer and the file |
+| No inbound port by default | absent | the default and the enrolment |
+| A forge without one host | absent | the content-addressed mirror |
+| CI under an egress policy | absent | the declaration and the refusal |
+| A runtime that states its limits | partial | the stated limits beside the existing page |
+| Proxy-only egress as a tested invariant | partial | the test |
+| A status page derived from the tree | absent | the generation and the staleness check |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #500".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #500`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #500' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.
+
+
+# T-378: Deferred: build the verification harness: classifier, exit codes, conformance matrix (GitHub #501)
+
+**Source:** GitHub #501 (https://github.com/PodUtils/podnet/issues/501), a deferred issue.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+The owner deferred GitHub #501 on 2026-11-12. The issue holds work: one
+row for each capability. Its first paragraph and its table:
+
+```text
+Every claim in this set is measured by something. Without a harness, a classifier model and an exit-code contract, the measurements are one person's run on one day, and nobody can repeat them.
+
+| Capability | Status | What is missing |
+| --- | --- | --- |
+| Classifier harness in CI | absent | the classifiers and the job |
+| Exit codes as one contract | partial | the constant, the help text, the tests |
+| Claims with a label and a date | partial | the check |
+| Relocatable conformance archive | absent | the matrix and the artefact |
+```
+
+The rules, the gate, the dependencies and the relations of the issue are
+in `docs/reports/deferred-issues-2026-11-12.md`, section "GitHub #501".
+
+## Premise
+
+Read: the issue on 2026-11-15. Its author is outside the team
+(`author_association` NONE), and it has no label `confirmed`. The issue
+names reads of the trees of podnet, podcrates and podssh on 2026-11-12;
+the record did not check them. Nothing was built or measured for this
+entry.
+
+## Approach
+
+1. When the owner lifts the deferral, verify the issue (the rule of
+   strangers, `CLAUDE.md`).
+2. Make each row of its table an entry of its own, with the Source
+   `GitHub #501`, and add the ids to its row in `TODO/issues.md`.
+3. Close this entry with the ids of those entries in its Done section.
+
+## Prove
+
+```sh
+grep -l 'GitHub #501' TODO/*.md
+cargo todo check
+```
+
+Each row of the table of the issue has an entry, and the check passes.
+
+## Blocker
+
+The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
+the owner. What unblocks it: the owner lifts the deferral.

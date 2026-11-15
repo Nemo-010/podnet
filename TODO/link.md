@@ -2760,6 +2760,12 @@ The owner, 2026-11-12 (`docs/decisions.md`, Platforms and the link crate): the r
 
 T-311, T-310, T-262 and T-275 are done, and the owner rules for another platform.
 
+## Correction
+
+2026-11-15, the rules of the issues (`issue_rules`, T-137): GitHub #475 holds this entry, and the entry is not done, so
+the issue is open in the record. GitHub has it closed as not planned (2026-11-13). Question Q2 of `docs/decisions.md`
+asks the owner to remove this entry by a ruling; then the issue closes in the record.
+
 # T-306: link: the query keys of a carrier URL (GitHub #476)
 
 **Source:** GitHub #476 (https://github.com/PodUtils/podnet/issues/476), row E10-1.

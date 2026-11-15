@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**364 entries: 12 open, 11 partial, 23 blocked, 318 done.**
+**378 entries: 12 open, 11 partial, 37 blocked, 318 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 33 | 37 |
 | P2 | 6 | 5 | 10 | 164 | 185 |
-| P3 | 6 | 4 | 11 | 120 | 141 |
-| **All** | 12 | 11 | 23 | 318 | 364 |
+| P3 | 6 | 4 | 25 | 120 | 155 |
+| **All** | 12 | 11 | 37 | 318 | 378 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -410,3 +410,17 @@ M8 Overlays, M9 Later.
 | [T-362](fixes.md) | P3 | S | M5 | defect | done | docs/cli.md: the completion command writes to a directory that can be absent |
 | [T-363](fixes.md) | P2 | S | M5 | defect | partial | net passwd-shim: the home of the entry is $HOME, not /state/home |
 | [T-364](fixes.md) | P3 | S | M5 | measurement | done | live: two runs in a row failed at the quick tunnel; the rerun passed (GitHub #516) |
+| [T-365](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: carry a session in NTPv4 extension fields, SMTP and IMAP (GitHub #484) |
+| [T-366](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: carry a session through a TURN allocation, with RFC 6062 (GitHub #485) |
+| [T-367](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID (GitHub #486) |
+| [T-368](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: register third-party services as roads, with a watch, a date and a count (GitHub #489) |
+| [T-369](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: switch after a real handshake, with a cover script and multiplexed cover (GitHub #491) |
+| [T-370](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: shape the record layer: padding profiles, entropy, first flight, pacing (GitHub #493) |
+| [T-371](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: shape the application: deferred responses, a generator, carriers in the payload (GitHub #494) |
+| [T-372](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: add a packet sidecar: desync search, disagreement probe, fake TCP, bonding (GitHub #495) |
+| [T-373](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: keep the session end to end: opaque destination and keys from the ends (GitHub #496) |
+| [T-374](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: make the pool live, the budget per deployment, tokens expiring, hosts movable (GitHub #497) |
+| [T-375](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: resume a session across hours, and serve the full service surface at a peer (GitHub #498) |
+| [T-376](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: carry a session with no network: serial, HF, spool, discovery, pairing (GitHub #499) |
+| [T-377](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: state the host runtime: no open port, classified egress, stated limits (GitHub #500) |
+| [T-378](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: build the verification harness: classifier, exit codes, conformance matrix (GitHub #501) |

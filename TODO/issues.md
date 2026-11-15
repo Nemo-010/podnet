@@ -131,7 +131,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #433 | rules: a shadowed rule warns, a shadowed reject fails (donor review) | open | T-242 |
 | #434 | net tailscale: --tailnet guard and the TS_FORCE_NOISE_443 hint (donor review) | closed | T-243 |
 | #435 | tunnel --inspect: capture, ring, redaction, replay (donor review) | open (T-244 is blocked on pod-cloudflare) | T-244 |
-| #436 | podnet receive: containment of the received entries (donor review) | open (a correction of T-105) | T-105 |
+| #436 | podnet receive: containment of the received entries (donor review) | closed (the rules of the Correction of T-105 are `src/transfer/land.rs`, d5c38c1; `cargo test --test transfer_land`: 7 passed) | T-105 |
 | #437 | COORD-019: proposals for podcrates from the donor review (to podcrates) | open (a COORD issue between sessions) | none |
 | #438 | COORD-020: proposals for podssh from the donor review (to podssh) | closed (podssh recorded them in its record, PodUtils/podssh#188) | none |
 | #439 | COORD-021: proposals for podrunner from the donor review, part 1 of 2 (to podrunner) | open (a COORD issue between sessions) | none |
@@ -162,15 +162,15 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #464 | COORD-044: five more gaps of pod-netstack for the guest-wire router (podnet T-176, T-248) (to podcrates) | closed (a COORD issue between sessions) | none |
 | #465 | COORD-045: podnet took v0.27.0 at 28c0e3d (to podcrates) | closed (a COORD issue between sessions) | none |
 | #466 | link: peer identity, session, carrier registry, and the link command (E0) | closed | T-261, T-262, T-263, T-264, T-265, T-266, T-267 |
-| #467 | link: stream carriers and availability (E1) | open | T-268, T-269, T-270, T-271, T-272, T-273, T-274, T-275 |
-| #468 | link: datagram reliability, ARQ, and simplex carriers (E2) | open | T-276, T-277, T-278, T-279, T-280 |
+| #467 | link: stream carriers and availability (E1) | closed (each entry done; the last is T-273, bfdc2ff) | T-268, T-269, T-270, T-271, T-272, T-273, T-274, T-275 |
+| #468 | link: datagram reliability, ARQ, and simplex carriers (E2) | closed (each entry done; the last are T-278, bfdc2ff, and T-279, bcfae9e) | T-276, T-277, T-278, T-279, T-280 |
 | #469 | link: DNS stream, ICMP, WireGuard and NAT traversal carriers (E3) | open | T-281, T-282, T-283, T-284, T-334 |
-| #470 | link: mesh announcements, path-vector routing, forwarding and ACLs (E4) | open | T-285, T-286, T-287, T-288, T-289, T-290, T-335 |
+| #470 | link: mesh announcements, path-vector routing, forwarding and ACLs (E4) | closed (each entry done; the last are T-285, T-287, T-289 and T-335 on 2026-11-13) | T-285, T-286, T-287, T-288, T-289, T-290, T-335 |
 | #471 | link: services at a peer (SOCKS5, HTTP, raw, forward, Shadowsocks, Trojan, exec, serve-at) (E5) | open | T-266, T-291, T-292, T-293, T-294, T-295, T-296, T-297 |
 | #472 | link: record layer (AEAD, compression, padding, replay and resume) (E6) | closed: T-298 to T-301 done; ci 43491819082 on d53df25 | T-298, T-299, T-300, T-301 |
-| #473 | link: direction split and chain composition (E7) | open | T-302, T-303 |
+| #473 | link: direction split and chain composition (E7) | closed (each entry done; the last is T-302, 3623ec5) | T-302, T-303 |
 | #474 | link: C ABI (E8) | closed (ci 43382314031 at 9583ea3) | T-304 |
-| #475 | link: portable build subset (E9) | closed (not planned: the owner, 2026-11-12, Linux only) | T-305 |
+| #475 | link: portable build subset (E9) | open (T-305 is blocked on the owner: the ruling "Platforms: Linux only" stands, revisit when a user asks; GitHub has it closed as not planned on 2026-11-13, and only a ruling of the owner removes T-305) | T-305 |
 | #476 | link: CLI query keys, control plane, aliases, dump, components and build features (E10) | closed (ci 43382314031 at 9583ea3) | T-306, T-307, T-308, T-309, T-310, T-311 |
 | #477 | COORD-046: podnet took v0.28.0 at b08e06f (to podcrates) | closed (a COORD issue between sessions) | none |
 | #478 | COORD-047: podnet took v0.29.0 and pod-hold syn-hold at 98d8a71 (to podcrates) | closed (a COORD issue between sessions) | none |
@@ -179,20 +179,20 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #481 | COORD-050: podnet took v0.30.0 and pod-relay at 83e0c93 (to podcrates) | closed (a COORD issue between sessions) | none |
 | #482 | COORD-051: two gaps of pod-relay after the take (pair renewal, pair on a second host) and the edge budget (to podcrates) | closed (a COORD issue between sessions) | none |
 | #483 | live: two runs in a row failed | closed | T-315 |
-| #484 | [DEFERRED] Carry a session in NTPv4 extension fields, SMTP and IMAP | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
-| #485 | [DEFERRED] Carry a session through a TURN allocation, with RFC 6062 | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
-| #486 | [DEFERRED] Close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
-| #489 | [DEFERRED] Register third-party services as roads, with a watch, a date and a count | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
-| #491 | [DEFERRED] Switch after a real handshake, with a cover script and multiplexed cover | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
-| #493 | [DEFERRED] Shape the record layer: padding profiles, entropy, first flight, pacing | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
-| #494 | [DEFERRED] Shape the application: deferred responses, a generator, carriers in the payload | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
-| #495 | [DEFERRED] Add a packet sidecar: desync search, disagreement probe, fake TCP, bonding | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
-| #496 | [DEFERRED] Keep the session end to end: opaque destination and keys from the ends | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
-| #497 | [DEFERRED] Make the pool live, the budget per deployment, tokens expiring, hosts movable | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
-| #498 | [DEFERRED] Resume a session across hours, and serve the full service surface at a peer | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
-| #499 | [DEFERRED] Carry a session with no network: serial, HF, spool, discovery, pairing | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
-| #500 | [DEFERRED] State the host runtime: no open port, classified egress, stated limits | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
-| #501 | [DEFERRED] Build the verification harness: classifier, exit codes, conformance matrix | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #484 | [DEFERRED] Carry a session in NTPv4 extension fields, SMTP and IMAP | open (deferred by the owner, 2026-11-12: T-365 waits for the owner) | T-365 |
+| #485 | [DEFERRED] Carry a session through a TURN allocation, with RFC 6062 | open (deferred by the owner, 2026-11-12: T-366 waits for the owner) | T-366 |
+| #486 | [DEFERRED] Close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID | open (deferred by the owner, 2026-11-12: T-367 waits for the owner) | T-367 |
+| #489 | [DEFERRED] Register third-party services as roads, with a watch, a date and a count | open (deferred by the owner, 2026-11-12: T-368 waits for the owner) | T-368 |
+| #491 | [DEFERRED] Switch after a real handshake, with a cover script and multiplexed cover | open (deferred by the owner, 2026-11-12: T-369 waits for the owner) | T-369 |
+| #493 | [DEFERRED] Shape the record layer: padding profiles, entropy, first flight, pacing | open (deferred by the owner, 2026-11-12: T-370 waits for the owner) | T-370 |
+| #494 | [DEFERRED] Shape the application: deferred responses, a generator, carriers in the payload | open (deferred by the owner, 2026-11-12: T-371 waits for the owner) | T-371 |
+| #495 | [DEFERRED] Add a packet sidecar: desync search, disagreement probe, fake TCP, bonding | open (deferred by the owner, 2026-11-12: T-372 waits for the owner) | T-372 |
+| #496 | [DEFERRED] Keep the session end to end: opaque destination and keys from the ends | open (deferred by the owner, 2026-11-12: T-373 waits for the owner) | T-373 |
+| #497 | [DEFERRED] Make the pool live, the budget per deployment, tokens expiring, hosts movable | open (deferred by the owner, 2026-11-12: T-374 waits for the owner) | T-374 |
+| #498 | [DEFERRED] Resume a session across hours, and serve the full service surface at a peer | open (deferred by the owner, 2026-11-12: T-375 waits for the owner) | T-375 |
+| #499 | [DEFERRED] Carry a session with no network: serial, HF, spool, discovery, pairing | open (deferred by the owner, 2026-11-12: T-376 waits for the owner) | T-376 |
+| #500 | [DEFERRED] State the host runtime: no open port, classified egress, stated limits | open (deferred by the owner, 2026-11-12: T-377 waits for the owner) | T-377 |
+| #501 | [DEFERRED] Build the verification harness: classifier, exit codes, conformance matrix | open (deferred by the owner, 2026-11-12: T-378 waits for the owner) | T-378 |
 | #502 | COORD-052: podnet took v0.31.0 at e046560; relay connect hangs on a direct runner after the take of pod-relay (to podcrates) | closed (a COORD issue between sessions) | none |
 | #503 | net: add a Dev Tunnels network for TCP streams | closed | T-320 |
 | #504 | doctor: resolve the ssh-relay probe through the configured proxy | closed | T-322 |
