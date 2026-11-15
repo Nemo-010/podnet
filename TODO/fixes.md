@@ -6948,7 +6948,7 @@ shellcheck --shell=sh scripts/install.sh
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -6976,6 +6976,12 @@ cargo test --test cli git::git_serve_init_and_urls
 d=$(mktemp -d) && cd "$d" && podnet git init --root ./repos app && test -f repos/app.git/HEAD
 ```
 
+## Done
+
+2026-11-15, eeac027. `git init` makes the root with `create_dir_all` when it does not exist. `git_serve_init_and_urls`
+starts with no root and passes. In a new directory, `podnet git init --root ./repos app` exits 0 and writes
+`repos/app.git/HEAD`. `sh scripts/agent/check.sh` passed (2016 tests), and clippy with `--features full` passed.
+
 # T-362: docs/cli.md: the completion command writes to a directory that can be absent
 
 **Source:** T-358 step 2, the documented command at docs/cli.md:36
@@ -6984,7 +6990,7 @@ d=$(mktemp -d) && cd "$d" && podnet git init --root ./repos app && test -f repos
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -7008,6 +7014,11 @@ directory`. The document gives no step that makes the directory.
 HOME=$(mktemp -d) sh -ec 'mkdir -p ~/.local/share/bash-completion/completions; podnet completions bash > ~/.local/share/bash-completion/completions/podnet'
 ```
 
+## Done
+
+2026-11-15, eeac027. `docs/cli.md` has `mkdir -p ~/.local/share/bash-completion/completions` before the line. The Prove
+command exits 0 in a new HOME.
+
 # T-363: net passwd-shim: the home of the entry is $HOME, not /state/home
 
 **Source:** T-358 step 2, the documented command at docs/networks.md:338
@@ -7016,7 +7027,7 @@ HOME=$(mktemp -d) sh -ec 'mkdir -p ~/.local/share/bash-completion/completions; p
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -7047,3 +7058,10 @@ does not make `~/.ssh` (it makes the directory only when the file is under the `
 cargo test --test cli net::passwd_shim_prints_the_preload
 python3 -I scripts/doc-commands.py --run --only docs/networks.md
 ```
+
+## Correction
+
+2026-11-15, eeac027: the code and its test are done. `write_user_shims` takes `$HOME` when it is absolute;
+`HOME=/x/y podnet net passwd-shim` writes `u0:x:0:0:u0:/x/y:/bin/sh`; `passwd_shim_prints_the_preload` passes. Open:
+the documented block with `ssh-keygen` has not run (this host has no `ssh-keygen`). It runs in the step "The
+documented commands" of the job `test` of `ci.yml`; set the entry `done` when that step passes.
