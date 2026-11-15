@@ -279,4 +279,4 @@
 578 issue closed
 579 issue closed
 580 issue closed
-581 issue open
+581 issue closed

@@ -37,8 +37,8 @@ For `v0.4.0-beta.11` and `beta.12` that lookup gave the run of the publish itsel
 `release.yml` tags the head of `main` at the publish: push nothing to `main` from the request to the tag.
 
 Each workflow passes on 0a0f3e5, the tag `v0.4.0-beta.13` (GitHub #579): ci 43711402086, deny 43711405265, secrets
-43711407779, live 43711410272; fuzz 43654449404 passed on 6536905 (GitHub #569). GitHub #581 asks for ci and deny on the take of
-podcrates `v0.52.0` (c0ab946).
+43711407779, live 43711410272; fuzz 43654449404 passed on 6536905 (GitHub #569). ci 43718529045 and deny 43718532371 pass on f6aaeca,
+the take of podcrates `v0.52.0` (GitHub #581).
 
 ## Next steps
 
