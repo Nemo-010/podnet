@@ -259,7 +259,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #567 | [gh action] requested: the release of v0.4.0-beta.12 (checks, dry run, publish, release proofs) | closed: `v0.4.0-beta.12` is out on b6e7959 (release-proofs 43645375545) | T-352 |
 | #568 | COORD-083: podnet took v0.47.0 at 1d4d7f1; the stand-in of the S3 API at 556708a (to podcrates) | closed (podcrates closed PodUtils/podcrates#160) | none |
 | #569 | [gh action] requested: ci, deny, secrets, live and fuzz on the take of v0.47.0 | closed: ci 43654435897, deny 43654439784, secrets 43654443103, live 43654446240 and fuzz 43654449404 passed on 6536905 | none |
-| #570 | COORD-084: podnet took v0.48.0 at 862a6a9 (to podcrates) | open (a COORD issue between sessions) | none |
+| #570 | COORD-084: podnet took v0.48.0 at 862a6a9 (to podcrates) | closed (podcrates closed PodUtils/podcrates#162) | none |
 | #571 | [gh action] requested: ci and deny on the take of v0.48.0 | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
