@@ -4684,6 +4684,11 @@ sh scripts/agent/check.sh
 python3 -I scripts/gen-llms.py --check $CARGO_TARGET_DIR/debug/podnet
 ```
 
+## Correction
+
+2026-11-15: scripts/gen-llms.py is removed (T-359). The check of the llms files is now
+`cargo test --bin podnet the_llms_files_equal_the_model` (`src/cli/manual_tests.rs`).
+
 ## Done
 
 2026-11-12, 28da113. `README.md` has 145
@@ -4699,8 +4704,6 @@ documents resolves. scripts/gen-llms.py lists the new documents; `llms.txt` and 
 The proxy example with a user and a password in the old README is now `PODNET_PROXY="$PROXY_URL"` in `docs/proxies.md`.
 Not proven: the new text was read against the help and the code, not run against each live service. GitHub #89
 (the test guide) could not be read from the sandbox (HTTP 403).
-
-
 
 # T-260: doctor: probes for the lanes `masque_udp443` and `ws_upgrade` (GitHub #461, A-C-10)
 
@@ -6865,7 +6868,7 @@ blocks in `live.yml`; (c) the `root` block and the blocks that need a restricted
 **Milestone:** M3
 **Priority:** P2
 **Effort:** M
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -6894,13 +6897,58 @@ cargo test --test cli manual
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-podcrates builds `pod-manual` (their entry 700, PodUtils/podcrates#181): the first tag after `pod-lab` part 1.
-
 ## Correction
 
 2026-11-15: podcrates takes `src/manual/` and scripts/gen-llms.py of podnet at `78a3911` as `pod-manual` (their entry 700, PodUtils/podcrates#181); they are frozen (fixes only) until the take. podssh (PodUtils/podssh#267) and podvm (PodUtils/podvm#425) need a model that each program fills (neither uses `clap`); podnet's reader of `clap` becomes one way to fill it (GitHub #584). The owner's ruling "Discipline" asks for a test that fails when the code gives an exit code that has no fact: podnet has the test of the variables (`src/manual/facts.rs`, `each_variable_in_the_source_is_in_the_manual` and its reverse) but none of the exit codes; it comes with the take.
+
+2026-11-15: the blocker (podcrates builds `pod-manual`, their entry 700) ended with the tag `v0.54.0`.
+
+2026-11-15, the take of `pod-manual` (podcrates `v0.54.0`): three parts of the crate do not fit podnet, and the glue of
+`src/manual/mod.rs` keeps the old behaviour with a note.
+
+- The reader of clap (`pod_manual::clap::read`) leaves `Flag::env` empty. The glue fills it from the clap tree, so
+  that the manual names the variable of each flag (`Variable: NAME.`), as before.
+- The reader of clap gives a rule `Excludes` for a conflict with a positional (its value name), and `check::model`
+  of the crate refuses a rule that names no flag (7 rules of serve, send, autostart add and stop). The glue keeps
+  the rules of flags only.
+- `help::render` has no groups of commands and no "Start here" block. The text of `podnet --help` and of
+  `podnet COMMAND --help` stays the help of clap (`src/cli/help.rs`), from the same command tree as the model.
+  `--help --json` comes from the crate.
+- `scan::variables_read` takes each quoted word of the shape of a variable: the test exempts the names of C
+  constants, a crate name and a hash name (`EXEMPT` of `src/cli/manual_tests.rs`).
+- `PodUtils/podcrates:scripts/check-man.sh` of podcrates: its plant check fails for podnet, as the planted flag (`--add-door`) is
+  also in the prose of other flags.
+
+## Done
+
+2026-11-15, 9217b0b, 13b1514 and the commit of this record. `podnet man`, `podnet man --roff`, `podnet man --json`,
+`podnet COMMAND --help --json`, the pager and the llms files come from `pod-manual` (feature `clap`). `src/manual/`
+keeps the facts of podnet (`facts.rs`: the variables, the files, the exit codes, the examples; `inventory.rs`: the
+component inventory, also a table of the manual) and the glue (`mod.rs`). scripts/gen-llms.py is removed; the test
+`the_llms_files_equal_the_model` checks the files, and the writer of the crate gives the same `llms.txt` as the
+script did. The tests of `src/cli/manual_tests.rs` call the checks of the crate: the text rules, the model, the
+flags against the parser both ways, the variables both ways, the exit codes both ways, the llms files, and the
+JSON help of each command.
+
+What the checks found and the fixes: the exit codes 4 (`pod --fail-on-violation`), 128+N (a signal) and the code of
+the program of `pod` and `warp run` had no fact (now facts; 4 is also in `docs/protocol.md`). The variables of the
+CGI of `git serve`, `GIT_PROTOCOL` and `GIT_DIR`, the CA bundles and the npm proxy of `warp up` had no fact (now
+facts). 43 sentences of the help and the facts had more than 25 words (each is split; one is in
+`src/warp/export/command.rs`, a frozen file: a text fix only). `PodUtils/podcrates:scripts/check-strings.py` of podcrates on a release
+binary found work ids in the C source of the shims and in two messages (`src/carriers.rs`,
+`crates/podnet-core/src/network/split.rs`): removed. It still finds 84 runs in the data of `pod-services`, 12 runs
+of PKCS of a library, and one byte run that is no text. `PodUtils/podcrates:scripts/check-man.sh`: groff and mandoc give no warning,
+and each of the 248 flag spellings is in both renderings.
+
+For a user: `podnet man` has the form of `pod-manual`. The first line is the name, the version and the about line
+(no `PODNET(1)` header and no NAME section). Each command section shows Usage, Arguments, Options, Rules,
+Commands and Examples. ENVIRONMENT has a group of the pager, INVENTORY shows `Kind:` and `Meaning:`, EXIT STATUS
+has the rows 4, 128+N and N, and SEE ALSO is a section (`see-also`). The topic `pod` is gone: `podnet man pod` gives
+the command with the usage of podnet-netns. An unknown section gives `NAME: no such section; fix: ...` and the
+list of sections (exit 64). `--roff` is the man(7) page of the crate. `--json` is the model of the crate (schema
+1). `--help --json` at the root gives the root command, not the whole manual. `podnet --help` is not changed,
+except the split sentences. `sh scripts/agent/check.sh` passed (2013 tests), clippy with `--features full` passed,
+and the i686 check passed.
 
 # T-360: install.sh: a second run with the same version changes nothing and says so
 

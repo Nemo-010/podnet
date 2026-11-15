@@ -46,7 +46,7 @@ comment of the request.
 
 ## Next steps
 
-0. The release gate (T-358) comes before the next beta (`docs/decisions.md`, 2026-11-15). The shared crate of the help and the manual is T-359.
+0. The release gate (T-358) comes before the next beta (`docs/decisions.md`, 2026-11-15). The help and the manual are on `pod-manual` (T-359, done).
 1. Ask for runs of each new head with a `[gh action] requested` issue after a batch of changes.
 2. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
 3. Go on with the work order of `TODO/PROGRESS.md`. The disk holds one build: run one agent at a time in this checkout,

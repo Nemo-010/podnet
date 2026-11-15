@@ -7,7 +7,7 @@
  *
  *     \0podnet-vnet/<family>/<address>/<port>
  *
- * An IPv4-mapped IPv6 address gets the IPv4 name (T-356).
+ * An IPv4-mapped IPv6 address gets the IPv4 name.
  *
  * Two interposed programs on the same host therefore talk over AF_UNIX with
  * no host process at all ("direct mode"). When PODNET_VNET_CONTROL names the
@@ -20,7 +20,7 @@
  * destination goes to that door, not to an abstract name.
  *
  * PODNET_VNET_FORWARD is a comma list of ADDR:PORT=unix:/PATH. A stream
- * connect to a listed destination goes to the unix socket PATH (T-357). The
+ * connect to a listed destination goes to the unix socket PATH. The
  * forwards come first, then the SOCKS routes, then the abstract name.
  *
  * This file is compiled from the embedded copy in crates/podnet-vnet/src/shim.rs, so a
@@ -107,7 +107,7 @@ static void logf_(const char *fmt, ...) {
     va_end(ap);
 }
 
-/* ── routes to the SOCKS5 front door (T-167) ──────────────────────────────── */
+/* ── routes to the SOCKS5 front door ──────────────────────────────── */
 
 /* The same table is in podnet-socks.c and podnet-vnet.c (each shim is one
    file); crates/podnet-vnet/src/shim.rs parse_socks_route checks the same
@@ -253,7 +253,7 @@ static int route_match(const struct sockaddr *sa) {
     return 0;
 }
 
-/* ── forwards to a unix socket path (T-357) ───────────────────────────────── */
+/* ── forwards to a unix socket path ───────────────────────────────── */
 
 /* PODNET_VNET_FORWARD: a comma list of ADDR:PORT=unix:/PATH (IPV4:PORT or
    [IPV6]:PORT). A stream connect to ADDR:PORT connects to the unix socket
@@ -620,7 +620,7 @@ static void format_v6(const unsigned char *addr, char *out, size_t out_len) {
     snprintf(out, out_len, "%s", buf);
 }
 
-/* T-356: an IPv4-mapped IPv6 address (::ffff:A.B.C.D) is an IPv4
+/* An IPv4-mapped IPv6 address (::ffff:A.B.C.D) is an IPv4
    endpoint. Give its sockaddr_in in *v4 and 1, or 0 for each other
    address. A dual-mode AF_INET6 socket (.NET) connects to the mapped form
    of 127.0.0.1, and must meet a listener of 127.0.0.1. */
@@ -635,7 +635,7 @@ static int unmap_v4(const struct sockaddr *sa, socklen_t len, struct sockaddr_in
     return 1;
 }
 
-/* T-356: give an address in the family of the descriptor. An AF_INET6
+/* Give an address in the family of the descriptor. An AF_INET6
    descriptor gets an IPv4 address in the mapped form, an AF_INET
    descriptor a mapped address in the IPv4 form. */
 static void fit_family(int family, struct sockaddr_storage *ss, socklen_t *len) {
@@ -858,7 +858,7 @@ int socket(int domain, int type, int protocol) {
         int fd = r_socket(AF_UNIX, type, 0);
         if (fd >= 0) {
             fd_mark(fd, domain, type);
-            /* T-075: each datagram carries the user of its sender. */
+            /* Each datagram carries the user of its sender. */
             if ((type & 0xf) == SOCK_DGRAM) {
                 int one = 1;
                 r_setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &one, sizeof one);
@@ -1006,7 +1006,7 @@ static int fresh_socket(int fd, int type) {
     return 0;
 }
 
-/* ── a stream connect through the SOCKS5 front door (T-167) ───────────────── */
+/* ── a stream connect through the SOCKS5 front door ───────────────── */
 
 static int socks_wait(int fd, short events) {
     struct pollfd p = {.fd = fd, .events = events};
@@ -1107,7 +1107,7 @@ static int connect_through_door(int fd, const struct sockaddr *sa, socklen_t len
     return 0;
 }
 
-/* T-357: connect the virtual stream socket fd to the unix socket path of a
+/* Connect the virtual stream socket fd to the unix socket path of a
    forward. The peer is the TCP address that the program asked for. A
    missing path gives ECONNREFUSED, as a TCP port with no listener does.
    The owner of the path decides with its file permissions: no same-user
@@ -1438,7 +1438,7 @@ ssize_t sendto(int fd, const void *buf, size_t n, int flags,
     return r_sendto(fd, buf, n, flags, (struct sockaddr *)&un, un_len);
 }
 
-/* T-075: a datagram socket of the shim takes the same user only, as the
+/* A datagram socket of the shim takes the same user only, as the
    stream sockets (issue 308) and the switch do. Before the real receive,
    look at the next datagram (MSG_PEEK) and drop it while its sender
    (SCM_CREDENTIALS of SO_PASSCRED) is another user. Two threads that

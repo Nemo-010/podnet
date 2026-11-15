@@ -25,7 +25,7 @@ use super::{Datagrams, RecvMeta, Transmit};
 /// The text of the refusal of a TCP split.
 pub const TCP_REFUSAL: &str =
     "a split of TCP needs a far end that joins two connections, and podnet has none; \
-     the flows of TCP keep one member (T-179)";
+     the flows of TCP keep one member";
 
 /// The members of a split, as indexes of the group: `up` sends, `down`
 /// receives.

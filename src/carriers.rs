@@ -106,11 +106,11 @@ fn make_memory(options: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     feature = "s3",
     feature = "icmp"
 )))]
-fn pending(name: &'static str, entry: &str) -> Result<Box<dyn Carrier>, CarrierError> {
+fn pending(name: &'static str) -> Result<Box<dyn Carrier>, CarrierError> {
     Err(CarrierError::new(
         name,
         CarrierErrorKind::Unavailable,
-        format!("the feature is on, but the code of the carrier is not in this build ({entry})"),
+        "the feature is on, but the code of the carrier is not in this build".to_string(),
     ))
 }
 
@@ -125,7 +125,7 @@ fn make_tcp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 
 #[cfg(not(feature = "tcp"))]
 fn make_tcp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
-    pending("tcp", "T-268")
+    pending("tcp")
 }
 
 /// The carrier `ws` for the registry: the facts and the host check, no key
@@ -137,7 +137,7 @@ fn make_ws(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 
 #[cfg(not(feature = "ws"))]
 fn make_ws(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
-    pending("ws", "T-269")
+    pending("ws")
 }
 
 /// The carrier `h2` for the registry: the facts and the host check, no key
@@ -149,7 +149,7 @@ fn make_h2(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 
 #[cfg(not(feature = "h2"))]
 fn make_h2(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
-    pending("h2", "T-270")
+    pending("h2")
 }
 
 /// The carrier `quic` for the registry: the facts and the host check, no
@@ -161,7 +161,7 @@ fn make_quic(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 
 #[cfg(not(feature = "quic"))]
 fn make_quic(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
-    pending("quic", "T-273")
+    pending("quic")
 }
 
 /// The carrier `udp` for the registry: the facts and the host check, no
@@ -173,7 +173,7 @@ fn make_udp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 
 #[cfg(not(feature = "udp"))]
 fn make_udp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
-    pending("udp", "T-276")
+    pending("udp")
 }
 
 /// The poll carriers for the registry: the facts (the cost class of each
@@ -187,7 +187,7 @@ fn make_poll_form(name: &'static str) -> Result<Box<dyn Carrier>, CarrierError> 
 
 #[cfg(not(feature = "poll"))]
 fn make_poll_form(name: &'static str) -> Result<Box<dyn Carrier>, CarrierError> {
-    pending(name, "T-271")
+    pending(name)
 }
 
 fn make_poll(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
@@ -216,7 +216,7 @@ fn make_dns(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 
 #[cfg(not(feature = "dns"))]
 fn make_dns(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
-    pending("dns", "T-278")
+    pending("dns")
 }
 
 /// The carrier `s3` for the registry: the facts (the cost class
@@ -229,7 +229,7 @@ fn make_s3(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 
 #[cfg(not(feature = "s3"))]
 fn make_s3(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
-    pending("s3", "T-279")
+    pending("s3")
 }
 
 /// The carrier `icmp` for the registry: the facts and the host check (a
@@ -242,7 +242,7 @@ fn make_icmp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 
 #[cfg(not(feature = "icmp"))]
 fn make_icmp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
-    pending("icmp", "T-282")
+    pending("icmp")
 }
 
 /// The carriers of this build, in the order of the lists and of the

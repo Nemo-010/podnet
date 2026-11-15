@@ -90,7 +90,7 @@ static void logf_(const char *fmt, ...) {
     va_end(ap);
 }
 
-/* ── routes to the SOCKS5 front door (T-167) ──────────────────────────────── */
+/* ── routes to the SOCKS5 front door ──────────────────────────────── */
 
 /* The same table is in podnet-socks.c and podnet-vnet.c (each shim is one
    file); crates/podnet-vnet/src/shim.rs parse_socks_route checks the same
