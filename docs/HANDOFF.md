@@ -39,8 +39,9 @@ For `v0.4.0-beta.11` (GitHub #563) that lookup gave the run of the publish itsel
 Each workflow passes on b6e7959, the tag `v0.4.0-beta.12` (GitHub #567): ci 43641661040, deny 43641664659, secrets
 43641667797, live 43641671768; fuzz 43632083716 passed on b7c3e90 (GitHub #565).
 
-GitHub #569 asks for ci, deny, secrets, live and fuzz on 6536905: the take of `v0.47.0` (1d4d7f1, COORD-083 #568) and
-the stand-in of the S3 API from `pod-link` (556708a). The take of `v0.48.0` (a bump of the tag only, 2026-11-15) goes into the next request.
+Each workflow passes on 6536905, the take of `v0.47.0` (GitHub #569): ci 43654435897, deny 43654439784, secrets
+43654443103, live 43654446240, fuzz 43654449404. GitHub #571 asks for ci and deny on the take of `v0.48.0` (862a6a9, a
+bump of the tag only).
 
 ## Next steps
 

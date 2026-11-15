@@ -267,4 +267,6 @@
 566 issue closed
 567 issue closed
 568 issue closed
-569 issue open
+569 issue closed
+570 issue open
+571 issue open
