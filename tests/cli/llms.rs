@@ -1,4 +1,4 @@
-//! T-222: `--help --json`, `llms.txt` and `llms-full.txt`.
+//! T-222: `--help --json`. The llms files: `src/cli/manual_tests.rs`.
 
 use super::*;
 
@@ -42,26 +42,4 @@ fn help_json_matches_man_json() {
     // Without --json the help is text.
     let text = podnet(&["tunnel", "--help"]);
     assert!(String::from_utf8_lossy(&text.stdout).contains("Usage:"));
-}
-
-/// `llms.txt` and `llms-full.txt` are the output of `scripts/gen-llms.py` for
-/// this binary. A change of the command tree, of the manual or of a document
-/// makes this test fail until `python3 scripts/gen-llms.py BINARY` runs again.
-#[test]
-fn llms_files_are_current() {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let out = Command::new("python3")
-        .arg("-I")
-        .arg(root.join("scripts/gen-llms.py"))
-        .arg("--check")
-        .arg(env!("CARGO_BIN_EXE_podnet"))
-        .output()
-        .expect("python3 runs");
-    assert_eq!(
-        out.status.code(),
-        Some(0),
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        stderr(&out)
-    );
 }

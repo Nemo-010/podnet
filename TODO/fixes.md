@@ -3859,7 +3859,7 @@ cargo todo check
 2026-11-11, commit 981ee40 (`T-222: --help --json, llms.txt and llms-full.txt`). `--help --json` (or
 `-h --json`) at each level prints the JSON of `podnet man --json` for the command that the words of
 the line name (`manual::help_json_request`, called in `src/main.rs` before the parse). The root
-gives the whole manual. `pod` keeps its own help. `scripts/gen-llms.py BINARY` writes `llms.txt` (the
+gives the whole manual. `pod` keeps its own help. scripts/gen-llms.py BINARY writes `llms.txt` (the
 summary, one line for each command, the documents) and `llms-full.txt` (`podnet man --no-pager` and
 the text of README.md and three documents) in the repository root. The script cuts the commit from
 the version, so the files do not change with each build. `--out DIR` writes to another directory.
@@ -4675,7 +4675,7 @@ docs/ by topic".
 2. Move the detail of the README to topic documents in `docs/` and add the missing capabilities, each
    checked against the help of the binary.
 3. Fix the links, the tests that pin README text (move each pin to the new document), the manual, the
-   notebook, `CLAUDE.md` and `scripts/gen-llms.py`; regenerate `llms.txt` and `llms-full.txt`.
+   notebook, `CLAUDE.md` and scripts/gen-llms.py; regenerate `llms.txt` and `llms-full.txt`.
 
 ## Prove
 
@@ -4695,7 +4695,7 @@ cover (router, kernel mode, `--check --to`, `--status`, mwan-json, forward and t
 the doctor JSON keys, the rules and the audit of `pod`) are written from the help of the binary and from the code.
 `tests/docs.rs` reads the install cell, the `--detach` sentence and the warp flags in the new documents, and has
 two new tests: the README is at most 250 lines and links each topic document, and each relative link of the topic
-documents resolves. `scripts/gen-llms.py` lists the new documents; `llms.txt` and `llms-full.txt` are regenerated.
+documents resolves. scripts/gen-llms.py lists the new documents; `llms.txt` and `llms-full.txt` are regenerated.
 The proxy example with a user and a password in the old README is now `PODNET_PROXY="$PROXY_URL"` in `docs/proxies.md`.
 Not proven: the new text was read against the help and the code, not run against each live service. GitHub #89
 (the test guide) could not be read from the sandbox (HTTP 403).
@@ -6120,7 +6120,7 @@ share 4: peer A holds 16 SYNs to a target that does not answer, peer B still get
 `guest_wire_share_logs_one_line_for_each_group_in_each_interval`. The plant: with the share check of `take`
 off (one group takes the total, the behaviour before the fix), the wg test failed ("no answer" for peer B), and
 the UDP test failed ("share: 0 of 1"). `cargo test --workspace --no-fail-fast`: each target passed, except
-`llms_files_are_current` (fixed by `scripts/gen-llms.py`, then 2 passed). `CC_i686_unknown_linux_musl=clang cargo
+`llms_files_are_current` (fixed by scripts/gen-llms.py, then 2 passed). `CC_i686_unknown_linux_musl=clang cargo
 check --workspace --target i686-unknown-linux-musl`: no error.
 
 
@@ -6456,7 +6456,7 @@ Tests: `a_unix_proxy_with_user_info_is_refused` (six specs, the crash input amon
 `ALL_PROXY` with the spec: no line of `podnet doctor --json` and of `podnet status --json` holds the password; a normal
 Unix path is in the output). At 54637d9 the doctor test failed: exit 1, and each lane held `hunter2`.
 `cargo test --workspace --no-fail-fast`: 1988 passed, 1 failed (`llms_files_are_current`: `llms-full.txt` after the
-change of `docs/proxies.md`; `scripts/gen-llms.py` wrote it, and the test then passed). `sh scripts/agent/check.sh
+change of `docs/proxies.md`; scripts/gen-llms.py wrote it, and the test then passed). `sh scripts/agent/check.sh
 notest`: each step 0. The 32-bit check: 0. Fuzz (as T-348): `proxy_url` 1355113 runs in 121 s with the crash input in
 the corpus, no crash. Left: the guard stays until a tag of podcrates carries their entry 612; then the take removes it
 or keeps it as a second check.
@@ -6877,7 +6877,7 @@ The owner rules that they share one crate.
 - podnet has `src/manual/` (about 1,970 lines on 2026-11-15): a model of the command tree from `clap`
   (`model.rs`), the roff writer of `podnet.1` (`roff.rs`), the plain-text manual (`text.rs`), the pager (`pager.rs`), the
   facts of the environment variables and exit codes (`facts.rs`), the component inventory (`inventory.rs`), and
-  `scripts/gen-llms.py` for `llms.txt` and `llms-full.txt`. The tests `tests/cli/manual.rs` check it.
+  scripts/gen-llms.py for `llms.txt` and `llms-full.txt`. The tests `tests/cli/manual.rs` check it.
 - No crate of podcrates holds help or manual code (read at `v0.52.0`).
 
 ## Approach
@@ -6900,7 +6900,7 @@ podcrates builds `pod-manual` (their entry 700, PodUtils/podcrates#181): the fir
 
 ## Correction
 
-2026-11-15: podcrates takes `src/manual/` and `scripts/gen-llms.py` of podnet at `78a3911` as `pod-manual` (their entry 700, PodUtils/podcrates#181); they are frozen (fixes only) until the take. podssh (PodUtils/podssh#267) and podvm (PodUtils/podvm#425) need a model that each program fills (neither uses `clap`); podnet's reader of `clap` becomes one way to fill it (GitHub #584). The owner's ruling "Discipline" asks for a test that fails when the code gives an exit code that has no fact: podnet has the test of the variables (`src/manual/facts.rs`, `each_variable_in_the_source_is_in_the_manual` and its reverse) but none of the exit codes; it comes with the take.
+2026-11-15: podcrates takes `src/manual/` and scripts/gen-llms.py of podnet at `78a3911` as `pod-manual` (their entry 700, PodUtils/podcrates#181); they are frozen (fixes only) until the take. podssh (PodUtils/podssh#267) and podvm (PodUtils/podvm#425) need a model that each program fills (neither uses `clap`); podnet's reader of `clap` becomes one way to fill it (GitHub #584). The owner's ruling "Discipline" asks for a test that fails when the code gives an exit code that has no fact: podnet has the test of the variables (`src/manual/facts.rs`, `each_variable_in_the_source_is_in_the_manual` and its reverse) but none of the exit codes; it comes with the take.
 
 # T-360: install.sh: a second run with the same version changes nothing and says so
 

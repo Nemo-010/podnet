@@ -14143,8 +14143,9 @@ password in its environment. Use it to collect failures in tests.
 * `podnet man --roff` prints a man(7) page. `podnet.1` is a release asset.
 * `llms.txt` is an index of the commands and the documents. `llms-full.txt` holds the manual (the output of
   `podnet man --no-pager`) and the text of the documents of this repository. Both are in the root of the
-  repository and are release assets. `scripts/gen-llms.py` writes them from a binary; run it after a
-  change of the command tree, of the manual or of a document, and `--check` says whether they are current.
+  repository and are release assets. The writer of `pod-manual` makes them from the model. The test
+  `the_llms_files_equal_the_model` fails when a file is old. After a change of the command tree, of the manual,
+  of the version or of a listed document, run `cargo test --bin podnet -- --ignored write_the_llms_files`.
 * `podnet completions SHELL` prints a completion script for `bash`, `zsh`, `fish`, `elvish` or `powershell`.
 
 <!-- document: docs/library.md -->

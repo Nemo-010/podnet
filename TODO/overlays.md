@@ -310,7 +310,7 @@ at the `DNS` of the file through the tunnel. Each call is in the Correction of 2
 - `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc and layers 0. The tests: one failure,
   `router::guest::tests::guest_wire_unix_socket_serves_a_guest_and_the_next` (it passed alone 3 times: a load
   flake). `cargo test --workspace --no-fail-fast`: `llms_files_are_current` failed before
-  `scripts/gen-llms.py` (done in the commit) and passed after; `quick_tunnel_standin_serves_a_visitor_over_http2`
+  scripts/gen-llms.py (done in the commit) and passed after; `quick_tunnel_standin_serves_a_visitor_over_http2`
   failed once and passed alone 3 times (a known flake). `cargo check --workspace --target i686-unknown-linux-musl`:
   exit 0.
 - Not proven: a live WARP session, a real UDP-blocked host, `PresharedKey` (T-337).

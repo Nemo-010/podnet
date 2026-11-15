@@ -1850,7 +1850,7 @@ podcrates 63348de; Unverified).
 ## Done
 
 2026-11-13, commit d5c38c1. `src/cli/cmd/transfer.rs` (`podnet send`, `podnet receive`), `src/transfer/`,
-`docs/transfer.md` (with its row in the map of `README.md`, the list of `scripts/gen-llms.py`, and the llms files),
+`docs/transfer.md` (with its row in the map of `README.md`, the list of scripts/gen-llms.py, and the llms files),
 the exit code 65 in `docs/cli.md` and `podnet man exit-status`. `cargo test --test cli -- send_and_receive_on_the_loopback
 a_wrong_code_ends_the_code`: both passed (a file of 400,000 bytes with the sender's SHA-256, a directory and a text
 between two processes of podnet at a stand-in mailbox; a wrong code exits 77 at both ends, and the right code after

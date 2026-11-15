@@ -13,7 +13,7 @@
   (the transfer), `pod-extract` and `pod-testkit`. Next
   (PodUtils/podcrates#133): `pod-cloudflare`, `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`. A session
   reads the state of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
-- Frozen (fixes only, each as a COORD issue): `src/manual/` and `scripts/gen-llms.py` (for `pod-manual`, T-359), `src/warp/` (glue over `pod-warp`), `src/cloudflare/`, `src/proxy.rs`,
+- Frozen (fixes only, each as a COORD issue): `src/warp/` (glue over `pod-warp`), `src/cloudflare/`, `src/proxy.rs`,
   `src/tunnel.rs`, `crates/podnet-netns/src/rules.rs` and `tests/test_host/mod.rs` (in `pod-testkit`).
 - The newest release is `v0.4.0-beta.13` (T-355).
 - The tag `v0.46.0` brings the S3 carrier (bcfae9e) and the split session (3623ec5); both are in `v0.4.0-beta.12`.

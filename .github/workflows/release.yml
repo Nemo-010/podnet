@@ -146,8 +146,10 @@ jobs:
           if [ "${{ matrix.target }}" = x86_64-unknown-linux-musl ]; then
             target/${{ matrix.target }}/release/podnet man --roff > dist/podnet.1
             test -s dist/podnet.1
-            # T-222: the files for agents, from the same binary.
-            python3 -I scripts/gen-llms.py --out dist target/${{ matrix.target }}/release/podnet
+            # T-222: the files for agents. The test the_llms_files_equal_the_model
+            # (src/cli/manual_tests.rs) keeps the files of the repository equal
+            # to the model of this source and its documents.
+            cp llms.txt llms-full.txt dist/
             test -s dist/llms.txt
             test -s dist/llms-full.txt
             # T-330: the JSON Schema of `podnet pod --report`.
