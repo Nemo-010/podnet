@@ -12,9 +12,9 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #140 | warp proxy: add --l4, one HTTP/3 CONNECT per flow, no IP stack | open (deferred: a captured request of an official client) | T-002 |
 | #149 | warp: enrol through a Zero Trust team token | open (deferred: a captured exchange of the official client) | T-003 |
 | #151 | tls: send an encrypted ClientHello on the hops that publish a config | open (deferred: no HPKE in ring, no ECH config on the hops) | T-004 |
-| #161 | Publish the library and the CLI on crates.io (deferred) | open (deferred: publish nothing now) | T-005 |
+| #161 | Publish the library and the CLI on crates.io (deferred) | open (deferred: publish nothing now) | T-005, T-007 |
 | #222 | crates.io: the workspace version is a prerelease, and the beta requirement cannot match a stable pod-netns | open (deferred: the first stable release) | T-006 |
-| #224 | crates.io: the crate name cfrs is registered to another project | closed (the owner chose and reserved `podnet`) | T-007 |
+| #224 | crates.io: the crate name cfrs is registered to another project | closed (the owner chose and reserved `podnet`; the publish is #161, with T-007) | T-016 |
 | #311 | live: two runs in a row failed | closed | T-136 |
 | #316 | live: two runs in a row failed | closed | T-138 |
 | #317 | COORD-001: a test of the fallback channel | closed (a COORD issue between sessions; no work) | none |
@@ -207,7 +207,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #513 | COORD-057: podnet starts the network carriers of the link: TCP with TLS first (T-268; your T-304, A7) (to podcrates) | closed (a COORD issue between sessions) | none |
 | #514 | COORD-058: podnet took v0.33.0 at 797104f (to podcrates) | closed (a COORD issue between sessions) | none |
 | #515 | COORD-059: podnet took v0.34.0 at ef8c901; the TCP carrier is in; the next carriers of pod-link (to podcrates) | closed (a COORD issue between sessions) | none |
-| #516 | live: two runs in a row failed | closed (quick-tunnel edge flakes; the rerun 43333498755 passed) | none |
+| #516 | live: two runs in a row failed | closed (quick-tunnel edge flakes; the rerun 43333498755 passed) | T-364 |
 | #517 | COORD-060: the answer to the asks N-1 to N-5 of podswarm (PodUtils/podcrates#125) (to all) | closed: each ask is in `v0.4.0-beta.10` and later | none |
 | #518 | COORD-061: port rules in the rules reader of pod-warp: port:N=WAY and tcp:HOST:PORT=WAY (podnet T-328; ask N-2 of podswarm) (to podcrates) | closed (T-328 done, f5bab50) | none |
 | #519 | COORD-062: podnet took v0.35.0 at 5562f21 (to podcrates) | closed (a COORD issue between sessions) | none |

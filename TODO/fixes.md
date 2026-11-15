@@ -7065,3 +7065,38 @@ python3 -I scripts/doc-commands.py --run --only docs/networks.md
 `HOME=/x/y podnet net passwd-shim` writes `u0:x:0:0:u0:/x/y:/bin/sh`; `passwd_shim_prints_the_preload` passes. Open:
 the documented block with `ssh-keygen` has not run (this host has no `ssh-keygen`). It runs in the step "The
 documented commands" of the job `test` of `ci.yml`; set the entry `done` when that step passes.
+
+# T-364: live: two runs in a row failed at the quick tunnel; the rerun passed (GitHub #516)
+
+**Source:** GitHub #516 ("live: two runs in a row failed").
+**Category:** measurement
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+Two runs of `live.yml` in a row failed. The issue asked why, and whether podnet has a defect there.
+
+## Premise
+
+- Read on 2026-11-15, from the row of GitHub #516 in `TODO/issues.md` (written when the issue closed): both failures were
+  at the quick tunnel of Cloudflare's edge, and the rerun 43333498755 passed. The record kept no entry for it then; the
+  rules of the issues (PodUtils/podcrates#192, the owner's ruling "Issues") ask for one.
+- Not measured again here. A quick-tunnel step that does not depend on Cloudflare is T-316 (the stand-in in `ci`).
+
+## Approach
+
+1. Record the finding: an outage or a flake of the edge, with no change of podnet; the rerun passed.
+
+## Prove
+
+```sh
+gh run view 43333498755 -R PodUtils/podnet --json conclusion
+```
+
+## Done
+
+2026-11-15, no code commit (the record of the finding). The rerun 43333498755 of `live.yml` passed; the issue was closed
+with that evidence.

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**363 entries: 12 open, 11 partial, 24 blocked, 316 done.**
+**364 entries: 12 open, 11 partial, 24 blocked, 317 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 33 | 37 |
 | P2 | 6 | 5 | 11 | 163 | 185 |
-| P3 | 6 | 4 | 11 | 119 | 140 |
-| **All** | 12 | 11 | 24 | 316 | 363 |
+| P3 | 6 | 4 | 11 | 120 | 141 |
+| **All** | 12 | 11 | 24 | 317 | 364 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -409,3 +409,4 @@ M8 Overlays, M9 Later.
 | [T-361](fixes.md) | P2 | S | M5 | defect | done | git init: make the root when it does not exist |
 | [T-362](fixes.md) | P3 | S | M5 | defect | done | docs/cli.md: the completion command writes to a directory that can be absent |
 | [T-363](fixes.md) | P2 | S | M5 | defect | partial | net passwd-shim: the home of the entry is $HOME, not /state/home |
+| [T-364](fixes.md) | P3 | S | M5 | measurement | done | live: two runs in a row failed at the quick tunnel; the rerun passed (GitHub #516) |
