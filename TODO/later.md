@@ -2100,7 +2100,7 @@ entry of `devtunnel://`".
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -2147,3 +2147,19 @@ cargo test -p podnet --lib networks::devtunnel
 cargo test -p podnet --test devtunnel_network
 cargo test -p podnet --test cli manual
 ```
+
+## Done
+
+2026-11-15, commit 3e90d9a (`T-354: devtunnel:// with a tunnel access token, or with no token`). The account of
+`src/networks/devtunnel.rs` reads one of three forms: a user token, a tunnel access token
+(`PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE` or `PODNET_DEVTUNNEL_ACCESS_TOKEN`) or `PODNET_DEVTUNNEL_ANONYMOUS=1`, and gives a
+`Credential` to `Relay::connect`. More than one form is a usage error (exit 64) that names the variables. The status of
+the link has the member `credential` (the form). Tests (`cargo test -p podnet --lib networks::devtunnel`: 12 passed;
+`--test devtunnel_network`; `--test cli manual`): `devtunnel_account_reads_each_form_and_its_debug_and_errors_hold_no_token`,
+`devtunnel_account_refuses_two_forms_and_names_the_variables_not_the_values`,
+`devtunnel_a_tunnel_access_token_dials_and_the_status_names_the_form` (the stand-in: the form `access`; the relay takes
+the access token, or a fresh connect token with `mints_for_all`), `devtunnel_no_token_dials_a_tunnel_with_anonymous_access`
+(the form `none`, no token at the relay), `devtunnel_a_refused_access_token_or_no_token_is_refused_with_its_form` (the
+class `refused`, as a refused user token; no token in the text), `two_devtunnel_credentials_are_a_usage_error_that_holds_no_token`
+(exit 64), `a_tcp_forward_with_a_tunnel_access_token_reaches_the_tunnel_host` (the command; no token in the output).
+`cargo test --workspace --no-fail-fast`: 2011 passed, 0 failed, 122 targets. Not proven: the live Dev Tunnels service.
