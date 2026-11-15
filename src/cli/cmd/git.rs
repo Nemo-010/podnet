@@ -25,12 +25,12 @@ pub(crate) enum GitCommand {
     /// pair. It runs the installed git (git http-backend, git
     /// upload-pack, git receive-pack).
     ///
-    /// A fetch needs the read role (--users, or --anon-read), a push needs
-    /// the write role (--push-user, a write user of --users, or a key of
-    /// --authorized-keys). Limits: the quick tunnel takes at most 100 MB
-    /// in one request body, so a larger push over HTTPS fails (a clone has
-    /// no limit); a session through the relay ends at 64 MiB, so a larger
-    /// clone or push through the relay fails.
+    /// A fetch needs the read role (--users, or --anon-read). A push needs the
+    /// write role (--push-user, a write user of --users, or a key of
+    /// --authorized-keys). Limits: the quick tunnel takes at most 100 MB in one
+    /// request body, so a larger push over HTTPS fails (a clone has no limit);
+    /// a session through the relay ends at 64 MiB, so a larger clone or push
+    /// through the relay fails.
     Serve(Box<GitServeArgs>),
     /// Make a bare repository NAME under the root (NAME.git when NAME has
     /// no .git at its end).
@@ -44,9 +44,9 @@ pub(crate) enum GitCommand {
         #[arg(value_name = "NAME")]
         name: String,
     },
-    /// Print the clone URLs of each repository under the root, from the
-    /// last git serve of the root, and the fingerprint of the SSH host
-    /// key.
+    /// Print the clone URLs of each repository under the root, and the
+    /// fingerprint of the SSH host key. They come from the last git serve of
+    /// the root.
     Urls {
         /// The directory that holds the repositories.
         #[arg(long, value_name = "DIR")]

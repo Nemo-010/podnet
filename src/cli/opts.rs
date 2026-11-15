@@ -37,9 +37,9 @@ pub(crate) struct TunnelOpts {
     /// (quic, then http2). Default: protocol of --config, else auto.
     #[arg(long, global = true, value_parser = ["auto", "quic", "http2", "h2"])]
     pub(crate) protocol: Option<String>,
-    /// How to reach the edge: auto (try 7844, fall back to WARP on 443),
-    /// direct (port 7844), warp (carried on TCP 443) or relay (HTTP/2 in a
-    /// WebSocket to the relay of --relay, on TCP 443).
+    /// How to reach the edge: auto (try 7844, fall back to WARP on 443), direct
+    /// (port 7844), warp (carried on TCP 443) or relay. relay is HTTP/2 in a
+    /// WebSocket to the relay of --relay, on TCP 443.
     #[arg(long, default_value = "auto", global = true, value_parser = ["auto", "direct", "warp", "relay"])]
     pub(crate) transport: String,
     /// The WebSocket-to-TCP relay of --transport relay: a URL, or a comma
@@ -102,11 +102,11 @@ pub(crate) struct TunnelOpts {
         requires = "auth_user"
     )]
     pub(crate) auth_password_file: Option<PathBuf>,
-    /// Check the plan and stop: the flags, the config file, each origin (a
-    /// connection, and the TLS handshake for https, with no request), the
-    /// files and the directories, and the edge legs. No Cloudflare API call,
-    /// no edge connection, no file is written. Exit 0 when each check
-    /// passes, 1 when a check fails. With --json, one JSON document.
+    /// Check the plan and stop: the flags, the config file, each origin, the
+    /// files and the directories, and the edge legs. The check of an origin is
+    /// a connection, and the TLS handshake for https, with no request. No
+    /// Cloudflare API call, no edge connection, no file is written. Exit 0 when
+    /// each check passes, 1 when a check fails. With --json, one JSON document.
     #[arg(long, global = true)]
     pub(crate) check: bool,
 }
@@ -210,11 +210,11 @@ pub(crate) struct DetachArgs {
     /// answers is refused, exit 69; a stale socket file is replaced).
     #[arg(long)]
     pub(crate) replace: bool,
-    /// Do not start the instance again when it ends. Without it, a
-    /// supervisor starts it again with a backoff (1 s to 30 s), but not
-    /// after exit 64 or 78, and not after a planned end (--stop-after,
-    /// --idle-secs, --run-for). A quick tunnel gets a new URL; podnet ps
-    /// shows it. With --name and no --detach, there is no supervisor.
+    /// Do not start the instance again when it ends. Without it, a supervisor
+    /// starts it again with a backoff (1 s to 30 s). It does not start it after
+    /// exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
+    /// --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
+    /// --name and no --detach, there is no supervisor.
     #[arg(long)]
     pub(crate) no_restart: bool,
 }

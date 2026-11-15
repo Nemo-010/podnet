@@ -22,9 +22,9 @@ fn the_man_page_names_each_flag() {
     let json: serde_json::Value = serde_json::from_slice(&json.stdout).expect("valid JSON");
     let mut flags = 0;
     for command in json["commands"].as_array().unwrap() {
-        for arg in command["args"].as_array().unwrap() {
-            if arg["positional"] == false {
-                let long = format!("\\-\\-{}", arg["id"].as_str().unwrap().replace('-', "\\-"));
+        for flag in command["flags"].as_array().unwrap() {
+            if let Some(long) = flag["long"].as_str() {
+                let long = format!("\\-\\-{}", long.replace('-', "\\-"));
                 assert!(roff.contains(&long), "the man page has no {long}");
                 flags += 1;
             }
@@ -32,7 +32,7 @@ fn the_man_page_names_each_flag() {
     }
     assert!(flags > 50, "only {flags} flags");
 
-    let table = &json["exit_status"];
+    let table = &json["facts"]["exits"];
     for (code, name) in [
         (0, "success"),
         (64, "usage"),
@@ -44,7 +44,7 @@ fn the_man_page_names_each_flag() {
                 .as_array()
                 .unwrap()
                 .iter()
-                .any(|row| row["code"] == code && row["name"] == name),
+                .any(|row| row["code"]["value"] == code && row["name"] == name),
             "no row {code} ({name})"
         );
     }
@@ -61,10 +61,11 @@ fn the_manual_names_the_turn_network_and_its_variables() {
     let out = podnet(&["man", "environment", "--json"]);
     assert_eq!(out.status.code(), Some(0));
     let json: serde_json::Value = serde_json::from_slice(&out.stdout).expect("valid JSON");
-    let row = json
+    let row = json["variables"]
         .as_array()
         .unwrap()
         .iter()
+        .flat_map(|group| group["vars"].as_array().unwrap())
         .find(|v| v["names"].to_string().contains("PODNET_TURN_USER"))
         .expect("a row for PODNET_TURN_USER");
     let names = row["names"].to_string();
@@ -88,10 +89,11 @@ fn the_manual_names_the_devtunnel_network_and_its_variables() {
     let out = podnet(&["man", "environment", "--json"]);
     assert_eq!(out.status.code(), Some(0));
     let json: serde_json::Value = serde_json::from_slice(&out.stdout).expect("valid JSON");
-    let row = json
+    let row = json["variables"]
         .as_array()
         .unwrap()
         .iter()
+        .flat_map(|group| group["vars"].as_array().unwrap())
         .find(|v| {
             v["names"]
                 .to_string()
@@ -119,7 +121,7 @@ fn the_manual_has_a_section_for_each_compiled_component() {
     let manual = podnet(&["man", "inventory", "--json"]);
     assert_eq!(manual.status.code(), Some(0));
     let manual: serde_json::Value = serde_json::from_slice(&manual.stdout).expect("valid JSON");
-    let manual = manual.as_array().unwrap();
+    let manual = manual["table"]["rows"].as_array().unwrap();
     let text = String::from_utf8(podnet(&["man", "--no-pager"]).stdout).unwrap();
     assert!(text.contains("INVENTORY"), "the manual has no INVENTORY");
     let mut compiled = 0;
@@ -130,11 +132,11 @@ fn the_manual_has_a_section_for_each_compiled_component() {
         compiled += 1;
         let section = manual
             .iter()
-            .find(|c| c["name"] == row["name"] && c["kind"] == row["kind"])
+            .find(|c| c[0] == row["name"] && c[1] == row["kind"])
             .unwrap_or_else(|| panic!("no section in the manual for {}", row["name"]));
-        assert!(!section["meaning"].as_str().unwrap().trim().is_empty());
+        assert!(!section[2].as_str().unwrap().trim().is_empty());
         assert!(text.contains(&format!(
-            "{} ({})",
+            "\n  {}\n      Kind: {}.",
             row["name"].as_str().unwrap(),
             row["kind"].as_str().unwrap()
         )));
@@ -180,9 +182,9 @@ fn the_listen_defaults_agree_with_the_manual() {
     let json: serde_json::Value = serde_json::from_slice(&json.stdout).unwrap();
     let mut manual = std::collections::BTreeMap::new();
     for command in json["commands"].as_array().unwrap() {
-        for arg in command["args"].as_array().unwrap() {
-            if arg["id"] == "listen" {
-                if let Some(default) = arg["default"].as_str() {
+        for flag in command["flags"].as_array().unwrap() {
+            if flag["long"] == "listen" {
+                if let Some(default) = flag["default"].as_str() {
                     let path: Vec<&str> = command["path"]
                         .as_array()
                         .unwrap()

@@ -138,8 +138,8 @@ pub(crate) struct WarpArgs {
     )]
     pub(crate) masque_transport: Option<String>,
     /// The leg of the tunnel: masque (the default) or wireguard (UDP to the
-    /// WireGuard front door, with the device of `podnet warp export`, which
-    /// podnet registers when the file has none).
+    /// WireGuard front door, with the device of `podnet warp export`). podnet
+    /// registers the device when its file has none.
     #[arg(
         long,
         value_name = "TRANSPORT",
@@ -212,11 +212,11 @@ pub(crate) enum WarpCommand {
         #[arg(long, value_delimiter = ',')]
         target: Vec<String>,
     },
-    /// Open the tunnel and print its exit: the data center (colo), the
-    /// country and the address that a destination sees (from
-    /// http://1.1.1.1/cdn-cgi/trace), and the IPv6 egress address (the
-    /// trace at 2606:4700:4700::1111, else the TXT of whoami.cloudflare).
-    /// Exit 69 when there is no answer.
+    /// Open the tunnel and print its exit: the data center (colo), the country
+    /// and the address that a destination sees (from
+    /// http://1.1.1.1/cdn-cgi/trace). Also the IPv6 egress address (the trace
+    /// at 2606:4700:4700::1111, else the TXT of whoami.cloudflare). Exit 69
+    /// when there is no answer.
     Exit {
         /// Print one JSON object.
         #[arg(long)]
@@ -323,11 +323,11 @@ pub(crate) enum WarpCommand {
             requires = "proxy_user"
         )]
         proxy_password_file: Option<PathBuf>,
-        /// A rule for the destinations: KIND:VALUE=ACTION. KIND is domain
-        /// (NAME, or .NAME for the name and the names under it) or cidr
-        /// (ADDR/PREFIX, IPv4 or IPv6, or @FILE with one prefix on each
-        /// line). ACTION is tunnel, direct (from the host, with no proxy)
-        /// or reject. The first rule that matches wins. Repeatable.
+        /// A rule for the destinations: KIND:VALUE=ACTION. KIND is domain or
+        /// cidr. domain takes NAME, or .NAME for the name and the names under
+        /// it. cidr takes ADDR/PREFIX (IPv4 or IPv6), or @FILE with one prefix
+        /// on each line. ACTION is tunnel, direct (from the host, with no
+        /// proxy) or reject. The first rule that matches wins. Repeatable.
         #[arg(
             short = 'r',
             long = "rule",

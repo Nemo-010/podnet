@@ -343,7 +343,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- `podnet forward` maps `-L LISTEN=HOST:PORT` and takes `--network SPEC` (`src/cli/cmd/forward.rs:26`). The registry has no peer kind (`src/networks.rs:53`).
+- `podnet forward` maps `-L LISTEN=HOST:PORT` and takes `--network SPEC` (`src/cli/cmd/forward.rs:25`). The registry has no peer kind (`src/networks.rs:53`).
 - `Addressing::Peer` exists (`crates/podnet-core/src/network.rs:65`): the host of the target names a peer and the port is 0.
 - T-099 covers `podnet forward` for the networks of the registry. It does not cover a peer target.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.

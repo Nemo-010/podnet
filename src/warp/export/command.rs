@@ -32,12 +32,11 @@ pub struct Args {
     /// Remove the exported device from the service and delete its file.
     #[arg(long)]
     pub delete: bool,
-    /// Test the data path of the device and write no config: the WireGuard
-    /// leg of podnet with the reserved bytes, then with zeros (as kernel
-    /// WireGuard and wg-quick send), each with a TCP connect to the target
-    /// of --probe (default 1.1.1.1:443). Prints "device ok" (exit 0),
-    /// "needs reserved bytes" (exit 1) or "device data path dead, use
-    /// --new" (exit 69).
+    /// Test the data path of the device and write no config: the WireGuard leg
+    /// of podnet with the reserved bytes, then with zeros (as kernel WireGuard
+    /// and wg-quick send). Each test is a TCP connect to the target of --probe
+    /// (default 1.1.1.1:443). Prints "device ok" (exit 0), "needs reserved
+    /// bytes" (exit 1) or "device data path dead, use --new" (exit 69).
     #[arg(long, conflicts_with_all = ["delete", "out"])]
     pub check: bool,
 }

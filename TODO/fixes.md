@@ -3012,7 +3012,7 @@ to true. Each `serve --dir DIR` of a directory with no `index.html` logs `WARN .
 
 - `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:115` (field), `:125` (`root_404: false`),
   `src/cli/cmd/run.rs:44` (read).
-- `serve` passes `args.common.show()`: `src/cli/cmd/serve.rs:226`.
+- `serve` passes `args.common.show()`: `src/cli/cmd/serve.rs:225`.
 - The warn branch: `src/tunnel.rs:1266-1270`. `static_router` gives 404 at `/` with no index: `crates/podnet-serve/src/files/mod.rs:73-137`.
 - `src/config.rs` is in the size allowlist: do not add the field there.
 
@@ -4040,7 +4040,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
   (`crates/podnet-netns/src/seccomp/accept.rs:43`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:44`).
 - The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:78`, `src/cli/cmd/net/mod.rs:95` and
   `src/cli/cmd/net/mod.rs:173` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:244`).
-- `libc` is a dependency (`Cargo.toml:152`, `crates/podnet-netns/Cargo.toml:24`). No code calls
+- `libc` is a dependency (`Cargo.toml:156`, `crates/podnet-netns/Cargo.toml:24`). No code calls
   `renameat2` yet.
 - T-186 (done, GitHub #385) added `claim_unix_path` and `bind_claimed`. They do not cover the interval.
   GitHub #306 (closed) fixed the inbound directory of `accept.rs` only.

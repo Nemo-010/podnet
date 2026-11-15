@@ -112,16 +112,21 @@ fn connector_profile_is_pinned() {
     );
 
     // The exit codes: a code is added, never changed.
-    let codes: Vec<(i32, &str)> = podnet::exit::TABLE
-        .iter()
-        .map(|r| (r.code, r.name))
+    let codes: Vec<(i32, String)> = podnet::manual::facts::exits()
+        .into_iter()
+        .filter_map(|r| match r.code {
+            pod_manual::Code::Value(code) => Some((code, r.name)),
+            _ => None,
+        })
         .collect();
+    let codes: Vec<(i32, &str)> = codes.iter().map(|(c, n)| (*c, n.as_str())).collect();
     assert_eq!(
         codes,
         [
             (0, "success"),
             (1, "failure"),
             (3, "no-backend"),
+            (4, "violation"),
             (64, "usage"),
             (65, "data-error"),
             (66, "no-input"),

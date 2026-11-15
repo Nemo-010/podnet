@@ -227,7 +227,10 @@ fn the_table_of_exit_codes_lists_66_68_71_and_77() {
         (71, "os-error"),
         (77, "no-permission"),
     ] {
-        let row = exit::TABLE.iter().find(|r| r.code == code);
+        let rows = podnet::manual::facts::exits();
+        let row = rows
+            .iter()
+            .find(|r| r.code == pod_manual::Code::Value(code));
         let row = row.unwrap_or_else(|| panic!("no row for {code}"));
         assert_eq!(row.name, name);
     }

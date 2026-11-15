@@ -2,13 +2,18 @@
 
 use super::*;
 
-/// `--help --json` prints the JSON of `man --json` for the command, at each
-/// level.
+/// `--help --json` prints the JSON of `man --json COMMAND` for the command,
+/// at each level; at the root, the JSON of the root command.
 #[test]
 fn help_json_matches_man_json() {
+    for help in [&["--help", "--json"][..], &["--json", "-h"][..]] {
+        let h = podnet(help);
+        assert_eq!(h.status.code(), Some(0), "{help:?}: {}", stderr(&h));
+        let json: serde_json::Value = serde_json::from_slice(&h.stdout).expect("valid JSON");
+        assert_eq!(json["command"]["path"], serde_json::json!([]), "{json}");
+        assert!(json["command"]["flags"].as_array().unwrap().len() > 5);
+    }
     let cases: &[(&[&str], &[&str])] = &[
-        (&["--help", "--json"], &["man", "--json"]),
-        (&["--json", "-h"], &["man", "--json"]),
         (
             &["tunnel", "--help", "--json"],
             &["man", "--json", "tunnel"],

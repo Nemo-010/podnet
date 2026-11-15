@@ -137,9 +137,9 @@ pub(crate) fn example_path(cmd: &clap::Command, line: &str) -> String {
 /// E7: the examples of `podnet man examples` in the help of their command
 /// (`podnet tunnel --help`), from the one table of the manual.
 fn with_examples(cmd: clap::Command, path: &str, root: &clap::Command) -> clap::Command {
-    let examples: Vec<&podnet::manual::facts::Example> = podnet::manual::facts::EXAMPLES
+    let examples: Vec<&(&str, &str)> = podnet::manual::facts::EXAMPLES
         .iter()
-        .filter(|e| path != "podnet" && example_path(root, e.command) == path)
+        .filter(|(command, _)| path != "podnet" && example_path(root, command) == path)
         .collect();
     let names: Vec<String> = cmd
         .get_subcommands()
@@ -154,8 +154,8 @@ fn with_examples(cmd: clap::Command, path: &str, root: &clap::Command) -> clap::
         return cmd;
     }
     let mut text = String::from("Examples:");
-    for e in examples {
-        text.push_str(&format!("\n  {}\n      {}", e.command, e.meaning));
+    for (command, meaning) in examples {
+        text.push_str(&format!("\n  {command}\n      {meaning}"));
     }
     cmd.after_help(text)
 }

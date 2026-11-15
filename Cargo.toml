@@ -130,6 +130,10 @@ pod-session = { git = "https://github.com/PodUtils/podcrates", tag = "v0.54.0", 
 # sealed phases of `podnet send` and `podnet receive`. The glue is
 # src/transfer/.
 pod-wormhole = { git = "https://github.com/PodUtils/podcrates", tag = "v0.54.0", version = "0.54.0" }
+# The help and the manual (T-359): the model of the command tree, read from
+# clap, the text, man(7), JSON and llms writers, the pager and the checks of
+# the tests. The glue and the facts of podnet are src/manual/.
+pod-manual = { git = "https://github.com/PodUtils/podcrates", tag = "v0.54.0", version = "0.54.0", features = ["clap"] }
 # The lexical check of each name that `podnet receive` writes (T-105).
 pod-extract = { git = "https://github.com/PodUtils/podcrates", tag = "v0.54.0", version = "0.54.0" }
 # The inflate of a zip of magic-wormhole (`zipfile/deflated`, T-103): the

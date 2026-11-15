@@ -26,26 +26,26 @@ const MAX_LINKS: usize = 64;
 
 #[derive(Args, Debug)]
 pub(crate) struct ListenArgs {
-    /// The address, in the form of the carrier: a path for `unix`, a name
-    /// for `memory`, `IP:PORT` for `tcp`.
-    /// A query can follow the address: `ADDRESS?key=value&key=value` (keys:
-    /// carrier, tls, retry, lb, compress, pad, mtu, maxhops, poll, window,
-    /// name). Only `carrier`, `pad` and `compress` have an effect yet (the last two need --seal); a key with no effect, a repeated
-    /// key, an unknown key or a secret key (password, key, token, identity)
-    /// exits 64, and no message shows a value.
+    /// The address, in the form of the carrier: a path for `unix`, a name for
+    /// `memory`, `IP:PORT` for `tcp`. A query can follow the address:
+    /// `ADDRESS?key=value&key=value` (keys: carrier, tls, retry, lb, compress,
+    /// pad, mtu, maxhops, poll, window, name). Only `carrier`, `pad` and
+    /// `compress` have an effect yet (the last two need --seal); a key with no
+    /// effect, a repeated key, an unknown key or a secret key (password, key,
+    /// token, identity) exits 64. No message shows a value.
     #[arg(value_name = "ADDRESS")]
     pub(crate) address: String,
     #[command(flatten)]
     pub(crate) carrier: CarrierArgs,
-    /// The allow list: a file with one peer on each line (the fingerprint
-    /// that `podnet link status` shows, a `SHA256:` fingerprint, or a key in
-    /// hex), 4096 lines at most. The list is default deny: a peer that it
+    /// The allow list: a file with one peer on each line, 4096 lines at most. A
+    /// peer is the fingerprint that `podnet link status` shows, a `SHA256:`
+    /// fingerprint, or a key in hex. The list is default deny: a peer that it
     /// does not hold gets exit 77. The file must not be writable by others
     /// (else exit 71); a missing file exits 66. A line can end in a grant:
-    /// `services=NAME,NAME` (64 names at most, or `*`) and `forward=yes`.
-    /// A bare key has every service and forwarding. With an option, what
-    /// it does not name is denied; a refused stream is counted in `link
-    /// status` and the link stays up.
+    /// `services=NAME,NAME` (64 names at most, or `*`) and `forward=yes`. A
+    /// bare key has every service and forwarding. With an option, what it does
+    /// not name is denied; a refused stream is counted in `link status` and the
+    /// link stays up.
     #[arg(long, value_name = "FILE", required = true)]
     pub(crate) allow: PathBuf,
     /// Where the streams of the service `raw` go: `host:port` or
@@ -65,13 +65,13 @@ pub(crate) struct ListenArgs {
     #[arg(long)]
     pub(crate) json: bool,
     /// Send and take signed route announcements on each link (the service
-    /// `announce`, each 10 s): this end tells its peer its neighbours and
-    /// its services, and learns the routes of the peer. The control socket
-    /// shows the routes with the verb `routes`. The name `announce` cannot
-    /// be a --service with this flag. The peer must run it too. A node
-    /// forwards the announcements of others, and a stream that a peer sends
-    /// for another node goes to the next hop of the best route (`link dial
-    /// --node`). The name `fwd` cannot be a --service with this flag.
+    /// `announce`, each 10 s): this end tells its peer its neighbours and its
+    /// services, and learns the routes of the peer. The control socket shows
+    /// the routes with the verb `routes`. The name `announce` cannot be a
+    /// --service with this flag. The peer must run it too. A node forwards the
+    /// announcements of others. A stream that a peer sends for another node
+    /// goes to the next hop of the best route (`link dial --node`). The name
+    /// `fwd` cannot be a --service with this flag.
     #[arg(long)]
     pub(crate) announce: bool,
     /// With --announce: the cost of each link, 1 to 4294967295. Without it,

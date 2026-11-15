@@ -1,5 +1,6 @@
 //! The section INVENTORY of the manual: the carriers and services of
-//! `podnet components`.
+//! `podnet components`, as a table of the facts of `pod-manual`. The
+//! inventory stays in podnet: `podnet components` reads it too.
 
 use serde::Serialize;
 
@@ -79,12 +80,12 @@ pub const COMPONENTS: &[ComponentEntry] = &[
     ComponentEntry {
         name: "s3",
         kind: "carrier",
-        meaning: "The object-storage carrier: each end writes its bytes as objects of a bucket of the S3 API (256 KiB each, 8 in flight, a PUT with If-None-Match, a GET with If-Match) and polls the objects of the other end (100 ms to 5 s). TLS 1.3 with ALPN podlink/1 runs over the objects; each end pins the Ed25519 key of the other end; a key that is not pinned exits 77. --s3-endpoint URL is necessary (no default host); --s3-region (default us-east-1); the key of the bucket comes from --s3-credentials FILE, else AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, else a profile file, never from argv; no key, or a key that the bucket refuses, exits 77. --s3-prune removes each object read. Duplex, ordered, cost class network, overhead highest, no privilege. Address: KEY@BUCKET[/PREFIX] to dial, BUCKET[/PREFIX] to listen. Build feature s3.",
+        meaning: "The object-storage carrier: each end writes its bytes as objects of a bucket of the S3 API (256 KiB each, 8 in flight). A PUT has If-None-Match, a GET has If-Match. Each end polls the objects of the other end (100 ms to 5 s). TLS 1.3 with ALPN podlink/1 runs over the objects; each end pins the Ed25519 key of the other end; a key that is not pinned exits 77. --s3-endpoint URL is necessary (no default host); --s3-region (default us-east-1); the key of the bucket comes from --s3-credentials FILE, else AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, else a profile file, never from argv; no key, or a key that the bucket refuses, exits 77. --s3-prune removes each object read. Duplex, ordered, cost class network, overhead highest, no privilege. Address: KEY@BUCKET[/PREFIX] to dial, BUCKET[/PREFIX] to listen. Build feature s3.",
     },
     ComponentEntry {
         name: "icmp",
         kind: "carrier",
-        meaning: "The ICMP echo carrier: the frames ride in the data of ICMP echo messages (1400 bytes of payload) on a raw ICMPv4 socket, with a session id that tells one link from another. The ARQ of pod-link runs over the echoes and TLS 1.3 with ALPN podlink/1 over the ARQ; each end pins the Ed25519 key of the other end; a key that is not pinned exits 77. It needs CAP_NET_RAW (or uid 0) and the flag --allow-raw icmp; a host that refuses the raw socket exits 69. Duplex, ordered, cost class network, overhead high, privilege needed. Address: KEY@HOST to dial (IPv4), an IPv4 address with no port to listen. Build feature icmp.",
+        meaning: "The ICMP echo carrier: the frames ride in the data of ICMP echo messages (1400 bytes of payload) on a raw ICMPv4 socket. A session id tells one link from another. The ARQ of pod-link runs over the echoes and TLS 1.3 with ALPN podlink/1 over the ARQ; each end pins the Ed25519 key of the other end; a key that is not pinned exits 77. It needs CAP_NET_RAW (or uid 0) and the flag --allow-raw icmp; a host that refuses the raw socket exits 69. Duplex, ordered, cost class network, overhead high, privilege needed. Address: KEY@HOST to dial (IPv4), an IPv4 address with no port to listen. Build feature icmp.",
     },
     ComponentEntry {
         name: "ss",
@@ -97,3 +98,21 @@ pub const COMPONENTS: &[ComponentEntry] = &[
         meaning: "The Trojan service over a stream of the link. Cost class network, no privilege. Build feature trojan.",
     },
 ];
+
+/// The inventory as a table of the manual (`podnet man inventory`).
+pub fn table() -> pod_manual::Table {
+    let rows = COMPONENTS.iter().map(|c| {
+        vec![
+            c.name.to_string(),
+            c.kind.to_string(),
+            c.meaning.to_string(),
+        ]
+    });
+    pod_manual::Table {
+        key: "inventory".into(),
+        heading: "INVENTORY".into(),
+        about: "The carriers and the services of podnet components. podnet components --json gives the rows that this build holds.".into(),
+        columns: vec!["Component".into(), "Kind".into(), "Meaning".into()],
+        rows: rows.collect(),
+    }
+}

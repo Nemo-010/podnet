@@ -2652,6 +2652,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pod-manual"
+version = "0.54.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.54.0#32f7a723d09bd14d54af485594c38577f278cea8"
+dependencies = [
+ "clap",
+ "libc",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "pod-netstack"
 version = "0.54.0"
 source = "git+https://github.com/PodUtils/podcrates?tag=v0.54.0#32f7a723d09bd14d54af485594c38577f278cea8"
@@ -2917,6 +2928,7 @@ dependencies = [
  "pod-hold",
  "pod-identity",
  "pod-link",
+ "pod-manual",
  "pod-netstack",
  "pod-proxy",
  "pod-quic",

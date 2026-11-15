@@ -34,10 +34,10 @@ pub(crate) struct SshRelayArgs {
     /// --service, the relay is not a known one: give --user and a URL rule.
     #[arg(long, value_name = "HOST:PORT")]
     server: Option<String>,
-    /// The SSH user of the relay. podnet logs in with a key made for the
-    /// run, then with no key, then with an empty keyboard-interactive
-    /// answer, as far as the relay offers them.
-    /// Default: the user of the facts of the relay, else "podnet".
+    /// The SSH user of the relay. podnet logs in with a key made for the run,
+    /// then with no key, then with an empty keyboard-interactive answer. It
+    /// tries each that the relay offers. Default: the user of the facts of the
+    /// relay, else "podnet".
     #[arg(long, value_name = "USER")]
     user: Option<String>,
     /// Which URL of the banner of the relay is the tunnel URL: it holds

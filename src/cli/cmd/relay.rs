@@ -47,11 +47,11 @@ pub(crate) enum RelayCommand {
         #[arg(long)]
         resume: bool,
         /// Seal each session end to end (needs --resume and --allow): the
-        /// operator and the node run the handshake of `pod-e2e` with the key
-        /// of each install (the key of `podnet link`), and the relay sees
-        /// sealed messages only. The node dials the target only for an
-        /// operator whose key is in --allow (else the operator exits 77).
-        /// The operator must use --seal too.
+        /// operator and the node run the handshake of `pod-e2e` with the key of
+        /// each install (the key of `podnet link`). The relay sees sealed
+        /// messages only. The node dials the target only for an operator whose
+        /// key is in --allow (else the operator exits 77). The operator must
+        /// use --seal too.
         #[arg(long, requires_all = ["resume", "allow"])]
         seal: bool,
         /// With --seal: the allow list file of the operator keys (the form

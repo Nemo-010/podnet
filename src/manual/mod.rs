@@ -1,309 +1,204 @@
-//! `podnet man`: the manual of this binary, generated from its command tree.
-//!
-//! The manual must be enough on a host that has only the binary: no man(1),
-//! no groff, no pager, no network. Thus podnet writes it itself, as plain text.
-//! [`model::build`] makes it from the clap command tree, which `--help` also
-//! uses, and from the tables of [`facts`] and [`crate::exit`]. The tests check
-//! those tables against the code.
+//! `podnet man`, `--help --json` and the llms files, on the crate
+//! `pod-manual` of PodUtils/podcrates. podnet keeps its facts here
+//! ([`facts`], [`inventory`]) and fills the model of the crate from the clap
+//! command tree of the binary ([`manual`]). The crate writes the text, the
+//! man(7) page, the JSON, the help as JSON and the llms files; it holds the
+//! pager and the checks that the tests of the binary call.
 //!
 //! * `podnet man` pages the text on a terminal, else writes it to stdout.
 //! * `--no-pager` writes it to stdout, also on a terminal.
 //! * `--roff` writes a man(7) page, for `man -l -` or a man directory.
 //! * `--json` writes the manual as one JSON object, for a program.
 //! * `podnet man SECTION` writes one section: a command (`tunnel`, `warp run`)
-//!   or a topic (`environment`, `files`, `inventory`, `exit-status`, `examples`, `pod`).
+//!   or a topic (`environment`, `files`, `inventory`, `exit-status`,
+//!   `examples`, `see-also`).
 
 pub mod facts;
 pub mod inventory;
-pub mod model;
-pub mod pager;
-pub mod roff;
-pub mod text;
 
-use model::{Manual, TOPICS};
+use std::path::Path;
 
-/// What the command line asked for.
-#[derive(Clone, Debug, Default)]
-pub struct Request {
-    pub section: Option<String>,
-    pub no_pager: bool,
-    pub roff: bool,
-    pub json: bool,
+pub use pod_manual::{Manual, Request};
+
+/// The paragraphs of DESCRIPTION.
+const DESCRIPTION: &[&str] = &[
+    "podnet is one static binary that brings its own network to hosts with strong network limits: no root, no TUN device, no network namespace, no UDP, no AF_INET bind, or only TCP 443 out.",
+    "To publish a local service: Cloudflare quick and named tunnels (tunnel, expose), SSH forward relays (ssh-relay), the file server (serve), file transfer (share) and git hosting (git serve). To reach out: the Cloudflare WARP client with no root (warp, agent), the relay (relay, connect), forwards (forward) and a SOCKS5 exit on stdin and stdout (exit). The router has networks, groups, policies and a kernel mode (route). To join two installs: the link (link) over a carrier, with services at a peer and a mesh. To contain programs: pods (pod) and virtual networks (net). To check and keep it running: doctor, bench, status, components, the background runs (--detach, ps, logs, stop, autostart) and update.",
+    "A tunnel reaches the edge with one of four legs. They are QUIC on UDP 7844, HTTP/2 on TCP 7844 (directly or through HTTPS_PROXY), and QUIC inside a WARP MASQUE tunnel on TCP 443. The fourth is HTTP/2 through the WebSocket relay on TCP 443 (--transport relay). With --protocol auto and --transport auto, podnet tries the first three in that order.",
+    "podnet pod runs a program with all its traffic sent through a proxy, with no LD_PRELOAD (podnet-netns). podnet net gives programs virtual IP addresses on a host that refuses AF_INET binds.",
+    "This manual is generated from the command tree of the binary. podnet man --roff writes it as a man(7) page, and podnet man --json writes its tables.",
+];
+
+/// The lines of SEE ALSO.
+const SEE_ALSO: &[&str] = &[
+    "podnet pod --help; cloudflared(1).",
+    "https://github.com/PodUtils/podnet: README.md, the topic documents in docs/, docs/protocol.md and docs/virtual-network.md.",
+];
+
+/// The manual of the command tree `cmd`, the parser of the binary: the
+/// commands from the reader of clap of `pod-manual`, then the facts, the
+/// description, the examples and the usage of `podnet pod`.
+pub fn manual(cmd: clap::Command) -> Manual {
+    let mut tree = cmd.clone();
+    tree.build();
+    let mut m = pod_manual::clap::read(cmd);
+    // The reader of clap of pod-manual v0.54.0 leaves `Flag::env` empty: the
+    // manual names the variable of each flag from the tree itself.
+    fill_env(&tree, &[], &mut m);
+    for c in &mut m.commands {
+        // The flags of clap for its own help and version: the manual does
+        // not show them. `podnet update --version VERSION` is a flag of
+        // podnet: it takes a value, and it stays.
+        c.flags.retain(|f| !is_clap_flag(f));
+        // The reader of clap of pod-manual v0.54.0 gives a rule for a
+        // conflict with a positional (its value name), and its own check of
+        // the model refuses a rule that names no flag. Until the crate
+        // agrees with itself, the manual shows the rules of flags only.
+        let flags: Vec<String> = c.flags.iter().flat_map(|f| f.spellings()).collect();
+        c.rules
+            .retain(|r| r.names().iter().all(|n| flags.iter().any(|f| f == n)));
+    }
+    m.date = env!("PODNET_BUILD_DATE").to_string();
+    m.description = DESCRIPTION.iter().map(|p| p.to_string()).collect();
+    m.facts = facts::facts();
+    m.examples = facts::examples();
+    m.see_also = SEE_ALSO.iter().map(|l| l.to_string()).collect();
+    // `podnet pod` has its own parser (podnet-netns): its usage is a note of
+    // the command, one note for each paragraph.
+    if let Some(pod) = m.commands.iter_mut().find(|c| c.path == ["pod"]) {
+        let usage = podnet_netns::usage_for("podnet pod");
+        pod.notes.extend(
+            usage
+                .split("\n\n")
+                .map(|p| p.trim_end().to_string())
+                .filter(|p| !p.trim().is_empty()),
+        );
+    }
+    m
 }
 
-fn is_topic(name: &str) -> bool {
-    TOPICS.contains(&name.to_ascii_lowercase().replace(' ', "-").as_str())
-}
-
-/// The words of `text` as two or more section names, the longest name
-/// first; none when a word is in no name.
-fn split_sections(manual: &Manual, text: &str) -> Option<Vec<String>> {
-    let words: Vec<&str> = text.split_whitespace().collect();
-    let mut parts = Vec::new();
-    let mut at = 0;
-    while at < words.len() {
-        let end = (at + 1..=words.len().min(at + 3)).rev().find(|&end| {
-            let name = words[at..end].join(" ");
-            manual.command(&name).is_some() || is_topic(&name)
-        })?;
-        parts.push(words[at..end].join(" "));
-        at = end;
-    }
-    (parts.len() > 1).then_some(parts)
-}
-
-/// T-222: the request that `--help --json` makes. `argv` is the whole
-/// command line. The answer is the JSON of `podnet man --json SECTION` for
-/// the command that the words of `argv` name; the root has no section. It is
-/// `None` when the line has no help flag or no `--json`, and for `pod`, which
-/// has its own help.
-pub fn help_json_request(manual: &Manual, argv: &[String]) -> Option<Request> {
-    let words: Vec<&str> = argv
-        .iter()
-        .skip(1)
-        .map(String::as_str)
-        .take_while(|a| *a != "--")
-        .collect();
-    if !words.contains(&"--json") || !words.iter().any(|a| matches!(*a, "--help" | "-h")) {
-        return None;
-    }
-    let mut path: Vec<&str> = Vec::new();
-    for word in words.iter().filter(|w| !w.starts_with('-')) {
-        let mut next = path.clone();
-        next.push(word);
-        if manual.command(&next.join(" ")).is_some() {
-            path = next;
-        } else if !path.is_empty() {
-            break;
-        }
-    }
-    if path.first() == Some(&"pod") {
-        return None;
-    }
-    Some(Request {
-        section: (!path.is_empty()).then(|| path.join(" ")),
-        no_pager: true,
-        roff: false,
-        json: true,
-    })
-}
-
-/// The bytes for `req`, or the refusal for a request that cannot be served.
-pub fn body(manual: &Manual, req: &Request) -> Result<String, String> {
-    if req.json && req.roff {
-        return Err("--json and --roff are two forms of the manual; give one".into());
-    }
-    let Some(section) = req.section.as_deref() else {
-        return Ok(if req.json {
-            serde_json::to_string_pretty(manual).unwrap_or_default() + "\n"
-        } else if req.roff {
-            roff::render(manual)
-        } else {
-            text::render(manual)
-        });
-    };
-    // More than one section (issue 95): `podnet man tunnel serve` gives
-    // both. The words split into names, the longest name first.
-    if manual.command(section).is_none() && !is_topic(section) {
-        if let Some(parts) = split_sections(manual, section) {
-            if req.json {
-                return Err("--json takes one section".into());
-            }
-            let mut out = String::new();
-            for part in parts {
-                let one = Request {
-                    section: Some(part),
-                    ..req.clone()
-                };
-                out.push_str(&body(manual, &one)?);
-            }
-            return Ok(out);
-        }
-    }
-    if let Some(c) = manual.command(section) {
-        return Ok(if req.json {
-            serde_json::to_string_pretty(c).unwrap_or_default() + "\n"
-        } else if req.roff {
-            roff::render_command(manual, c)
-        } else {
-            text::command(manual, c)
-        });
-    }
-    let topic = section.to_ascii_lowercase().replace(' ', "-");
-    let json =
-        |value: serde_json::Value| serde_json::to_string_pretty(&value).unwrap_or_default() + "\n";
-    match topic.as_str() {
-        "environment" if req.json => Ok(json(serde_json::json!(manual.environment))),
-        "files" if req.json => Ok(json(serde_json::json!(manual.files))),
-        "inventory" if req.json => Ok(json(serde_json::json!(manual.inventory))),
-        "exit-status" if req.json => Ok(json(serde_json::json!(manual.exit_status))),
-        "examples" if req.json => Ok(json(serde_json::json!(manual.examples))),
-        "pod" if req.json => Ok(json(serde_json::json!({ "usage": manual.pod_usage }))),
-        "environment" | "files" | "inventory" | "exit-status" | "examples" | "pod" => {
-            let body = match topic.as_str() {
-                "environment" => text::environment(manual),
-                "files" => text::files(manual),
-                "inventory" => text::inventory(manual),
-                "exit-status" => text::exit_status(manual),
-                "examples" => text::examples(manual),
-                _ => text::fill(&manual.pod_usage, 4),
+/// The variable of each flag of `cmd` (at `path`) and of its subcommands.
+fn fill_env(cmd: &clap::Command, path: &[String], m: &mut Manual) {
+    if let Some(c) = m.commands.iter_mut().find(|c| c.path == path) {
+        for arg in cmd.get_arguments() {
+            let (Some(long), Some(env)) = (arg.get_long(), arg.get_env()) else {
+                continue;
             };
-            if req.roff {
-                Ok(roff::render_section(manual, &topic, |out| {
-                    out.push_str(".nf\n");
-                    out.push_str(&roff::escape(&body));
-                    out.push_str("\n.fi\n");
-                }))
-            } else {
-                Ok(body)
+            if let Some(f) = c.flags.iter_mut().find(|f| f.long.as_deref() == Some(long)) {
+                f.env = Some(env.to_string_lossy().into_owned());
             }
         }
-        _ => Err(format!(
-            "no section {section:?}. Sections: the commands ({}) and the topics ({})",
-            manual
-                .commands
-                .iter()
-                .filter(|c| !c.path.is_empty())
-                .map(|c| c.name())
-                .collect::<Vec<_>>()
-                .join(", "),
-            TOPICS.join(", ")
-        )),
+    }
+    for sub in cmd.get_subcommands() {
+        let mut next = path.to_vec();
+        next.push(sub.get_name().to_string());
+        fill_env(sub, &next, m);
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn sample() -> clap::Command {
-        clap::Command::new("podnet")
-            .version("1.0 (abc)")
-            .about("about podnet")
-            .subcommand(
-                clap::Command::new("tunnel")
-                    .about("Expose a service")
-                    .arg(clap::Arg::new("url").long("url").help("HTTP origin"))
-                    .arg(
-                        clap::Arg::new("protocol")
-                            .long("protocol")
-                            .default_value("auto")
-                            .value_parser(["auto", "quic", "http2"]),
-                    ),
-            )
-            .subcommand(
-                clap::Command::new("net").subcommand(
-                    clap::Command::new("ts-shims").about("Write shims").arg(
-                        clap::Arg::new("out")
-                            .long("out")
-                            .short('o')
-                            .value_name("DIR"),
-                    ),
-                ),
-            )
-    }
-
-    #[test]
-    fn the_text_has_each_command_and_flag() {
-        let m = model::build(sample());
-        let t = text::render(&m);
-        assert!(t.starts_with("PODNET(1)"));
-        assert!(t.contains("podnet tunnel"), "{t}");
-        assert!(
-            t.contains("--url <url>") || t.contains("--url <URL>"),
-            "{t}"
-        );
-        assert!(t.contains("Default: auto."), "{t}");
-        assert!(t.contains("Values: auto, quic, http2."), "{t}");
-        assert!(t.contains("-o, --out <DIR>"), "{t}");
-        assert!(t.contains("EXIT STATUS") && t.contains("64 (usage)"));
-        assert!(
-            t.lines().all(|l| l.len() <= text::WIDTH + 2),
-            "a line is too long"
-        );
-        assert!(t.is_ascii());
-    }
-
-    #[test]
-    fn sections_are_found_by_command_path_and_topic() {
-        let m = model::build(sample());
-        let req = |s: &str| Request {
-            section: Some(s.into()),
-            ..Request::default()
-        };
-        assert!(body(&m, &req("net ts-shims")).unwrap().contains("--out"));
-        assert!(body(&m, &req("net/ts-shims")).unwrap().contains("--out"));
-        assert!(body(&m, &req("exit-status"))
-            .unwrap()
-            .contains("78 (config)"));
-        assert!(body(&m, &req("nothing"))
-            .unwrap_err()
-            .contains("no section"));
-        // Issue 95: two sections in one call, the longest name first.
-        let two = body(&m, &req("net ts-shims exit-status")).unwrap();
-        assert!(
-            two.contains("--out") && two.contains("78 (config)"),
-            "{two}"
-        );
-        assert!(body(&m, &req("net ts-shims nothing"))
-            .unwrap_err()
-            .contains("no section"));
-        let both = Request {
-            roff: true,
-            json: true,
-            ..Request::default()
-        };
-        assert!(body(&m, &both).is_err());
-    }
-
-    #[test]
-    fn the_roff_page_uses_standard_macros_and_escapes() {
-        let m = model::build(sample());
-        let r = roff::render(&m);
-        assert!(r.starts_with(".TH PODNET 1"));
-        // Issue 181: the date field is not empty (here: the commit date).
-        let th = r.lines().next().unwrap();
-        assert!(!th.contains(" 1 \"\" "), "{th}");
-        for line in r.lines().filter(|l| l.starts_with('.')) {
-            let mac = line.split_whitespace().next().unwrap();
-            assert!(
-                [
-                    ".TH", ".SH", ".SS", ".TP", ".PP", ".RS", ".RE", ".nf", ".fi", ".B", ".I",
-                    ".BR"
-                ]
-                .contains(&mac),
-                "non-standard macro {mac}"
-            );
-        }
-        assert!(r.contains("\\-\\-url"), "hyphens are escaped");
-        assert_eq!(roff::escape(".x"), "\\&.x");
-    }
-
-    #[test]
-    fn the_json_is_one_object_with_the_tables() {
-        let m = model::build(sample());
-        let j: serde_json::Value = serde_json::from_str(
-            &body(
-                &m,
-                &Request {
-                    json: true,
-                    ..Request::default()
-                },
-            )
-            .unwrap(),
+/// Whether `f` is the flag that clap adds for its help (`-h, --help`) or
+/// its version (`-V, --version`).
+pub fn is_clap_flag(f: &pod_manual::Flag) -> bool {
+    f.value.is_none()
+        && matches!(
+            (f.short, f.long.as_deref()),
+            (Some('h'), Some("help")) | (Some('V'), Some("version")) | (None, Some("help"))
         )
-        .unwrap();
-        assert!(j["commands"].as_array().unwrap().len() >= 3);
-        assert!(j["environment"].as_array().unwrap().len() > 5);
-        assert_eq!(j["exit_status"][0]["code"], 0);
-    }
+}
 
-    #[test]
-    fn fill_keeps_the_width() {
-        let long = "word ".repeat(100);
-        for line in text::fill(&long, 8).lines() {
-            assert!(line.len() <= text::WIDTH, "{}", line.len());
-            assert!(line.starts_with("        word"));
-        }
+/// The base of the links of `llms.txt`.
+pub const DOCS_BASE: &str = "https://github.com/PodUtils/podnet/blob/main/";
+
+/// The documents of the llms files: the path and what the document gives.
+pub const DOCS: &[(&str, &str)] = &[
+    (
+        "README.md",
+        "What podnet is, install, quick start, and the map of the capabilities.",
+    ),
+    (
+        "docs/install.md",
+        "Install, verify, update and rebuild a release.",
+    ),
+    (
+        "docs/tunnels.md",
+        "Quick and named tunnels, the configuration file, the edge protocol, raw streams.",
+    ),
+    (
+        "docs/serve.md",
+        "The file server, file transfer with a PIN, git hosting.",
+    ),
+    (
+        "docs/transfer.md",
+        "podnet send and podnet receive: a transfer by code, as magic-wormhole does.",
+    ),
+    (
+        "docs/warp.md",
+        "The WARP client: proxy, run, up, exec, nc, tun, transports.",
+    ),
+    (
+        "docs/pods.md",
+        "podnet pod: a program with all its traffic through a proxy chain.",
+    ),
+    (
+        "docs/networks.md",
+        "podnet net, Tailscale, NetBird and the passwd shim.",
+    ),
+    (
+        "docs/router.md",
+        "podnet route: networks, groups, policies, health, doors and the kernel mode.",
+    ),
+    (
+        "docs/forward.md",
+        "podnet forward, the DNS door and podnet expose.",
+    ),
+    ("docs/relay.md", "podnet relay and podnet ssh-relay."),
+    ("docs/egress.md", "Network specs and --egress."),
+    ("docs/proxies.md", "Proxies, DNS and TLS roots."),
+    (
+        "docs/background.md",
+        "--detach, ps, logs, wait, stop and autostart.",
+    ),
+    (
+        "docs/doctor.md",
+        "doctor, pod doctor, net doctor, status, bench, bug-report and agent.",
+    ),
+    (
+        "docs/cli.md",
+        "The manual, JSON help, the llms files, global flags and exit codes.",
+    ),
+    ("docs/library.md", "The Rust library."),
+    ("docs/build.md", "Build from source, fuzz targets."),
+    (
+        "docs/protocol.md",
+        "The edge protocol and the relay protocol.",
+    ),
+    (
+        "docs/virtual-network.md",
+        "The virtual network: design and use.",
+    ),
+    (
+        "docs/target-environment.md",
+        "The hosts that podnet is for, and their limits.",
+    ),
+];
+
+/// `llms.txt` and `llms-full.txt` of the repository at `root`: the manual
+/// with the version and no commit (the commit changes at each build), and
+/// the text of each document of [`DOCS`]. A document that cannot be read
+/// has no text, and the check of the files fails.
+pub fn llms(manual: &Manual, root: &Path) -> pod_manual::llms::Files {
+    let mut m = manual.clone();
+    m.version = env!("CARGO_PKG_VERSION").to_string();
+    let docs: Vec<pod_manual::llms::Doc> = DOCS
+        .iter()
+        .map(|(path, meaning)| pod_manual::llms::Doc {
+            path: path.to_string(),
+            meaning: meaning.to_string(),
+            body: std::fs::read_to_string(root.join(path)).unwrap_or_default(),
+        })
+        .collect();
+    pod_manual::llms::Files {
+        index: pod_manual::llms::index(&m, &docs, DOCS_BASE),
+        full: pod_manual::llms::full(&m, &docs),
     }
 }

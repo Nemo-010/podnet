@@ -12,9 +12,9 @@ use crate::cli::cmd::instances::{instances_doc, instances_ps};
 
 #[derive(Subcommand, Debug)]
 pub(crate) enum AgentCommand {
-    /// Test the host (podnet doctor --agent), start podnet warp up when direct
-    /// networking does not do each task, start a detached quick tunnel for
-    /// each --expose PORT, and print one JSON document.
+    /// Test the host (podnet doctor --agent), and start podnet warp up when
+    /// direct networking does not do each task. Start a detached quick tunnel
+    /// for each --expose PORT, and print one JSON document.
     Up {
         /// Also add the block of podnet warp up --persist to the shell files.
         #[arg(long)]

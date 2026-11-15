@@ -112,15 +112,14 @@ fn the_help_of_a_command_has_its_examples() {
         "podnet warp proxy"
     );
     // Each example belongs to a command (not to podnet alone).
-    for e in podnet::manual::facts::EXAMPLES
+    for (command, _) in podnet::manual::facts::EXAMPLES
         .iter()
-        .filter(|e| e.command.starts_with("podnet "))
+        .filter(|(command, _)| command.starts_with("podnet "))
     {
         assert_ne!(
-            example_path(&Cli::command(), e.command),
+            example_path(&Cli::command(), command),
             "podnet",
-            "{}",
-            e.command
+            "{command}"
         );
     }
 }
@@ -179,15 +178,15 @@ fn the_command_tree_is_valid() {
 /// Each example of the manual is a command line that the parser accepts.
 #[test]
 fn each_example_of_the_manual_parses() {
-    for example in podnet::manual::facts::EXAMPLES {
-        let words: Vec<&str> = example.command.split_whitespace().collect();
-        assert_eq!(words[0], "podnet", "{}", example.command);
+    for (command, _) in podnet::manual::facts::EXAMPLES {
+        let words: Vec<&str> = command.split_whitespace().collect();
+        assert_eq!(words[0], "podnet", "{command}");
         if words.get(1) == Some(&"pod") {
             // pod has its own parser, in podnet-netns.
             continue;
         }
         if let Err(err) = Cli::try_parse_from(&words) {
-            panic!("the example {:?} does not parse: {err}", example.command);
+            panic!("the example {command:?} does not parse: {err}");
         }
     }
 }
@@ -195,8 +194,8 @@ fn each_example_of_the_manual_parses() {
 /// The manual names each command and each flag of the command tree.
 #[test]
 fn the_manual_names_each_command_and_flag() {
-    let manual = podnet::manual::model::build(Cli::command());
-    let text = podnet::manual::text::render(&manual);
+    let manual = podnet::manual::manual(Cli::command());
+    let text = pod_manual::text::render(&manual);
     fn walk(cmd: &clap::Command, path: &mut Vec<String>, text: &str) {
         for sub in cmd.get_subcommands().filter(|c| c.get_name() != "help") {
             path.push(sub.get_name().to_string());

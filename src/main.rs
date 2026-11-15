@@ -72,13 +72,13 @@ fn main() {
         pod_names();
         std::process::exit(podnet_netns::main_with_args(&argv[2..]));
     }
-    // T-222: `--help --json` prints the JSON of `podnet man --json` for the
-    // command.
+    // T-222: `--help --json` prints the JSON of the command from the model
+    // of pod-manual, as `podnet man --json COMMAND` does.
     if argv.iter().any(|a| a == "--json") {
         use clap::CommandFactory;
-        let manual = podnet::manual::model::build(Cli::command());
-        if let Some(request) = podnet::manual::help_json_request(&manual, &argv) {
-            match podnet::manual::body(&manual, &request) {
+        let manual = podnet::manual::manual(Cli::command());
+        if let Some(help) = pod_manual::help::request(&manual, &argv[1..]).filter(|h| h.json) {
+            match pod_manual::help::answer(&manual, &help) {
                 Ok(text) => {
                     print!("{text}");
                     std::process::exit(podnet::exit::SUCCESS);

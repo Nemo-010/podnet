@@ -12,17 +12,16 @@ use crate::cli::signals::sleep_or_signal;
 
 #[derive(Args, Debug)]
 pub(crate) struct ForwardArgs {
-    /// A forward: LISTEN=HOST:PORT (repeatable). LISTEN is PORT (on
-    /// 127.0.0.1), ADDR:PORT, tcp://ADDR:PORT or unix:/PATH. Each
-    /// connection to LISTEN goes through the network to HOST:PORT. With
-    /// LISTEN=peer:FINGERPRINT/SERVICE each connection opens one stream of
-    /// a link to that peer, for its service (the link is held by a running
-    /// `podnet link connect` or `link listen`; PODNET_LINK_CONTROL names its
-    /// control socket; a peer that is not the fingerprint exits 77, and no
-    /// link that runs exits 69). With
-    /// udp:PORT or udp:ADDR:PORT the forward carries UDP: each client has
-    /// its own flow, and a flow ends after 60 s with no datagram. A
-    /// datagram for a full flow is dropped.
+    /// A forward: LISTEN=HOST:PORT (repeatable). LISTEN is PORT (on 127.0.0.1),
+    /// ADDR:PORT, tcp://ADDR:PORT or unix:/PATH. Each connection to LISTEN goes
+    /// through the network to HOST:PORT. With LISTEN=peer:FINGERPRINT/SERVICE
+    /// each connection opens one stream of a link to that peer, for its
+    /// service. A running `podnet link connect` or `link listen` holds the
+    /// link; PODNET_LINK_CONTROL names its control socket. A peer that is not
+    /// the fingerprint exits 77, and no link that runs exits 69. With udp:PORT
+    /// or udp:ADDR:PORT the forward carries UDP: each client has its own flow,
+    /// and a flow ends after 60 s with no datagram. A datagram for a full flow
+    /// is dropped.
     #[arg(short = 'L', long = "local", value_name = "LISTEN=HOST:PORT")]
     local: Vec<String>,
     /// A DNS door: answer DNS queries on ADDR:PORT (UDP and TCP) through

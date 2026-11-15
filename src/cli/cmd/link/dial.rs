@@ -26,12 +26,12 @@ pub(crate) enum ResolveArg {
 #[derive(Args, Debug)]
 pub(crate) struct DialArgs {
     /// The address of the listener, in the form of the carrier (for `tcp`:
-    /// `KEY@HOST:PORT`, with the key of the listener).
-    /// A query can follow the address: `ADDRESS?key=value&key=value` (keys:
-    /// carrier, tls, retry, lb, compress, pad, mtu, maxhops, poll, window,
-    /// name). Only `carrier`, `pad` and `compress` have an effect yet (the last two need --seal); a key with no effect, a repeated
-    /// key, an unknown key or a secret key (password, key, token, identity)
-    /// exits 64, and no message shows a value.
+    /// `KEY@HOST:PORT`, with the key of the listener). A query can follow the
+    /// address: `ADDRESS?key=value&key=value` (keys: carrier, tls, retry, lb,
+    /// compress, pad, mtu, maxhops, poll, window, name). Only `carrier`, `pad`
+    /// and `compress` have an effect yet (the last two need --seal); a key with
+    /// no effect, a repeated key, an unknown key or a secret key (password,
+    /// key, token, identity) exits 64. No message shows a value.
     #[arg(value_name = "ADDRESS")]
     pub(crate) address: String,
     #[command(flatten)]

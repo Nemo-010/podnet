@@ -84,15 +84,14 @@ pub(crate) struct CarrierArgs {
     /// (64 KiB to 64 MiB). Default 1048576.
     #[arg(long, value_name = "BYTES")]
     pub(crate) ring: Option<usize>,
-    /// Seal each stream end to end: the two ends of a stream run
-    /// the handshake of `pod-e2e` with their keys and send AEAD records
-    /// (chacha20-poly1305 or aes-256-gcm, agreed), so a hop between them
-    /// (a mesh node that forwards the stream) sees ciphertext only. Give it
-    /// at both ends: a listener with --seal serves sealed streams only, and
-    /// a dialer with --seal opens sealed streams only. A suite that does
-    /// not match exits 78; a key that is refused exits 77. The query keys
-    /// `pad=on` and `compress=snappy` need it. The local door (`dial
-    /// --listen`) and the control socket do not seal yet.
+    /// Seal each stream end to end: the two ends of a stream run the handshake
+    /// of `pod-e2e` with their keys and send AEAD records (chacha20-poly1305 or
+    /// aes-256-gcm, agreed). A hop between them (a mesh node that forwards the
+    /// stream) sees ciphertext only. Give it at both ends: a listener with
+    /// --seal serves sealed streams only, and a dialer with --seal opens sealed
+    /// streams only. A suite that does not match exits 78; a key that is
+    /// refused exits 77. The query keys `pad=on` and `compress=snappy` need it.
+    /// The local door (`dial --listen`) and the control socket do not seal yet.
     #[arg(long)]
     pub(crate) seal: bool,
     /// The options of the sealed records, from the query of the address.
@@ -535,15 +534,15 @@ pub(crate) enum LinkCommand {
     Dial(dial::DialArgs),
     /// Connect to a listener, prove this key, check the key of the listener
     /// against --peer or --allow, and hold the link. With --check: connect,
-    /// check, print and exit 0, and start no control socket. Other programs open
-    /// streams of the link through its control socket:
+    /// check, print and exit 0, and start no control socket. Other programs
+    /// open streams of the link through its control socket:
     /// `peer:FINGERPRINT/SERVICE` as a network (podnet forward -L
-    /// LISTEN=peer:FINGERPRINT/SERVICE). The control verbs reconnect and rotate (podnet link reconnect,
-    /// rotate) make a new link to the same peer. The command ends when no
-    /// link is left (exit 69) or at a stop
-    /// signal. --name is 1 to 32 characters from a-z 0-9 -, unique among
-    /// the live links (a duplicate exits 64), and bound to the fingerprint
-    /// of the peer: another key under the same name exits 77.
+    /// LISTEN=peer:FINGERPRINT/SERVICE). The control verbs reconnect and rotate
+    /// (podnet link reconnect, rotate) make a new link to the same peer. The
+    /// command ends when no link is left (exit 69) or at a stop signal. --name
+    /// is 1 to 32 characters from a-z 0-9 -, unique among the live links (a
+    /// duplicate exits 64). It is bound to the fingerprint of the peer: another
+    /// key under the same name exits 77.
     Connect(connect::ConnectArgs),
     /// Show the fingerprint of this install and the link instances that run
     /// (podnet ps lists the other instances). With a NAME, show that
@@ -569,14 +568,14 @@ pub(crate) enum LinkCommand {
         #[arg(long, value_name = "FILE", requires = "control")]
         token_file: Option<PathBuf>,
     },
-    /// Show the local view of a mesh: the nodes (fingerprint, name, last
-    /// seq, hops, services) and the edges (peer, cost, last probe, state)
-    /// that the announcements of a listener with --announce taught it. Ask
-    /// the control socket of that listener (mode 0600; there is no network
-    /// endpoint). --json prints the document; --metrics prints the counters
-    /// as Prometheus text. The view holds 4096 nodes, 64 edges for each
-    /// node and 256 KiB; `truncated` counts what was cut. A listener
-    /// without --announce exits 69; a wrong token exits 77.
+    /// Show the local view of a mesh: the nodes (fingerprint, name, last seq,
+    /// hops, services) and the edges (peer, cost, last probe, state). The
+    /// announcements of a listener with --announce taught them. Ask the control
+    /// socket of that listener (mode 0600; there is no network endpoint).
+    /// --json prints the document; --metrics prints the counters as Prometheus
+    /// text. The view holds 4096 nodes, 64 edges for each node and 256 KiB;
+    /// `truncated` counts what was cut. A listener without --announce exits 69;
+    /// a wrong token exits 77.
     Mesh {
         /// The control socket of the listener: unix:/PATH.
         #[arg(long, value_name = "unix:PATH")]

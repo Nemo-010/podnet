@@ -249,18 +249,24 @@ pub(crate) fn qr(args: QrArgs) -> Result<()> {
 /// `podnet man`.
 pub(crate) fn man(args: ManArgs) -> Result<()> {
     use clap::CommandFactory;
-    let manual = podnet::manual::model::build(Cli::command());
+    let manual = podnet::manual::manual(Cli::command());
     let request = podnet::manual::Request {
         section: (!args.section.is_empty()).then(|| args.section.join(" ")),
         no_pager: args.no_pager,
         roff: args.roff,
         json: args.json,
     };
-    let text = podnet::manual::body(&manual, &request)
-        .map_err(|e| podnet::exit::fault(podnet::exit::Fault::Usage, anyhow::anyhow!(e)))?;
-    let paged = !request.roff && !request.json;
-    podnet::manual::pager::show(&text, request.no_pager || !paged)?;
-    Ok(())
+    // pod-manual pages the text only when stdin and stdout are terminals.
+    let tty = pod_manual::pager::Tty::probed();
+    pod_manual::run(
+        &manual,
+        &request,
+        tty,
+        &mut std::io::stdin().lock(),
+        &mut std::io::stdout().lock(),
+        &mut std::io::stderr(),
+    )
+    .map_err(|e| podnet::exit::fault(podnet::exit::Fault::Usage, anyhow::anyhow!(e)))
 }
 
 /// `podnet doctor`, and `podnet doctor --agent`.

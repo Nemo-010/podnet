@@ -277,7 +277,7 @@ The core network crate keeps the old name in its directory, its package, its lib
 - `pod-netns` has 341 occurrences in 55 files, and `pod_netns` 85 in 20
   (`docs/research/podnet/rename.md`, section 5, step 4).
 - The root crate uses the library in `src/main.rs`, `crates/podnet-vnet/src/`, `src/warp/` and
-  `src/manual/model.rs`.
+  src/manual/model.rs (removed by T-359).
 - The tests of the manual scan `crates/podnet-netns/src` for variables (`src/manual/facts.rs`).
 
 ## Approach

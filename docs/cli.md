@@ -22,14 +22,15 @@ is not global: it goes after `warp`.
 
 `podnet man` shows the manual. It is generated from the command tree of the
 binary, so it always agrees with `--help`. It needs no man(1), no groff and no
-network.
+network. The crate `pod-manual` of PodUtils/podcrates writes it. A pager shows
+it only when stdin and stdout are a terminal; `--no-pager` turns the pager off.
 
 ```sh
 podnet man                      # the whole manual, in a pager on a terminal
 podnet man warp run             # one command
-podnet man exit-status          # one topic: environment, files, inventory, exit-status, examples, pod
+podnet man exit-status          # one topic: environment, files, inventory, exit-status, examples, see-also
 podnet man --roff > podnet.1      # a man(7) page (also a release asset)
-podnet man --json               # the tables, for a program
+podnet man --json               # the model and the facts, for a program
 podnet warp run --help --json   # the same JSON for one command (at each level)
 podnet status                   # one JSON line about this host; no network
 podnet ports --json             # the listening TCP ports, as one JSON object
@@ -109,12 +110,16 @@ password in its environment. Use it to collect failures in tests.
 
 ## Machine-readable help and the llms files
 
-* `podnet man --json` prints the manual as one JSON object: `name`, `version`, `about`, `description`,
-  `commands`, `pod_usage`, `environment`, `files`, `inventory`, `exit_status` and `examples`. Each entry of `commands`
-  has `path`, `usage`, `about`, `long_about`, `args` and `subcommands`.
-* `podnet COMMAND --help --json` prints the same entry for one command, at each level
-  (`podnet route --help --json`, `podnet warp run --help --json`). Each argument has `synopsis`, `id`,
-  `positional`, `required`, `repeatable`, `takes_value`, `help`, `default`, `env` and `values`.
+* `podnet man --json` prints the manual as one JSON object of `pod-manual` (schema 1): `schema`, `name`,
+  `version`, `date`, `about`, `description`, `commands`, `topics`, `facts`, `examples` and `see_also`. Each
+  entry of `commands` has `path`, `aliases`, `about`, `notes`, `usage`, `args` (positional), `flags` and `rules`.
+  Each flag has `short`, `long`, `value`, `help`, `kind`, `default`, `values`, `env`, `required` and
+  `repeatable`. `facts` has `variables` (in groups), `exits` (each `code` is a value, `128+N` or the code of
+  the program), `files` and `tables` (the inventory).
+* `podnet man --json SECTION` prints one section: `{"schema", "name", "command"}` for a command, or
+  `variables`, `files`, `exits`, `examples` or `table` for a topic.
+* `podnet COMMAND --help --json` prints the JSON of `podnet man --json COMMAND` for one command, at each level
+  (`podnet route --help --json`, `podnet warp run --help --json`). At the root it prints the root command.
 * `podnet man --roff` prints a man(7) page. `podnet.1` is a release asset.
 * `llms.txt` is an index of the commands and the documents. `llms-full.txt` holds the manual (the output of
   `podnet man --no-pager`) and the text of the documents of this repository. Both are in the root of the

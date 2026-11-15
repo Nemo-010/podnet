@@ -499,6 +499,7 @@ pub fn log_filter(level: &str) -> String {
         "pod_e2e",
         "pod_wormhole",
         "pod_extract",
+        "pod_manual",
     ]
     .map(|target| format!("{target}={level}"))
     .join(",")

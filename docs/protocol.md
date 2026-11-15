@@ -534,12 +534,15 @@ against the binary and against this file. The test `the_ready_keys_are_fixed`
 ### Exit codes
 
 The list is `podnet man exit-status`. An error with no class exits 1.
+`podnet pod` and `podnet warp run` also give the exit code of their program,
+and 128 and the number of a signal.
 
 | Code | Name |
 | --- | --- |
 | 0 | `success` |
 | 1 | `failure` |
 | 3 | `no-backend` |
+| 4 | `violation` |
 | 64 | `usage` |
 | 65 | `data-error` |
 | 66 | `no-input` |

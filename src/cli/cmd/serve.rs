@@ -103,14 +103,13 @@ pub(crate) struct ServeArgs {
     /// The road to the visitors, ROAD: tunnel (the default with no --local),
     /// relay, or none (the default with --local). --ingress tunnel or relay
     /// with --local serves the local listeners too. `peer:FINGERPRINT/SERVICE`
-    /// serves the files on the streams that the peer of a running `podnet
-    /// link connect` opens for its service SERVICE (the link instance is
-    /// found as `forward` finds it: PODNET_LINK_CONTROL, or the ready
-    /// documents of the instances). The peer speaks HTTP on the stream
-    /// (`link dial --service SERVICE`, or `forward -L PORT=peer:FP/SERVICE`).
-    /// Index, range and HEAD work as on any listener; --list, --spa, --tar,
-    /// --users and --pin apply. The `--allow` grant of the peer must name
-    /// SERVICE. It makes no tunnel.
+    /// serves the files on the streams that the peer of a running `podnet link
+    /// connect` opens for its service SERVICE. podnet finds the link instance
+    /// as `forward` finds it: PODNET_LINK_CONTROL, or the ready documents of
+    /// the instances. The peer speaks HTTP on the stream (`link dial --service
+    /// SERVICE`, or `forward -L PORT=peer:FP/SERVICE`). Index, range and HEAD
+    /// work as on any listener; --list, --spa, --tar, --users and --pin apply.
+    /// The `--allow` grant of the peer must name SERVICE. It makes no tunnel.
     #[arg(long, value_name = "ROAD", value_parser = parse_ingress)]
     ingress: Option<IngressArg>,
     /// Serve the files to one peer of a link, on a stream of its service:
@@ -131,12 +130,12 @@ pub(crate) struct ServeArgs {
     /// time left; at its expiry the node takes the next stored pair.
     #[arg(long, value_name = "NAME")]
     pair: Option<String>,
-    /// Serve the files on this local listener (more than one is
-    /// permitted): HOST:PORT (or tcp://HOST:PORT), or unix:PATH (mode
-    /// 0600). Port 0 takes a free port; podnet prints the bound address. A
-    /// unix socket that answers is refused (exit 69, --replace takes it
-    /// over), a stale socket is removed, a file that is not a socket is
-    /// refused (exit 64). With no --ingress, podnet makes no tunnel.
+    /// Serve the files on this local listener (more than one is permitted):
+    /// HOST:PORT (or tcp://HOST:PORT), or unix:PATH (mode 0600). Port 0 takes a
+    /// free port; podnet prints the bound address. A unix socket that answers
+    /// is refused (exit 69; --replace takes it over). A stale socket is
+    /// removed. A file that is not a socket is refused (exit 64). With no
+    /// --ingress, podnet makes no tunnel.
     #[arg(long, value_name = "ADDR", conflicts_with = "check")]
     local: Vec<String>,
     /// Named-tunnel token. Prefer the variable TUNNEL_TOKEN or

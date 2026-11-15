@@ -37,10 +37,9 @@ def walk(c):
     p = " ".join(["podnet"] + c["path"])
     yield p
     for a in c["args"]:
-        yield p + " " + (a["synopsis"] if a["positional"] else "--" + a["id"])
-    for s in c.get("subcommands", []):
-        if isinstance(s, dict):
-            yield from walk(s)
+        yield p + " <" + a["name"] + ">" + ("..." if a["many"] else "")
+    for f in c["flags"]:
+        yield p + " " + ("--" + f["long"] if f["long"] else "-" + f["short"])
 d = json.load(sys.stdin)
 for line in sorted({x for c in d["commands"] for x in walk(c)}):
     print(line)

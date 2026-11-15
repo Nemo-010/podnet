@@ -66,17 +66,17 @@ pub(crate) struct Cli {
     /// Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     #[arg(long, global = true)]
     pub(crate) no_proxy: bool,
-    /// The way out, as a network spec: direct (as --no-proxy), a proxy URL
-    /// (as --proxy), relay or relay:URL (as --transport relay and --relay).
-    /// With podnet pod, each --egress is one -x hop of the chain, in its order
-    /// (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
-    /// chain (TOP over BELOW) are for podnet forward --network, podnet route
-    /// and podnet wg serve. With podnet link dial and
-    /// podnet link connect, each --egress is one element of the chain before
-    /// the tcp carrier (direct, a proxy, peer:FINGERPRINT/SERVICE), in order:
-    /// the last element reaches the carrier address. With podnet wg serve,
-    /// one --egress is the way of the flows of the peers (each spec of
-    /// podnet forward --network that carries TCP).
+    /// The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
+    /// --proxy), relay or relay:URL (as --transport relay and --relay). With
+    /// podnet pod, each --egress is one -x hop of the chain, in its order (also
+    /// tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a chain
+    /// (TOP over BELOW) are for podnet forward --network, podnet route and
+    /// podnet wg serve. With podnet link dial and podnet link connect, each
+    /// --egress is one element of the chain before the tcp carrier (direct, a
+    /// proxy, peer:FINGERPRINT/SERVICE). The elements are in order: the last
+    /// element reaches the carrier address. With podnet wg serve, one --egress
+    /// is the way of the flows of the peers (each spec of podnet forward
+    /// --network that carries TCP).
     #[arg(long, global = true, value_name = "SPEC")]
     pub(crate) egress: Vec<String>,
     /// Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
@@ -127,13 +127,14 @@ pub(crate) enum Command {
     /// tunnel), relay (a node of the reverse relay) or switch (a virtual
     /// address). It runs `tunnel`, `relay node` or `net proxy --forward`.
     Expose(cmd::expose::ExposeArgs),
-    /// Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or
-    /// UDP with udp:LISTEN), a DNS door with --dns, with --network SPEC
-    /// (direct, a proxy, the relay, a tailnet, wg:FILE, turn://HOST for UDP, devtunnel://TUNNEL, warp).
+    /// Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or UDP
+    /// with udp:LISTEN) and a DNS door with --dns. --network SPEC is direct, a
+    /// proxy, the relay, a tailnet, wg:FILE, turn://HOST for UDP,
+    /// devtunnel://TUNNEL or warp.
     Forward(cmd::forward::ForwardArgs),
-    /// A router of networks, groups, doors and guest wires (a guest uses the
-    /// router as its gateway) from a config file (--config FILE), with
-    /// health probes and --detach.
+    /// A router of networks, groups, doors and guest wires from a config file
+    /// (--config FILE), with health probes and --detach. A guest uses the
+    /// router as its gateway.
     Route(cmd::route::RouteArgs),
     /// Publish a unix socket through an SSH relay (a remote forward on port
     /// 443), and keep the session: when the relay ends it, podnet connects
@@ -339,6 +340,8 @@ mod listen_table;
 mod argv_tests;
 #[cfg(test)]
 mod help_tests;
+#[cfg(test)]
+mod manual_tests;
 #[cfg(test)]
 mod signals_tests;
 #[cfg(test)]

@@ -76,11 +76,11 @@ pub(crate) struct SendArgs {
     /// Send this text in place of a file.
     #[arg(long, value_name = "TEXT")]
     text: Option<String>,
-    /// Offer the node of the stored pair NAME of the podnet relay (podnet
-    /// relay pair) as the last way of the transit, to a podnet receiver.
-    /// The node runs for the time of the transfer; do not run another node
-    /// of the pair at the same time. A podnet extension: a client of
-    /// magic-wormhole ignores it.
+    /// Offer the node of the stored pair NAME of the podnet relay (podnet relay
+    /// pair) to a podnet receiver. It is the last way of the transit. The node
+    /// runs for the time of the transfer; do not run another node of the pair
+    /// at the same time. A podnet extension: a client of magic-wormhole ignores
+    /// it.
     #[arg(long, value_name = "NAME", conflicts_with = "text")]
     relay_pair: Option<String>,
     /// The count of words of the code after its number, 2 to 8 (as
