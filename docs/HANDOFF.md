@@ -12,10 +12,10 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 ## Where the code is
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.48.0` (T-137), with `pod-warp`: `src/warp/` is glue
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.49.0` (T-137), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.12` (T-352, b6e7959).
-* The record is `TODO/`. `cargo todo check` agrees: 352 entries, 11 open, 9 partial, 23 blocked, 309 done.
+* The record is `TODO/`. `cargo todo check` agrees: 353 entries, 11 open, 9 partial, 24 blocked, 309 done.
 
 ## Unfinished work (not on `main`)
 
@@ -56,7 +56,8 @@ Each workflow passes on 6536905, the take of `v0.47.0` (GitHub #569): ci 4365443
 
 `quick_tunnel_standin_serves_a_visitor_over_http2`, `service_serve_ingress::the_service_ends_with_the_serve_process`,
 `shim_direct::a_perl_accept_loop_serves_each_connection` and `ws_relay::...::a_demoted_relay_host_recovers_on_success`
-`autostart::sigterm_is_a_clean_stop`, `doctor_ssh_relay_row_dials_through_the_proxy` and
+`autostart::sigterm_is_a_clean_stop`, `doctor_ssh_relay_row_dials_through_the_proxy`,
+`link_split::a_closed_down_half_ends_the_session_with_down_carrier_lost` (T-353) and
 `guest_wire_unix_socket_serves_a_guest_and_the_next` (keep the default `TMPDIR`) fail at times in a full run and pass alone. Run a failed test alone three times before a push.
 
 ## Open COORD issues

@@ -3071,3 +3071,45 @@ T-262 is done (the crate). Each optional entry lands after this one.
 2026-11-12, commits d1b5587 and 55d5c14. `Cargo.toml` of `podnet` has a `[features]` table: `default = []`, the optional features `quic`, `s3`, `icmp`, `ss`, `trojan`, `c-abi` and `portable`, and `full` (each optional feature but `portable`, which takes code away). `src/build_features.rs` (`podnet::build_features`) has `OPTIONAL`, `FULL`, `built`, `enabled`, `reason` and `require` (a feature that is off exits 69 and names the feature; a name that is no feature exits 64). The registry `src/carriers.rs` has the rows `quic`, `s3` and `icmp` with the field `feature` filled (`Some("quic")` and so on; `unix` and `memory` keep `None`). A carrier whose feature is off is listed by `podnet link carriers` as `unavailable: not built: the feature NAME is off (build with --features NAME)`, the JSON has `built: false`, `feature` and `reason`, `podnet doctor` shows it as `unknown` (not `fail`), and `--carrier NAME` exits 69 with the same reason. With the feature on, the row says that the code of the carrier is not in this build and names its entry (T-273, T-279, T-282). The CI job `features` runs clippy and `cargo test --locked --workspace --features full`. `docs/build.md` has the section Features; `docs/link.md` has the three rows.
 Fail first: at base `cargo test --workspace --features full` exits 101 with `none of the selected packages contains this feature: full`; before the change `tests/link_features.rs` did not compile (`unresolved import podnet::build_features`). `cargo test --test link_features`: 10 passed in the default build and 10 passed with `--features full`, among them `a_gated_command_in_a_default_build_exits_69_with_the_feature_name`, `a_carrier_whose_feature_is_off_is_listed_as_not_built_and_exits_69_when_named`, `link_carriers_lists_a_gated_carrier_with_not_built_and_the_json_has_the_feature`, `a_command_that_names_a_carrier_that_is_not_built_exits_69` (the binary: `link dial --carrier quic` exits 69), `full_holds_each_optional_feature_but_portable`. `cargo test --workspace` (default) and `cargo test --workspace --features full`: default build: 1650 passed, 2 failed (the llms files that I had not regenerated after a doc edit, and quick_tunnel_standin_falls_back_to_http2_when_quic_has_no_listener under load), 2 ignored, 69 test binaries; both pass after the regeneration and alone (3 runs); --features full: 1652 passed, 0 failed, 2 ignored, 69 binaries; `sh scripts/agent/check.sh` at the end: fmt, clippy, record, size, doc, layers and test all 0 (its default `cargo test --workspace` passed whole).
 Not proven: the static musl build and the zig builds (not run; the default features add no code and no dependency, and `Cargo.lock` did not change); the default carriers `unix` and `memory` do not sit behind a feature (they stay in each build); no optional feature gates code yet, because no optional carrier or service exists (T-273, T-279, T-282, T-294, T-295 and T-304 land behind their features and replace the `pending` makers); `portable` gates nothing (T-305 is blocked).
+
+# T-353: link: a closed half can end the listener of a split session with "the carrier of the link ended"
+
+**Source:** `sh scripts/agent/check.sh` on 2026-11-15 (the take of podcrates `v0.49.0`): the test
+`link_split::a_closed_down_half_ends_the_session_with_down_carrier_lost` failed once under the load of a full run.
+**Category:** defect
+**Milestone:** M9
+**Priority:** P3
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+When the down half of a split session (T-302) closes, the listener can end with the text of `pod_link::Error::CarrierEnded`
+("the carrier of the link ended") in place of `down-carrier lost`. The rule of `docs/decisions.md`, 2026-11-14, "The split
+session: a lost half ends the session", says that each end names the lost half. Measured: the panic at
+`tests/link_split.rs:319` reads "listener: the carrier of the link ended". The test passed alone 5 times of 5, and in each
+CI run (ci 43632069484, 43654435897, 43659845378).
+
+## Premise
+
+- The link of `pod_link` over the byte stream of `pod_link::split` reads 0 bytes (`link.rs`: `Ok(0)` gives
+  `Error::CarrierEnded`) before the tasks of `split/run.rs` set the `Lost` error on the pipes (`Shared::lose`,
+  `Ends::fail_with`). The session ends, and the dialer names the half; only the text of the listener differs.
+- The code is in `pod-link` of PodUtils/podcrates. podnet does not change it (`CLAUDE.md`, Order).
+
+## Approach
+
+1. Ask podcrates (a COORD issue): the byte stream of a split end gives the `Lost` error, not an end of stream, when a half
+   is lost; a test of `pod-link` that closes each half many times under load.
+2. Take the tag with the fix. Run `cargo test --test link_split` 50 times under load.
+
+## Prove
+
+```sh
+for i in $(seq 50); do cargo test --test link_split || break; done
+sh scripts/agent/check.sh
+```
+
+## Blocker
+
+The fix is in `pod-link` of PodUtils/podcrates (the COORD issue of 2026-11-15).

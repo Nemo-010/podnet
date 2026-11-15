@@ -931,6 +931,12 @@ Done so far:
   sign); podnet does not take `pod-guest`, so no code changes. No new hand-off for podnet. `cargo update` keeps
   `webpki-roots` at 1.0.11, the value of `pod_tls::ROOTS_VERSION` (also in `fuzz/Cargo.lock`), and changes no other
   crate than the crates of podcrates.
+- v0.49.0 (PodUtils/podcrates#163): each `pod-*` dependency names `tag = "v0.49.0"` and `version = "0.49.0"` (and
+  `pod-todo` of `crates/podnet-todo/Cargo.toml`). The tag changes `pod-guest` (podnet does not take it), `pod-relay`
+  (the Nostr end of a code; podnet fills no `Ends::relays`) and `pod-turn` (the answers carry MESSAGE-INTEGRITY-SHA256,
+  checked; the `turn://` network of podnet takes it with no change of code). No new hand-off for podnet. `cargo update`
+  keeps `webpki-roots` at 1.0.11, the value of `pod_tls::ROOTS_VERSION`, and changes no other crate than the crates of
+  podcrates.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
