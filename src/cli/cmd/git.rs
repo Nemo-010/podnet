@@ -35,7 +35,8 @@ pub(crate) enum GitCommand {
     /// Make a bare repository NAME under the root (NAME.git when NAME has
     /// no .git at its end).
     Init {
-        /// The directory that holds the repositories.
+        /// The directory that holds the repositories. podnet makes it
+        /// when it does not exist.
         #[arg(long, value_name = "DIR")]
         root: PathBuf,
         /// The path of the new repository under the root (a/b makes
@@ -87,6 +88,9 @@ pub(crate) fn real_root(root: &Path) -> Result<PathBuf> {
 
 /// `podnet git init --root DIR NAME`.
 async fn init(root: &Path, name: &str) -> Result<()> {
+    if !root.exists() {
+        std::fs::create_dir_all(root).with_context(|| format!("--root {}", root.display()))?;
+    }
     let root = real_root(root)?;
     let dir = podnet::git::create_repo(&root, name, std::ffi::OsStr::new("git"))
         .await

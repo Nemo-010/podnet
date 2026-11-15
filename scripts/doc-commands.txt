@@ -1,0 +1,121 @@
+# The class of each sh block of README.md and docs/*.md (scripts/doc-commands.py).
+# FILE HASH CLASS REASON. CLASS: run, live, root or skip. A reason that starts
+# with [needs TOOL,TOOL] names the programs that a run block needs besides podnet.
+
+README.md b6b25e2927 live the install script: downloads a release from GitHub
+README.md 4c660eec7a live needs the downloaded release assets and cosign; vX.Y.Z is a placeholder
+README.md 2e390d75c4 live podnet update asks GitHub for the newest release
+README.md 974d35bf99 live a tour: the doctor probes, the tunnel, serve, share and warp need the network; pod needs a proxy at 127.0.0.1:1080
+
+docs/background.md 5553c8bcda live a quick tunnel of Cloudflare and a WARP proxy
+docs/background.md 6f5957a10f live changes the host: a systemd user unit or the crontab of the user; TUNNEL_TOKEN=... is a placeholder
+
+docs/build.md bbae8b4443 live a build from the source tree: fetches crates; ci.yml runs it
+docs/build.md 2d76669d6f live a static build from the source tree: rustup and crates; ci.yml runs it
+docs/build.md c35416886a live a build and the tests from the source tree: fetches crates; ci.yml job features runs it
+docs/build.md 8c15cc5283 live a build of podnet-capi from the source tree: fetches crates; ci.yml runs it
+docs/build.md 752a049c77 live cargo-fuzz and a nightly toolchain: fetches them; fuzz.yml runs it
+
+docs/cli.md e42ccfd71f skip a reference list: the last three lines have the placeholder `...`
+docs/cli.md 071c676c5c skip a template: needs the files of the user (./site, config.yml)
+
+docs/doctor.md 7288935548 live the doctor probes the ways out of this host
+docs/doctor.md 6147406e3a live the doctor of the agent probes the ways out and WARP
+docs/doctor.md 9f309a6052 live bench measures https://example.com/; a proxy at 127.0.0.1:1080
+docs/doctor.md cc3c66599e live agent up starts WARP and a quick tunnel
+
+docs/egress.md 2479000031 live each line needs a proxy, the relay or a tunnel; proxy-a and host are placeholders
+
+docs/forward.md 3a11697f91 skip a reference list: foreground forwards to placeholder hosts (db.internal, host)
+docs/forward.md 675510e990 skip a template: FINGERPRINT is a placeholder; needs a second host
+docs/forward.md 9a018eeac8 live expose starts a quick tunnel, the relay or a switch
+
+docs/install.md c068c96a13 live needs the downloaded release assets
+docs/install.md 25db25cf79 live needs the downloaded release assets and cosign; vX.Y.Z is a placeholder
+docs/install.md f53c399988 live gh attestation asks GitHub; needs the downloaded binary
+docs/install.md fd8fa56fb7 live needs the downloaded release assets and gh
+docs/install.md b6b25e2927 live the install script: downloads a release from GitHub
+docs/install.md 282d07520a live docker and the image of ghcr.io
+docs/install.md abb60731e4 live podnet update asks GitHub; <TAG> is a placeholder
+docs/install.md 944cb19562 skip a template: <TAG> is a placeholder
+
+docs/link.md a1d2069354 skip a reference list: FINGERPRINT placeholders, foreground listeners, a second host
+docs/link.md 6d68d5659c skip a template: ADDRESS, FILE and FP are placeholders
+docs/link.md e92ca2cf53 skip a template: a listener and a dial on two hosts; SERVER-FINGERPRINT is a placeholder
+docs/link.md 88d078efb5 skip a template: a listener and a dial on two hosts; SERVER-FINGERPRINT is a placeholder
+docs/link.md d376280fd7 skip a template: a listener and a dial on two hosts; SERVER-FINGERPRINT is a placeholder
+docs/link.md b78cc697b9 skip a template: a listener and a dial on two hosts; SERVER-FINGERPRINT is a placeholder
+docs/link.md 024e693a53 skip a template: a listener and a dial on two hosts; SERVER-FINGERPRINT is a placeholder
+docs/link.md 55066e011a skip a template: a listener and a dial on two hosts; SERVER-FINGERPRINT is a placeholder
+docs/link.md 3e04a50f49 skip a template: a DNS zone and two hosts; SERVER-FINGERPRINT is a placeholder
+docs/link.md 925fb6459e root the icmp carrier needs a raw socket (CAP_NET_RAW or ping_group_range); two hosts
+docs/link.md 789d1a6168 skip a template: the S3 keys (...) and SERVER-FINGERPRINT are placeholders
+docs/link.md eb4a29d31c skip a template: SERVER-FINGERPRINT is a placeholder; two hosts
+docs/link.md 83e298b511 skip a template: KEY is a placeholder; two proxies
+docs/link.md 75a4e45854 skip a template: three hosts A, B and C with placeholder fingerprints
+
+docs/maintenance.md 10b256c498 live the GitHub API through forge.web.pkgforge.dev
+docs/maintenance.md 1da99bd822 live the GitHub API through forge.web.pkgforge.dev
+docs/maintenance.md 2406900df5 live reads PodUtils/podcrates from GitHub
+docs/maintenance.md 29261c6550 skip a template of the take procedure: vX.Y.Z and pod-NAME are placeholders
+
+docs/networks.md df6f52b309 skip a reference list: foreground servers and the placeholder ./server
+docs/networks.md 8d40d38a40 skip a reference list: a foreground switch and the placeholder switch-host
+docs/networks.md 20a2357daf live needs a running tailscaled and a tailnet
+docs/networks.md d8966cbe82 live needs netbird and a NetBird account (NB_SETUP_KEY=... is a placeholder)
+docs/networks.md 6f828b326d live needs a WireGuard peer and its config file
+docs/networks.md 630acf650f live needs a WireGuard peer and WARP
+docs/networks.md 6d403c49ab skip a reference list: a foreground server; needs the config files of the user
+docs/networks.md bb246c305e live needs a TURN server (turn.example is a placeholder)
+docs/networks.md 6e64e9e40c live needs Microsoft Dev Tunnels and a token
+docs/networks.md 36f396629b run  [needs ssh-keygen] the passwd shim, then ssh-keygen writes a key
+
+docs/pods.md 6fab913969 live each line needs a proxy or the internet
+docs/pods.md 441ddc0e98 skip a template: ./program is a placeholder; a proxy at 127.0.0.1:1080
+
+docs/proxies.md 5cac6b1d15 live a proxy, a quick tunnel and WARP
+docs/proxies.md 5b065c3f7f live a quick tunnel and WARP; /etc/corp-root.pem is a placeholder
+
+docs/relay.md 4bbc510365 live the relay service of pod-services; <connect token> and NAME are placeholders
+docs/relay.md 030186ad51 live the relay service; NAME is a placeholder
+docs/relay.md 0be62d875f live the relay service; NAME and NODE-FINGERPRINT are placeholders
+docs/relay.md c4ec711fcc live an SSH reverse tunnel service (serveo, relay.example.net)
+
+docs/router.md af8e0a4b4a skip a reference list: router.yml of the user and a running router
+
+docs/serve.md 9ab0dfc04a live serve opens a quick tunnel; ./public is the directory of the user
+docs/serve.md 8d3f097d4a skip a template: HUB-FINGERPRINT and CONNECTOR-FINGERPRINT; two hosts
+docs/serve.md b37100d2e0 skip a template: CLIENT-FINGERPRINT and SERVER-FINGERPRINT; two hosts
+docs/serve.md 5e6c1ef82c skip two shells: a foreground server, then a client; ./public is the directory of the user
+docs/serve.md 5cef402f52 skip two shells: a foreground server, then a client; ./public is the directory of the user
+docs/serve.md e326129602 skip two shells and a typed password: PASSWORD is a placeholder, the server runs in the foreground
+docs/serve.md 872babe603 skip two shells: a foreground server, then a client; needs users and report.pdf
+docs/serve.md 5f6d28a04a live git serve opens a quick tunnel or the relay; NAME is a placeholder
+docs/serve.md 588daaa46a live share opens a quick tunnel
+
+docs/target-environment.md 3aa821689c live WARP through a SOCKS5 proxy at 127.0.0.1:9050
+docs/target-environment.md 56640f12db live WARP through a proxy; PORT is a placeholder
+docs/target-environment.md a3c8800186 live two WARP devices
+
+docs/transfer.md 5453c10869 live the wormhole mailbox; two hosts
+docs/transfer.md 9fd3fe2521 live the relay; NAME is a placeholder; two hosts
+docs/transfer.md bd1a3b3430 live a piping server; two hosts
+docs/transfer.md 61d9482a58 live pip downloads magic-wormhole; a test from the source tree
+
+docs/tunnels.md 925cf1d55a live quick and named tunnels of Cloudflare
+docs/tunnels.md abb274ac56 live named tunnels; <token> and <id> are placeholders
+docs/tunnels.md c723784f4a live a quick tunnel; <random> is a placeholder
+docs/tunnels.md 4bb2408e42 live a quick tunnel; <random> is a placeholder
+docs/tunnels.md 3937e7aa8d live a quick tunnel; <random> and user@host are placeholders
+docs/tunnels.md 47ef8efae1 skip a reference list: <URL> is a placeholder
+
+docs/virtual-network.md 5605199556 skip a template: ./server is a placeholder
+docs/virtual-network.md 0c178d25d6 skip a foreground proxy; /run/app.sock is the socket of the user
+docs/virtual-network.md 75f5e32ef6 skip a template of three hosts S, A and B; <host> is a placeholder
+docs/virtual-network.md af8b01e7ad skip a foreground proxy after a switch in the background
+docs/virtual-network.md 7b000d9346 run  builds the socks shim and loads its environment
+docs/virtual-network.md 0dd4a91b09 run  builds the shim with a SOCKS route
+docs/virtual-network.md bc9442650d run  builds the shim with two unix forwards
+
+docs/warp.md a6d65372d0 live WARP of Cloudflare; <KEY>, HOST:PORT and ... are placeholders
+docs/warp.md 9f6cad43c6 live a WARP proxy in the foreground; ~/.config/podnet/rules of the user

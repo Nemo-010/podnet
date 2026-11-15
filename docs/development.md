@@ -8,8 +8,9 @@ each session; `docs/maintenance.md` has the procedures.
 Run `sh scripts/agent/check.sh`. It runs `cargo fmt --all --check`,
 `cargo clippy --workspace --all-targets -- -D warnings`,
 `cargo test --workspace`, `cargo todo check` (the work record in
-`TODO/`, `TODO/RULES.md`), `python3 -I scripts/check-size.py` and
-`python3 -I scripts/check-layers.py`. Push
+`TODO/`, `TODO/RULES.md`), `python3 -I scripts/check-size.py`,
+`python3 -I scripts/check-layers.py` and
+`python3 -I scripts/doc-commands.py --check`. Push
 only when each exits 0. CI (`.github/workflows/ci.yml`) runs the same.
 
 ## File size
@@ -31,6 +32,36 @@ may not use is a fault, except the rows of `scripts/layers-allow.txt`.
 The list can only shrink: remove a row when its reference is cut. Do not
 add a row: move the item to a lower crate. A new top module needs a row
 in `LAYER` of the script. `--list` prints each reference between crates.
+
+## Documented commands
+
+Each fenced `sh` or `bash` block of `README.md` and `docs/*.md` (not
+`docs/releases/`, `docs/reports/`, `docs/research/`) is a test (T-358,
+step 2). `scripts/doc-commands.txt` gives each block a class, with one
+line `FILE HASH CLASS REASON`:
+
+| Class | Meaning |
+| --- | --- |
+| `run` | It runs offline as written, with `podnet` on PATH. |
+| `live` | It needs a live service or a second host. |
+| `root` | It needs root or a kernel feature. |
+| `skip` | It is not a command to run as written: a template with placeholders, a reference list, two shells. |
+
+HASH is the first 10 hex digits of the SHA-256 of the block. A change of a
+block changes its hash, so a new or changed block needs a new line.
+`--list` prints each block with its file, line, hash and class.
+`--check` fails on a block with no line and on a line with no block.
+`--run` runs each `run` block with `sh -e` in a new temporary HOME and
+working directory, with `target/debug/podnet` (or `--bin PATH`) first on
+PATH, and a timeout of 30 s for each block. A reason that starts with
+`[needs TOOL,TOOL]` names the other programs of the block: with one of
+them absent, `--run` does not run the block and exits 1. CI runs
+`--check` (job `workflows`) and `--run` (job `test`).
+
+A `run` block that fails is a defect of the code or of the document:
+record it in `TODO/fixes.md`. Do not give a failing block the class
+`skip`. Give a block the class `skip` only when it is not a command to run
+as written, and write why.
 
 ## Rules for tests
 

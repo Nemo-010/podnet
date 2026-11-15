@@ -68,6 +68,10 @@ jobs:
       # does not fail the job).
       - name: Netfilter in a namespace (pod doctor)
         run: ./target/debug/podnet pod doctor | grep -i netfilter || true
+      # T-358, step 2: each sh block of README.md and docs/*.md of the class
+      # run (scripts/doc-commands.txt) runs as written with this binary.
+      - name: The documented commands
+        run: python3 -I scripts/doc-commands.py --run --bin target/debug/podnet
       # T-250: the netns tests that skip for a user here (no user namespace)
       # run as root: the veth wire and the kernel mode of the router. A skip
       # line fails the step.
@@ -348,6 +352,9 @@ jobs:
         run: |
           python3 -I scripts/check-layers.py --self-test
           python3 -I scripts/check-layers.py
+      # T-358, step 2: each sh block of the documents has a class.
+      - name: The class of each documented command
+        run: python3 -I scripts/doc-commands.py --check
       # #246: the shell scripts have no shellcheck warning.
       - name: shellcheck
         run: |

@@ -6789,7 +6789,7 @@ won't be always available or willing to test." `docs/decisions.md`, 2026-11-15, 
 **Milestone:** M5
 **Priority:** P1
 **Effort:** L
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -6840,6 +6840,22 @@ gh workflow run gate.yml -R PodUtils/podnet --ref main
 ## Correction
 
 2026-11-15: podcrates takes the shared lab as `pod-lab` (their entry 692, PodUtils/podcrates#180, the owner's ruling "Discipline"). Part 1 (the tag after `v0.53.0`): the profiles as data, `podlab check` and `podlab run PROFILE -- CMD` on a host with no root. Part 2: the step of GitHub Actions, the machine tier of podvm, and the network profiles, which podnet holds (`proxy-only`, `bind-denied`). Step 1 of the Approach runs in the profiles of `pod-lab`, not in a lab of podnet's own; podnet writes the network profiles for part 2 (COORD-091, GitHub #585).
+
+2026-11-15, step 2, the first slice. `scripts/doc-commands.py` reads each fenced `sh` and `bash` block of `README.md`
+and `docs/*.md` (not `docs/releases/`, `docs/reports/`, `docs/research/`). `scripts/doc-commands.txt` gives each
+block a class (`run`, `live`, `root` or `skip`) and a reason, by the hash of its text (`docs/development.md`,
+Documented commands). `--check` fails on a block with no class and on a stale line; `check.sh` and the job
+`workflows` of `ci.yml` run it. `--run` runs each `run` block with `sh -e` in a new HOME and working directory with
+the built binary; the job `test` of `ci.yml` runs it (about 2 s). The count on 2026-11-15: 97 blocks, 4 `run`, 57
+`live`, 1 `root`, 35 `skip`. Here 3 `run` blocks passed; `docs/networks.md` (the passwd shim and `ssh-keygen`) did not
+run, as this host has no `ssh-keygen`. Single lines of `skip` and `live` blocks, run by hand, gave T-361, T-362 and
+T-363.
+
+What remains of step 2: most blocks are reference lists that mix runnable lines with placeholders, foreground servers
+and second hosts, so few blocks run as written. Next: (a) a scenario form for a block that needs a server in the
+background and a client (the `--local` blocks of `docs/serve.md`), or blocks that are written to run; (b) the `live`
+blocks in `live.yml`; (c) the `root` block and the blocks that need a restricted host in the profiles of `pod-lab`
+(step 1).
 
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 
@@ -6922,4 +6938,112 @@ interrupted run leaves no half install". `scripts/install.sh` downloads and repl
 ```sh
 cargo test --test install_script
 shellcheck --shell=sh scripts/install.sh
+```
+
+# T-361: git init: make the root when it does not exist
+
+**Source:** T-358 step 2, the documented command at docs/serve.md:197 (`podnet git init --root ./repos app`), run on
+2026-11-15.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`docs/serve.md` gives `podnet git init --root ./repos app` as the first command: "the bare repository ./repos/app.git".
+The manual has the same example. In a new directory, the command exits 64 with `podnet: --root ./repos: not a
+directory`, and makes nothing. A user who types the documented commands stops at the first one.
+
+## Premise
+
+- Measured on 2026-11-15 with `target/debug/podnet` in a new HOME and a new working directory: exit 64 and the message
+  above. `src/cli/cmd/git.rs`, `init`, calls `real_root`, which refuses a root that is not a directory.
+- `git serve` and `git urls` keep the refusal: they read a root, they do not make one.
+- The block of `docs/serve.md` has the class `live` in `scripts/doc-commands.txt` (its other lines open a quick tunnel
+  or the relay), so `doc-commands.py --run` does not run it. The line ran alone.
+
+## Approach
+
+1. In `init`, make the root (`create_dir_all`) when it does not exist, then go on as before.
+2. `tests/cli/git.rs`, `git_serve_init_and_urls`: start with no root.
+
+## Prove
+
+```sh
+cargo test --test cli git::git_serve_init_and_urls
+d=$(mktemp -d) && cd "$d" && podnet git init --root ./repos app && test -f repos/app.git/HEAD
+```
+
+# T-362: docs/cli.md: the completion command writes to a directory that can be absent
+
+**Source:** T-358 step 2, the documented command at docs/cli.md:36
+(`podnet completions bash > ~/.local/share/bash-completion/completions/podnet`), run on 2026-11-15.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+In a new HOME, the shell refuses the redirection: `~/.local/share/bash-completion/completions/podnet: No such file or
+directory`. The document gives no step that makes the directory.
+
+## Premise
+
+- Measured on 2026-11-15 in a new HOME: the shell exits 1. `podnet completions bash` alone exits 0. The defect is in the
+  document, not in the code.
+- The block has the class `skip` (its last three lines have the placeholder `...`), so `--run` does not run it. The
+  line ran alone.
+
+## Approach
+
+1. Add `mkdir -p ~/.local/share/bash-completion/completions` before the line in `docs/cli.md`.
+
+## Prove
+
+```sh
+HOME=$(mktemp -d) sh -ec 'mkdir -p ~/.local/share/bash-completion/completions; podnet completions bash > ~/.local/share/bash-completion/completions/podnet'
+```
+
+# T-363: net passwd-shim: the home of the entry is $HOME, not /state/home
+
+**Source:** T-358 step 2, the documented command at docs/networks.md:338
+(`eval "$(podnet net passwd-shim)"`, then `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ''`), read on 2026-11-15.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`podnet net passwd-shim` writes the entry `NAME:x:UID:GID:NAME:/state/home:/bin/sh` on each host. `/state/home` is the
+home of one sandbox, not of the user. `ssh` and `ssh-keygen` find `~/.ssh` by the home of the entry, not by `$HOME`.
+With the shim, `ssh` reads its keys and `known_hosts` from `/state/home/.ssh`, and `ssh-keygen -f ~/.ssh/id_ed25519`
+does not make `~/.ssh` (it makes the directory only when the file is under the `.ssh` of the entry).
+
+## Premise
+
+- Measured on 2026-11-15: `HOME=/x/y podnet net passwd-shim --out DIR` writes `u0:x:0:0:u0:/state/home:/bin/sh`.
+  `crates/podnet-vnet/src/tailscale_ssh.rs`, `LocalUser::new`, has the fixed home; `src/cli/cmd/net/shim.rs`,
+  `write_user_shims`, takes it.
+- Not measured: the documented block itself. This host has no `ssh-keygen` (`doc-commands.py --run` prints MISS for
+  it). The `ssh-keygen` behaviour is from its source (`ssh-keygen.c`, the `.ssh` directory of `pw_dir`). CI has
+  `ssh-keygen`: the step "The documented commands" of `ci.yml` runs the block.
+
+## Approach
+
+1. In `write_user_shims`, set the home of the entry to `$HOME` when it is an absolute path. The library default
+   (`LocalUser::new`) stays.
+2. `tests/cli/net.rs`, `passwd_shim_prints_the_preload`: the entry ends with `:$HOME:/bin/sh`.
+3. `docs/networks.md`: say that the home of the entry is `$HOME`.
+
+## Prove
+
+```sh
+cargo test --test cli net::passwd_shim_prints_the_preload
+python3 -I scripts/doc-commands.py --run --only docs/networks.md
 ```

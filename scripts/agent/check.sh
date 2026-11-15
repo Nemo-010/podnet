@@ -2,7 +2,8 @@
 # The checks of CLAUDE.md before each push: fmt, clippy and the tests, the
 # check of the work record (cargo todo check), the size of the Rust files
 # (scripts/check-size.py), the layers of the modules
-# (scripts/check-layers.py) and the docs (cargo doc, as CI). Print each
+# (scripts/check-layers.py), the docs (cargo doc, as CI) and the class of each
+# sh block of the documents (scripts/doc-commands.py --check). Print each
 # exit code, and the first faults; exit 1 on a fault. With the argument notest, the tests are skipped.
 #
 #   sh scripts/agent/check.sh [notest]
@@ -23,6 +24,8 @@ RUSTDOCFLAGS="-D warnings" cargo doc -q --locked --no-deps --workspace > "$log/d
 echo "doc $d"; [ "$d" -eq 0 ] || { rc=1; grep -E "^(error|warning)" -A6 "$log/doc.log" | head -20; }
 python3 -I scripts/check-layers.py > "$log/layers.log" 2>&1; l=$?
 echo "layers $l"; [ "$l" -eq 0 ] || { rc=1; grep -v "^check-layers:" "$log/layers.log" | head -20; }
+python3 -I scripts/doc-commands.py --check > "$log/doccmd.log" 2>&1; k=$?
+echo "doc-commands $k"; [ "$k" -eq 0 ] || { rc=1; head -20 "$log/doccmd.log"; }
 if [ "${1:-}" != notest ]; then
     timeout 1500 cargo test --workspace > "$log/test.log" 2>&1; t=$?
     echo "test $t"; [ "$t" -eq 0 ] || { rc=1; grep -E "FAILED|panicked|failed" "$log/test.log" | head -30; }

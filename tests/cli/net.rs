@@ -302,7 +302,7 @@ fn auth_user_flags() {
 
 /// T-168: `net passwd-shim` writes the passwd shim and prints the preload:
 /// one JSON object, or `export` lines only on stdout (for eval). An old
-/// LD_PRELOAD stays after the shim.
+/// LD_PRELOAD stays after the shim. The home of the entry is $HOME (T-363).
 #[test]
 fn passwd_shim_prints_the_preload() {
     if podnet::vnet::shim::compiler().is_err() {
@@ -317,6 +317,7 @@ fn passwd_shim_prints_the_preload() {
         .args(["net", "passwd-shim", "--out", out, "--user", "builder"])
         .args(["--uid", "4242", "--json"])
         .env("LD_PRELOAD", "/old.so")
+        .env("HOME", dir.path())
         .output()
         .unwrap();
     assert_eq!(json.status.code(), Some(0), "{}", stderr(&json));
@@ -330,6 +331,13 @@ fn passwd_shim_prints_the_preload() {
     let passwd = doc["SANDHOME_PASSWD"].as_str().unwrap();
     let text = std::fs::read_to_string(passwd).unwrap();
     assert!(text.contains("builder:x:4242:"), "{text}");
+    let home = format!(":{}:/bin/sh\n", dir.path().display());
+    assert!(
+        text.lines()
+            .next()
+            .is_some_and(|l| format!("{l}\n").ends_with(&home)),
+        "{text}"
+    );
     assert!(fakepwd.is_file());
     let shell = Command::new(env!("CARGO_BIN_EXE_podnet"))
         .args(["net", "passwd-shim", "--out", out])

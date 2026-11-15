@@ -33,6 +33,7 @@ podnet man --json               # the tables, for a program
 podnet warp run --help --json   # the same JSON for one command (at each level)
 podnet status                   # one JSON line about this host; no network
 podnet ports --json             # the listening TCP ports, as one JSON object
+mkdir -p ~/.local/share/bash-completion/completions
 podnet completions bash > ~/.local/share/bash-completion/completions/podnet   # also zsh, fish, elvish, powershell
 podnet -q tunnel ...            # warnings and errors only; -v debug, -vv trace
 podnet --log-format json ...    # the log as one JSON object for each line

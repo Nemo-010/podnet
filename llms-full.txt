@@ -1091,7 +1091,8 @@ COMMANDS
             ROOT/a/b.git). Required.
 
         --root <DIR>
-            The directory that holds the repositories. Required.
+            The directory that holds the repositories. podnet makes it when it
+            does not exist. Required.
 
         --ca-file <PATH>
             A file of TLS roots (PEM). podnet uses only these roots for each
@@ -13600,6 +13601,7 @@ eval "$(podnet net passwd-shim)"
 ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ''
 ```
 
+The home of the entry is `$HOME`: `ssh` and `ssh-keygen` find `~/.ssh` there.
 `--user`, `--uid`, `--gid` and `--shell` set the entry. `--json` prints the
 environment as one object. `net ts-shims` writes the same files, with
 `getent` and `id`, and prints the hints for `tailscaled`.
@@ -14996,6 +14998,7 @@ podnet man --json               # the tables, for a program
 podnet warp run --help --json   # the same JSON for one command (at each level)
 podnet status                   # one JSON line about this host; no network
 podnet ports --json             # the listening TCP ports, as one JSON object
+mkdir -p ~/.local/share/bash-completion/completions
 podnet completions bash > ~/.local/share/bash-completion/completions/podnet   # also zsh, fish, elvish, powershell
 podnet -q tunnel ...            # warnings and errors only; -v debug, -vv trace
 podnet --log-format json ...    # the log as one JSON object for each line

@@ -179,6 +179,11 @@ fn write_user_shims(
         .map(Ok)
         .unwrap_or_else(|| podnet::state::exec_dir("podnet-ts-shims"))?;
     let mut user = tailscale_ssh::current_user();
+    // The home of the entry is $HOME: ssh and ssh-keygen find ~/.ssh by
+    // the entry, not by $HOME (T-363).
+    if let Some(home) = std::env::var_os("HOME").filter(|h| std::path::Path::new(h).is_absolute()) {
+        user.home = home.to_string_lossy().into_owned();
+    }
     if let Some(name) = args.user {
         user.name = name;
     }

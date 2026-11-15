@@ -339,6 +339,7 @@ eval "$(podnet net passwd-shim)"
 ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ''
 ```
 
+The home of the entry is `$HOME`: `ssh` and `ssh-keygen` find `~/.ssh` there.
 `--user`, `--uid`, `--gid` and `--shell` set the entry. `--json` prints the
 environment as one object. `net ts-shims` writes the same files, with
 `getent` and `id`, and prints the hints for `tailscaled`.

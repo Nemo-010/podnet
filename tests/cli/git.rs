@@ -68,7 +68,7 @@ fn git_serve_init_and_urls() {
     }
     let base = tempfile::tempdir().unwrap();
     let (root, state) = (base.path().join("root"), base.path().join("state"));
-    std::fs::create_dir(&root).unwrap();
+    // git init makes the root (docs/serve.md: git init, then git serve).
     let root_arg = root.to_str().unwrap();
     let out = podnet_in(&state, &["git", "init", "--root", root_arg, "team/app"]);
     assert!(out.status.success(), "{}", stderr(&out));
