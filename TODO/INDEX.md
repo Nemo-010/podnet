@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**357 entries: 13 open, 9 partial, 23 blocked, 312 done.**
+**357 entries: 11 open, 9 partial, 23 blocked, 314 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 33 | 36 |
-| P2 | 7 | 4 | 10 | 160 | 181 |
+| P2 | 5 | 4 | 10 | 162 | 181 |
 | P3 | 6 | 4 | 11 | 118 | 139 |
-| **All** | 13 | 9 | 23 | 312 | 357 |
+| **All** | 11 | 9 | 23 | 314 | 357 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -401,5 +401,5 @@ M8 Overlays, M9 Later.
 | [T-353](link.md) | P3 | S | M9 | defect | done | link: a closed half can end the listener of a split session with "the carrier of the link ended" |
 | [T-354](later.md) | P3 | S | M9 | feature | done | net: `devtunnel://` with a tunnel access token, or with no token |
 | [T-355](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.13`: the dry run, the publish and the release proofs |
-| [T-356](fixes.md) | P2 | S | M5 | defect | open | vnet shim: an IPv4-mapped IPv6 address gets the IPv4 abstract name |
-| [T-357](fixes.md) | P2 | S | M5 | feature | open | vnet shim: `PODNET_VNET_FORWARD` sends a TCP destination to a unix socket path |
+| [T-356](fixes.md) | P2 | S | M5 | defect | done | vnet shim: an IPv4-mapped IPv6 address gets the IPv4 abstract name |
+| [T-357](fixes.md) | P2 | S | M5 | feature | done | vnet shim: `PODNET_VNET_FORWARD` sends a TCP destination to a unix socket path |

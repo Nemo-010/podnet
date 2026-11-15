@@ -6688,7 +6688,7 @@ passed; release-proofs 43716868782 passed.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -6716,7 +6716,18 @@ T-317 for the seccomp backend). Thus a .NET client under the shim does not meet 
 
 ```sh
 cargo test --test shim_direct
+cargo test --test shim_forward a_mapped_ipv6_connect_meets_an_ipv4_listener
 ```
+
+## Done
+
+2026-11-15, d794352. `tests/shim_forward.rs`, `a_mapped_ipv6_connect_meets_an_ipv4_listener`: before the fix it failed
+(the client connect to `podnet-vnet/6/::ffff:127.0.0.1/17001` met no listener, and the server waited 30 s); after the fix
+it passes. An `AF_INET6` client on `::ffff:127.0.0.1` meets an `AF_INET` listener of `127.0.0.1` and the other way, and
+each side gets addresses in the family of its descriptor. `::1` with `PODNET_VNET_MAP_LOOPBACK` now gets the name
+`podnet-vnet/4/10.66.0.2/PORT` (`shim_direct`, `ipv6_loopback_maps_to_the_local_ipv4_name`). `sh scripts/agent/check.sh`
+passed (2016 tests), and `cargo clippy --workspace --all-targets --features full -- -D warnings` passed. Not measured: the
+GitHub runner in a podvm unit.
 
 # T-357: vnet shim: `PODNET_VNET_FORWARD` sends a TCP destination to a unix socket path
 
@@ -6725,7 +6736,7 @@ cargo test --test shim_direct
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -6753,7 +6764,18 @@ Precedence: the forward list first, then the SOCKS routes, then the abstract nam
 ## Prove
 
 ```sh
-cargo test --test shim_socks
+cargo test --test shim_forward
 cargo test -p podnet-vnet --lib shim
 cargo test --test cli net::
 ```
+
+## Done
+
+2026-11-15, 21593c2. `PODNET_VNET_FORWARD` and `net shim --forward ADDR:PORT=unix:/PATH`. `tests/shim_forward.rs`,
+`a_forward_connects_to_a_unix_socket_path`: a client of `AF_INET` and `AF_INET6` reaches a `UnixListener` of the test at
+`127.0.0.1:7001`, `[::ffff:127.0.0.1]:7001` and `[::1]:3128`; the descriptor is `AF_UNIX` (`SO_DOMAIN` 1); `getpeername`
+gives the TCP address; the forward comes before a SOCKS route of `127.0.0.0/8`; a missing path gives `ECONNREFUSED`; a
+bad entry is ignored and logged. `a_destination_with_no_forward_keeps_its_abstract_name` passes. `net::shim_takes_forwards`:
+exit 64 at a bad forward. `forwards_are_checked` (the unit test of the forms). `sh scripts/agent/check.sh` passed (2016
+tests), and clippy with `--features full` passed. Not measured: a run in a podvm unit next to the `LD_PRELOAD`
+interposer of podvm.
