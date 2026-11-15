@@ -10220,11 +10220,12 @@ FILES
       Extra TLS roots (PEM), for example the root of a TLS-inspecting proxy.
       podnet reads it when --ca-file and SSL_CERT_FILE are not set.
   /etc/ssl/certs/ca-certificates.crt
-      The first system bundle of TLS roots. podnet also tries
-      /etc/pki/tls/certs/ca-bundle.crt,
-      /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem,
-      /etc/ssl/ca-bundle.pem, /etc/ssl/cert.pem and
-      /usr/local/share/certs/ca-root-nss.crt, and reads the first that it can.
+      The first system bundle of TLS roots. When it is not there, podnet tries
+      these files in this order, and reads the first that it can. The first is
+      /etc/pki/tls/certs/ca-bundle.crt. The next is
+      /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem. The next is
+      /etc/ssl/ca-bundle.pem. The next is /etc/ssl/cert.pem. The last is
+      /usr/local/share/certs/ca-root-nss.crt.
   config.yml (--config)
       A cloudflared configuration file: tunnel, credentials-file,
       ha-connections, protocol, ingress. The path: of an ingress rule is a

@@ -3,7 +3,8 @@
 # check of the work record (cargo todo check), the size of the Rust files
 # (scripts/check-size.py), the layers of the modules
 # (scripts/check-layers.py), the docs (cargo doc, as CI) and the class of each
-# sh block of the documents (scripts/doc-commands.py --check). Print each
+# sh block of the documents (scripts/doc-commands.py --check), and the man page
+# with groff and mandoc when both exist (as CI). Print each
 # exit code, and the first faults; exit 1 on a fault. With the argument notest, the tests are skipped.
 #
 #   sh scripts/agent/check.sh [notest]
@@ -26,6 +27,19 @@ python3 -I scripts/check-layers.py > "$log/layers.log" 2>&1; l=$?
 echo "layers $l"; [ "$l" -eq 0 ] || { rc=1; grep -v "^check-layers:" "$log/layers.log" | head -20; }
 python3 -I scripts/doc-commands.py --check > "$log/doccmd.log" 2>&1; k=$?
 echo "doc-commands $k"; [ "$k" -eq 0 ] || { rc=1; head -20 "$log/doccmd.log"; }
+# The man page, as the job "test" of CI renders it: groff with each warning
+# (-ww) and mandoc lint. When groff or mandoc is not on this host, the step
+# says "skipped": CI still runs it.
+if command -v groff > /dev/null 2>&1 && command -v mandoc > /dev/null 2>&1; then
+    m=0
+    cargo run --locked -q --bin podnet -- man --roff > "$log/podnet.1" 2> "$log/man.log" || m=1
+    groff -man -Tutf8 -ww -z "$log/podnet.1" 2>> "$log/man.log" || true
+    mandoc -T lint -W error "$log/podnet.1" >> "$log/man.log" 2>&1 || m=1
+    [ -s "$log/man.log" ] && m=1
+    echo "man $m"; [ "$m" -eq 0 ] || { rc=1; head -20 "$log/man.log"; }
+else
+    echo "man skipped (no groff or mandoc on this host)"
+fi
 if [ "${1:-}" != notest ]; then
     timeout 1500 cargo test --workspace > "$log/test.log" 2>&1; t=$?
     echo "test $t"; [ "$t" -eq 0 ] || { rc=1; grep -E "FAILED|panicked|failed" "$log/test.log" | head -30; }
