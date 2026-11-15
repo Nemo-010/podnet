@@ -6641,7 +6641,7 @@ batch since `v0.4.0-beta.12`: ci 43708707139 and deny 43708710128 on f1327d6 (Gi
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -6674,3 +6674,9 @@ batch is green.
 cargo test --test docs
 # the runs of release.yml (dry run, publish) and release-proofs.yml pass
 ```
+
+## Done
+
+2026-11-15, 0a0f3e5 (the tag `v0.4.0-beta.13`). GitHub #579 on 0a0f3e5: the dry run 43711413173, ci 43711402086, deny
+43711405265, secrets 43711407779 and live 43711410272 passed; the publish 43713471880 and the run on the tag 43714213695
+passed; release-proofs 43716868782 passed.

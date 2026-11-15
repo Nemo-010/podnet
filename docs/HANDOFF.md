@@ -14,8 +14,8 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`).
 * podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.52.0` (T-137), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
-* The newest release is `v0.4.0-beta.12` (T-352, b6e7959).
-* The record is `TODO/`. `cargo todo check` agrees: 355 entries, 12 open, 9 partial, 23 blocked, 311 done.
+* The newest release is `v0.4.0-beta.13` (T-355, 0a0f3e5).
+* The record is `TODO/`. `cargo todo check` agrees: 355 entries, 11 open, 9 partial, 23 blocked, 312 done.
 
 ## Unfinished work (not on `main`)
 
@@ -33,15 +33,12 @@ after it is sent: the owner can run it at once (GitHub #531). Put later commits 
 A release request (`docs/maintenance.md`, "Release") chains: the checks, the dry run of `release.yml`, the publish
 (`-f publish=vX`), the release on the tag, and `release-proofs.yml -f tag=vX`. The release on the tag is a run of the event
 `workflow_dispatch` on the branch `vX` (not `push`): find it with `gh run list --workflow release.yml --branch vX`.
-For `v0.4.0-beta.11` (GitHub #563) that lookup gave the run of the publish itself (43621310830): one run tags and publishes.
+For `v0.4.0-beta.11` and `beta.12` that lookup gave the run of the publish itself; for `beta.13` (GitHub #579) it gave a run of its own (43714213695). Both forms pass.
 `release.yml` tags the head of `main` at the publish: push nothing to `main` from the request to the tag.
 
-Each workflow passes on b6e7959, the tag `v0.4.0-beta.12` (GitHub #567): ci 43641661040, deny 43641664659, secrets
-43641667797, live 43641671768; fuzz 43632083716 passed on b7c3e90 (GitHub #565).
-
-Each workflow passes on 6536905, the take of `v0.47.0` (GitHub #569): ci 43654435897, deny 43654439784, secrets
-43654443103, live 43654446240, fuzz 43654449404. ci 43659845378 and deny 43659848188 pass on 34bb2cd, the take of `v0.48.0` (GitHub #571;
-862a6a9, a bump of the tag only). ci 43664113413 and deny 43664116501 pass on 0bda088, the take of `v0.49.0` (GitHub #573). ci 43673745417 and deny 43673748869 pass on d072007, the take of `v0.50.0` (GitHub #575). ci 43705620683, deny 43705623914 and secrets 43705627029 pass on 08802d8, T-354 (GitHub #576). ci 43708707139 and deny 43708710128 pass on f1327d6, the take of `v0.51.0` (GitHub #578). GitHub #579 is the release of `v0.4.0-beta.13` (T-355).
+Each workflow passes on 0a0f3e5, the tag `v0.4.0-beta.13` (GitHub #579): ci 43711402086, deny 43711405265, secrets
+43711407779, live 43711410272; fuzz 43654449404 passed on 6536905 (GitHub #569). GitHub #581 asks for ci and deny on the take of
+podcrates `v0.52.0` (c0ab946).
 
 ## Next steps
 

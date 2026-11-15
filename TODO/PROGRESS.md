@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 355 entries: 12 open, 9 partial, 23 blocked, 311 done.
+`TODO/INDEX.md` holds 355 entries: 11 open, 9 partial, 23 blocked, 312 done.
 
 ## State
 
@@ -15,7 +15,7 @@
   reads the state of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
 - Frozen (fixes only, each as a COORD issue): `src/warp/` (glue over `pod-warp`), `src/cloudflare/`, `src/proxy.rs`,
   `src/tunnel.rs`, `crates/podnet-netns/src/rules.rs` and `tests/test_host/mod.rs` (in `pod-testkit`).
-- The newest release is `v0.4.0-beta.12` (T-352).
+- The newest release is `v0.4.0-beta.13` (T-355).
 - The tag `v0.46.0` brings the S3 carrier (bcfae9e) and the split session (3623ec5); both are in `v0.4.0-beta.12`.
 - The tag `v0.47.0` (1d4d7f1) needs no change of code. The tests of the S3 carrier use the stand-in of `pod-link`
   (556708a, T-279). These two commits have no CI run yet.
@@ -32,7 +32,7 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** cut a beta when a batch of fixes is green (betas, 2026-11-09). The newest is `v0.4.0-beta.12`.
+3. **Releases:** cut a beta when a batch of fixes is green (betas, 2026-11-09). The newest is `v0.4.0-beta.13`.
 
 ### The order of podnet's own work
 

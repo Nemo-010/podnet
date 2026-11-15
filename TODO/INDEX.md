@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**355 entries: 12 open, 9 partial, 23 blocked, 311 done.**
+**355 entries: 11 open, 9 partial, 23 blocked, 312 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 33 | 36 |
-| P2 | 6 | 4 | 10 | 159 | 179 |
+| P2 | 5 | 4 | 10 | 160 | 179 |
 | P3 | 6 | 4 | 11 | 118 | 139 |
-| **All** | 12 | 9 | 23 | 311 | 355 |
+| **All** | 11 | 9 | 23 | 312 | 355 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -400,4 +400,4 @@ M8 Overlays, M9 Later.
 | [T-352](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.12`: the dry run, the publish and the release proofs |
 | [T-353](link.md) | P3 | S | M9 | defect | done | link: a closed half can end the listener of a split session with "the carrier of the link ended" |
 | [T-354](later.md) | P3 | S | M9 | feature | done | net: `devtunnel://` with a tunnel access token, or with no token |
-| [T-355](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.13`: the dry run, the publish and the release proofs |
+| [T-355](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.13`: the dry run, the publish and the release proofs |
