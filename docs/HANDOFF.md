@@ -38,7 +38,7 @@ For `v0.4.0-beta.11` and `beta.12` that lookup gave the run of the publish itsel
 
 Each workflow passes on 0a0f3e5, the tag `v0.4.0-beta.13` (GitHub #579): ci 43711402086, deny 43711405265, secrets
 43711407779, live 43711410272; fuzz 43654449404 passed on 6536905 (GitHub #569). ci 43718529045 and deny 43718532371 pass on f6aaeca,
-the take of podcrates `v0.52.0` (GitHub #581). GitHub #583 asks for ci, deny and secrets on T-356 and T-357 (the vnet shim: an IPv4-mapped address, `PODNET_VNET_FORWARD`).
+the take of podcrates `v0.52.0` (GitHub #581). ci 43728239022, deny 43728242664 and secrets 43728245947 pass on 78a3911, T-356 and T-357 (GitHub #583). Read the runs (`watch-runs.py`, below), not only the comment of a request: the runs of #583 ended an hour before any comment.
 
 ## Next steps
 
