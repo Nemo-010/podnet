@@ -947,6 +947,11 @@ Done so far:
   T-126 and T-127) and carries the fix of PodUtils/podnet#572 (their entry 639; podnet T-353): a closed half of a split
   session gives `Lost`. No new hand-off for podnet. `cargo update` keeps `webpki-roots` at 1.0.11, the value of
   `pod_tls::ROOTS_VERSION`, and changes no other crate than the crates of podcrates.
+- v0.52.0 (PodUtils/podcrates#176): each `pod-*` dependency names `tag = "v0.52.0"` and `version = "0.52.0"` (and
+  `pod-todo` of `crates/podnet-todo/Cargo.toml`). The tag adds parts 2 and 3 of `pod-egress` (podnet T-127) and changes
+  `pod-enter` (`Plan::hostname`) and `pod-hostprobe`; podnet takes neither, so no code changes. No new hand-off for podnet.
+  `cargo update` keeps `webpki-roots` at 1.0.11, the value of `pod_tls::ROOTS_VERSION`, and changes no other crate than
+  the crates of podcrates.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
