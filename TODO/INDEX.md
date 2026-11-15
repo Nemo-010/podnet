@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**357 entries: 11 open, 9 partial, 23 blocked, 314 done.**
+**359 entries: 12 open, 9 partial, 24 blocked, 314 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 1 | 2 | 33 | 36 |
-| P2 | 5 | 4 | 10 | 162 | 181 |
+| P1 | 1 | 1 | 2 | 33 | 37 |
+| P2 | 5 | 4 | 11 | 162 | 182 |
 | P3 | 6 | 4 | 11 | 118 | 139 |
-| **All** | 11 | 9 | 23 | 314 | 357 |
+| **All** | 12 | 9 | 24 | 314 | 359 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -403,3 +403,5 @@ M8 Overlays, M9 Later.
 | [T-355](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.13`: the dry run, the publish and the release proofs |
 | [T-356](fixes.md) | P2 | S | M5 | defect | done | vnet shim: an IPv4-mapped IPv6 address gets the IPv4 abstract name |
 | [T-357](fixes.md) | P2 | S | M5 | feature | done | vnet shim: `PODNET_VNET_FORWARD` sends a TCP destination to a unix socket path |
+| [T-358](fixes.md) | P1 | L | M5 | chore | open | The release gate: each beta passes a scenario run of its own binary on restricted hosts |
+| [T-359](fixes.md) | P2 | M | M3 | chore | blocked | One shared crate for the help and the manual of each PodUtils command line |

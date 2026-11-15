@@ -15,7 +15,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 * podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.52.0` (T-137), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.13` (T-355, 0a0f3e5).
-* The record is `TODO/`. `cargo todo check` agrees: 357 entries, 11 open, 9 partial, 23 blocked, 314 done.
+* The record is `TODO/`. `cargo todo check` agrees: 359 entries, 12 open, 9 partial, 24 blocked, 314 done.
 
 ## Unfinished work (not on `main`)
 
@@ -42,6 +42,7 @@ the take of podcrates `v0.52.0` (GitHub #581). GitHub #583 asks for ci, deny and
 
 ## Next steps
 
+0. The release gate (T-358) comes before the next beta (`docs/decisions.md`, 2026-11-15). The shared crate of the help and the manual is T-359.
 1. Ask for runs of each new head with a `[gh action] requested` issue after a batch of changes.
 2. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
 3. Go on with the work order of `TODO/PROGRESS.md`. The disk holds one build: run one agent at a time in this checkout,

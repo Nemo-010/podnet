@@ -6779,3 +6779,101 @@ bad entry is ignored and logged. `a_destination_with_no_forward_keeps_its_abstra
 exit 64 at a bad forward. `forwards_are_checked` (the unit test of the forms). `sh scripts/agent/check.sh` passed (2016
 tests), and clippy with `--features full` passed. Not measured: a run in a podvm unit next to the `LD_PRELOAD`
 interposer of podvm.
+
+# T-358: The release gate: each beta passes a scenario run of its own binary on restricted hosts
+
+**Source:** the owner, 2026-11-15: podrunner, a sibling that uses podnet, did not survive its first contact with real
+testers, and came off as a toy. "How are you planning to catch these bugs before a release is pushed; the beta testers
+won't be always available or willing to test." `docs/decisions.md`, 2026-11-15, The release gate.
+**Category:** chore
+**Milestone:** M5
+**Priority:** P1
+**Effort:** L
+**Status:** open
+
+## Problem
+
+A beta of podnet ships when `ci`, `deny`, `secrets` and `live` pass on a commit. Three betas (`v0.4.0-beta.11` to `beta.13`)
+shipped on 2026-11-14 and 2026-11-15 that way. Each set of notes has a growing list "Not measured against a live service".
+The checks run `cargo test` against stand-ins, inside one runner, as the authors of the code imagined the use. A user runs
+the released static binary, on a host with its own limits, from the documents. Bugs between those two places reach the
+users first: PodUtils/podrunner#69 (a dual-mode IPv6 connect of .NET, podnet T-317) and PodUtils/podrunner#170 (the same
+class in the vnet shim, podnet T-356) came from a consumer, not from a check of podnet.
+
+## Premise
+
+- Read on 2026-11-15: `.github/workflows/live.yml` runs the release-mode binary against live services, one runner, with
+  root. `ci.yml` has the jobs `restricted-host` and `no-loopback`. No job runs the documented commands of `docs/` as a
+  user types them, and no job runs a consumer's real use (a dynamic .NET or Python client under the shim, a podvm unit).
+- podcrates has `pod-testkit` and `pod-netlab`. podrunner proposes a shared harness for a lab (the owner, 2026-11-15).
+  Nothing was built or measured for this entry.
+
+## Approach
+
+1. **The scenario lab.** A workflow `gate.yml` that takes the release binary of the dry run (not `cargo test`) into
+   containers that copy the target hosts of `docs/target-environment.md`: no `CAP_NET_ADMIN`, egress through an HTTP proxy
+   only, a seccomp filter that refuses `AF_INET`/`AF_INET6` with `EACCES` (the host of PodUtils/podrunner#170), IPv6 only,
+   a read-only root, no `/dev/net/tun`. Build it on the shared harness when podrunner's proposal lands; take `pod-netlab`
+   if it fits.
+2. **The documents as tests.** Each `sh` block of `README.md` and `docs/*.md` that a user runs is a scenario: it runs in
+   the lab as written (a marked list of the blocks that need a live service or a second host). A block that fails is a
+   defect of the code or of the document.
+3. **The consumers as tests.** The real use of each sibling: a .NET `HttpClient` and a Python `requests` client under
+   the shim with AF_INET refused; `podnet pod` around a dynamic program; the relay and the tunnel as podssh and podrunner
+   call them. A new consumer report adds a scenario before its fix.
+4. **The gate.** `release.yml` publishes only after `gate.yml` passed on the same commit. The notes of a beta list each
+   scenario and its result; a feature with no passing scenario is marked experimental in its help and in the notes.
+5. Record each scenario failure as a defect entry; a flake is a defect, not a re-run.
+
+## Decision
+
+A call of the lead (2026-11-15), recorded in `docs/decisions.md`: no beta after `v0.4.0-beta.13` until the gate runs.
+The owner can rule otherwise.
+
+## Prove
+
+```sh
+gh workflow run gate.yml -R PodUtils/podnet --ref main
+# the gate passes on the head; a planted defect (the vnet shim without T-356) fails it
+```
+
+# T-359: One shared crate for the help and the manual of each PodUtils command line
+
+**Source:** the owner, 2026-11-15: "it is time everyone shared a single crate for cli help/man".
+`docs/decisions.md`, 2026-11-15, Help and manual.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P2
+**Effort:** M
+**Status:** blocked
+
+## Problem
+
+Each command line of PodUtils (podnet, podssh, podvm, podrunner) writes its own help, manual page and plain-text manual.
+The owner rules that they share one crate.
+
+## Premise
+
+- podnet has `src/manual/` (about 1,970 lines on 2026-11-15): a model of the command tree from `clap`
+  (`model.rs`), the roff writer of `podnet.1` (`roff.rs`), the plain-text manual (`text.rs`), the pager (`pager.rs`), the
+  facts of the environment variables and exit codes (`facts.rs`), the component inventory (`inventory.rs`), and
+  `scripts/gen-llms.py` for `llms.txt` and `llms-full.txt`. The tests `tests/cli/manual.rs` check it.
+- No crate of podcrates holds help or manual code (read at `v0.52.0`).
+
+## Approach
+
+1. A COORD issue to podcrates (to all): the ruling, and `src/manual/` of podnet as a source for a crate (for example
+   `pod-manual`): the model, the roff and text writers, the pager, a typed table of variables and exit codes.
+2. When the crate is at a tag: podnet takes it (T-137), `src/manual/` becomes glue (the facts of podnet), and the tests
+   stay.
+
+## Prove
+
+```sh
+cargo test --test cli manual
+sh scripts/agent/check.sh
+```
+
+## Blocker
+
+podcrates builds the crate (the COORD issue of 2026-11-15).
