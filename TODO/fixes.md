@@ -7483,7 +7483,7 @@ a TCP connect here`. Not done: `podnet pod doctor` still gives the netns backend
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -7520,6 +7520,28 @@ sh scripts/consumer-pod.sh PODNET PODLAB udp-denied
 `sh scripts/consumer-pod.sh PODNET PODLAB udp-denied` with the release musl binary of 1f5088f: `netns` and `auto` start
 the program; python3 gives `gaierror: [Errno -3] Temporary failure in name resolution` and curl exits 6, as with
 `seccomp`. The program itself cannot make the UDP socket of its DNS query in each backend.
+
+## Done
+
+2026-11-16, 55908f6. The fake DNS answers DNS over TCP (RFC 7766 framing, `crates/podnet-netns/src/dnstcp.rs`): the
+seccomp backend answers each TCP connect to port 53 (`connect.rs`), and the netns backend answers port 53 of the gateway
+`10.66.255.254` (`netns/backend.rs`). When the pod cannot make an `AF_INET` UDP socket (`EPERM`, `EACCES` or `ENOSYS`;
+the seccomp supervisor probes before the start, the netns child probes in the namespace), it adds `use-vc` to
+`RES_OPTIONS` of the program and prints one line on stderr. `netns-kernel` does not change: it needs a UDP socket and
+exits 3 in `udp-denied`.
+
+- The test `a_name_resolves_where_udp_sockets_are_refused` (`tests/pod_seccomp/udp_denied.rs`) runs `podnet pod` under a
+  seccomp filter that refuses `socket(AF_INET or AF_INET6, SOCK_DGRAM)` with `EPERM`, with a glibc C program
+  (`getaddrinfo` with `AF_UNSPEC`, then a connect). It failed on the code before the fix (seccomp: `GAI:-3`) and passes
+  after it for `seccomp` and `netns`.
+- `sh scripts/consumer-pod.sh` with the release musl binary of the fix, `podlab` of podcrates `v0.59.0`, as uid 65534,
+  over the 34 profiles of `podlab list`: `udp-denied` passes for `auto`, `netns` and `seccomp` with python3 and curl
+  (before: 6 rows `fail, known: T-383`). The pod rows: 148 pass before, 154 after; 42 n.a. before and after; the two
+  failures that stay are `netns-kernel` in `getsockname-denied` (T-384). No other row changed. 10 labs do not hold here.
+  `CONSUMER_PLANT=decoy` in `udp-denied`: the 6 pod rows fail, as planted.
+- musl: its resolver makes a UDP socket for each query and reads no `use-vc` (the files res_msend.c and resolvconf.c
+  of musl). A static musl program (Rust `ToSocketAddrs`) in `podlab run udp-denied` gives `Operation not
+  permitted` with both backends; it resolves outside the lab. No fix of podnet can help it there; `docs/pods.md` says so.
 
 # T-384: podnet pod --backend netns-kernel reads the ports of its listeners with getsockname (getsockname-denied)
 
