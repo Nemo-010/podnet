@@ -1724,3 +1724,41 @@ not replace `inst_signature`: one cosign check for each run. `scripts/install-te
 and "this installer holds no pins of its own"; cases 5 and 12 still stop on a bad signature and skip with
 `PODNET_COSIGN=none`). `cargo test --test install_script`: 33 passed. `docs/decisions.md`, 2026-11-16, The installer core
 v0.63.0.
+
+# T-409: Take podcrates v0.64.0
+
+**Source:** PodUtils/podcrates#214 (COORD-124, 2026-11-16): the tag `v0.64.0` at `6a965ef`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet takes the crates of podcrates by the tag `v0.63.0`. The tag `v0.64.0` brings `pod-tor` and `pod-iroh` (the move of
+podssh), the line `session.stall` of `pod-session`, the roots of the host in a lab with `--way-out` (their entry 792),
+the SIGPIPE of the lab, and the answers to COORD-097 (#603) and COORD-098 (#604).
+
+## Premise
+
+- `adoption/podnet/` at the tag has no new hand-off for podnet (`sh scripts/agent/podcrates.sh`).
+- The installer core of the tag (`core.sh`, `core-net.sh`, `pins.py`) has the SHA-256 of `v0.63.0`.
+- The breaking changes of the API (`pod_session::pump::Watch`, `pod_lab::net::Net`, `NetFact`) name no code of podnet.
+
+## Approach
+
+1. Each `pod-*` dependency names the tag `v0.64.0`; `Cargo.lock` and `fuzz/Cargo.lock` follow.
+2. `scripts/install/SOURCES` and `issue-sync.yml` name the tag and its commit.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-16, the commit of this entry. The tags, the two lock files, `scripts/install/SOURCES` (the same SHA-256) and
+`issue-sync.yml` (`6a965ef1`, `podcrates_ref: v0.64.0`). `cargo clippy --workspace --all-targets` is clean;
+`sh scripts/agent/check.sh` passes.
