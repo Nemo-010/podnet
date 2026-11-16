@@ -20,7 +20,7 @@ Three backends are available. `--backend auto` (the default) selects `netns` or 
 | Backend | Needs | Mechanism |
 | --- | --- | --- |
 | `netns` | unprivileged user namespaces, and `/dev/net/tun` or a veth pair | The program gets a network namespace. A TUN device (else a veth pair) is its only interface. A userspace TCP/IP stack sends each flow to the upstream. |
-| `netns-kernel` | as `netns`, and `nf_tables` and conntrack in the namespace (`pod doctor` row `netfilter in a namespace`) | The same namespace with `lo` only. `nat OUTPUT REDIRECT` rules of the kernel send each TCP connection, each UDP datagram and each DNS query to listeners that the child makes. The parent serves them. No TUN, no userspace stack. |
+| `netns-kernel` | as `netns`, and `nf_tables` and conntrack in the namespace (`pod doctor` row `netfilter in a namespace`) | The same namespace with `lo` only. `nat OUTPUT REDIRECT` rules of the kernel send each TCP connection, each UDP datagram and each DNS query to listeners that the child makes (127.0.0.1, ports 61001 to 61003 of the new namespace, above the ephemeral range; no `getsockname`). The parent serves them. No TUN, no userspace stack. |
 | `seccomp` | seccomp with `SECCOMP_RET_USER_NOTIF` | A seccomp filter stops the socket system calls. The supervisor answers them and gives the program connected descriptors. |
 
 `--backend netns-kernel` (T-153) is not in the `auto` order: the flow table of the `netns` backend

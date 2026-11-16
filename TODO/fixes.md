@@ -7021,7 +7021,7 @@ list`, `agent status`); as uid 65534 it passed in each lab of `podlab` v0.63.0 t
 (the binary was in HOME, the known fault of the setup). The count: 81 commands, 59 with a scenario, 22 experimental
 (T-398 gives them scenarios). Step 4 is done.
 
-What remains: step 1 (above), step 3 (the relay and the tunnel as podssh and podrunner call them), T-384, T-398.
+What remains: step 1 (above), step 3 (the relay and the tunnel as podssh and podrunner call them), T-398 (T-384 is done).
 
 
 # T-359: One shared crate for the help and the manual of each PodUtils command line
@@ -7614,7 +7614,7 @@ exits 3 in `udp-denied`.
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -7640,6 +7640,17 @@ port again (`kernel_serve.rs`). The other backends pass in this lab.
 ```sh
 sh scripts/consumer-pod.sh PODNET PODLAB getsockname-denied
 ```
+
+## Done
+
+2026-11-16, the commit of this entry. The child binds its TCP, UDP and DNS listeners to the fixed ports 61001, 61002
+and 61003 of 127.0.0.1 in the new namespace (`Ports::FIXED` of `crates/podnet-netns/src/nfrules.rs`): the namespace is
+new, so each port is free, and the ports are above the ephemeral range (32768-60999). Neither the child nor the parent
+calls `getsockname` now. `docs/pods.md` names the ports.
+
+`sh scripts/consumer-pod.sh PODNET PODLAB getsockname-denied` (debug podnet, `podlab` v0.63.0, uid 65534): each of the 8
+pod rows passes, `netns-kernel` with python and with curl (before: exit 3, `local address: Not supported`). `no-kvm`:
+each row passes; `bind-denied`: as before. `cargo test -p podnet-netns` and `--test pod_netns_kernel` pass.
 
 # T-390: vnet shim: fcntl reads the struct flock pointer of the lock commands as an int
 

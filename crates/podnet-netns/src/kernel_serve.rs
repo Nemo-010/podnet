@@ -90,7 +90,7 @@ impl Plane {
         let udp = std::net::UdpSocket::from(udp);
         udp.set_nonblocking(true)?;
         let udp = UdpSocket::from_std(udp)?;
-        let udp_port = udp.local_addr()?.port();
+        let udp_port = crate::nfrules::Ports::FIXED.udp;
         let dns_socket = std::net::UdpSocket::from(dns_fd);
         dns_socket.set_nonblocking(true)?;
         let dns_socket = UdpSocket::from_std(dns_socket)?;

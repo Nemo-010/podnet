@@ -37,6 +37,19 @@ pub(crate) struct Ports {
     pub(crate) dns: u16,
 }
 
+impl Ports {
+    /// The ports of the listeners in the new namespace (T-384). The
+    /// namespace is new, so each port is free; the ports are above the
+    /// ephemeral range of Linux (32768-60999), so a connect of the program
+    /// does not take them. Fixed ports need no `getsockname`, which some
+    /// hosts refuse (the lab `getsockname-denied`).
+    pub(crate) const FIXED: Ports = Ports {
+        tcp: 61001,
+        udp: 61002,
+        dns: 61003,
+    };
+}
+
 /// One `redirect` rule: the protocol, an optional destination port to
 /// match, whether a destination on 127.0.0.0/8 is left alone, and the
 /// port to redirect to.

@@ -216,15 +216,11 @@ fn child_setup(sock: RawFd, args: &Args) -> Result<()> {
     pod_hold::netns::announce(sock, userns)?;
     bringup_loopback()?;
     local_default_route()?;
-    let tcp = std::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).context("TCP listener")?;
-    let udp = std::net::UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).context("UDP socket")?;
-    let dns = std::net::UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).context("DNS socket")?;
-    let port = |r: std::io::Result<SocketAddr>| r.map(|a| a.port()).context("local address");
-    let ports = Ports {
-        tcp: port(tcp.local_addr())?,
-        udp: port(udp.local_addr())?,
-        dns: port(dns.local_addr())?,
-    };
+    let ports = Ports::FIXED;
+    let tcp =
+        std::net::TcpListener::bind((Ipv4Addr::LOCALHOST, ports.tcp)).context("TCP listener")?;
+    let udp = std::net::UdpSocket::bind((Ipv4Addr::LOCALHOST, ports.udp)).context("UDP socket")?;
+    let dns = std::net::UdpSocket::bind((Ipv4Addr::LOCALHOST, ports.dns)).context("DNS socket")?;
     let netlink = crate::nfnl::open_socket(2).context("socket(NETLINK_NETFILTER)")?;
     nfrules::install(netlink.as_raw_fd(), &nfrules::batch(ports)).map_err(anyhow::Error::msg)?;
     ping_group_range(unsafe { libc::getgid() });

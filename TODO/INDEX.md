@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**397 entries: 12 open, 11 partial, 36 blocked, 338 done.**
+**397 entries: 11 open, 11 partial, 36 blocked, 339 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 38 | 42 |
 | P2 | 5 | 5 | 10 | 178 | 198 |
-| P3 | 7 | 4 | 24 | 121 | 156 |
-| **All** | 12 | 11 | 36 | 338 | 397 |
+| P3 | 6 | 4 | 24 | 122 | 156 |
+| **All** | 11 | 11 | 36 | 339 | 397 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -428,7 +428,7 @@ M8 Overlays, M9 Later.
 | [T-381](fixes.md) | P2 | S | M5 | defect | done | The netns backend of podnet pod needs an AF_INET datagram socket (pod-hold) |
 | [T-382](fixes.md) | P1 | S | M5 | defect | done | podnet pod takes the netns backend where each TCP connect of the program is refused (Landlock) |
 | [T-383](fixes.md) | P2 | M | M5 | defect | done | podnet pod: no name resolves when the program cannot make a UDP socket (udp-denied) |
-| [T-384](fixes.md) | P3 | S | M5 | defect | open | podnet pod --backend netns-kernel reads the ports of its listeners with getsockname (getsockname-denied) |
+| [T-384](fixes.md) | P3 | S | M5 | defect | done | podnet pod --backend netns-kernel reads the ports of its listeners with getsockname (getsockname-denied) |
 | [T-385](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.58.0 and remove the glue of the gaps of pod-manual |
 | [T-386](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.59.0 (the fixes of pod-link and pod-hold for T-380 and T-381) |
 | [T-387](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.60.0 (the network labs of pod-lab, clap's requires in pod-manual) |
