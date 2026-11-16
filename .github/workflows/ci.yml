@@ -6,7 +6,8 @@ name: ci
 # * restricted-host: the tests with bind(AF_INET) refused.
 # * no-loopback: the tests in a network namespace with the loopback down.
 # * msrv: the workspace builds with the rust-version of Cargo.toml.
-# * static: static musl binaries for x86_64 and aarch64, with their sizes.
+# * static: static musl binaries for x86_64 and aarch64, with their sizes; on
+#   x86_64, the consumer .NET HttpClient under the shim (T-358 step 3).
 # * workflows: the rules of scripts/check-workflows.py, and the size of the
 #   Rust files (scripts/check-size.py).
 # * record: the tests of the checker of the work record (crates/podnet-todo),
@@ -320,6 +321,49 @@ jobs:
               echo "| $b | $(wc -c < target/${{ matrix.target }}/release/$b) |"
             done
           } >> "$GITHUB_STEP_SUMMARY"
+      # T-358 step 3: a consumer as a test. A .NET HttpClient (the runner of
+      # podrunner) reaches a broker on a unix socket through the vnet shim of
+      # the static binary and PODNET_VNET_FORWARD. No lab here: podlab is not
+      # built in CI (docs/development.md runs the lab bind-denied).
+      - name: The consumer .NET HttpClient under the shim
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        env:
+          DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+          DOTNET_NOLOGO: "1"
+        run: |
+          set -u
+          # The image can have an SDK 8; else take the package of Ubuntu.
+          if ! dotnet --list-sdks 2>/dev/null | grep -q '^8\.'; then
+            sh scripts/retry.sh sudo apt-get install -y -qq dotnet-sdk-8.0 > /dev/null
+          fi
+          sh scripts/consumer-dotnet.sh target/${{ matrix.target }}/release/podnet
+      # The plant: a shim with no match of the IPv4-mapped address of a
+      # forward (T-356 removed) must fail the check.
+      - name: The consumer check fails on its plant
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        env:
+          DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+          DOTNET_NOLOGO: "1"
+        run: |
+          set -u
+          w="$RUNNER_TEMP/plant"
+          mkdir -p "$w"
+          python3 - .work/consumer-dotnet/shim/libpodnet-vnet.c "$w/libpodnet-vnet.c" <<'EOF'
+          import sys
+          s = open(sys.argv[1]).read()
+          old = ("        if (IN6_IS_ADDR_V4MAPPED(&s->sin6_addr)) {\n            family = AF_INET;\n"
+                 "            addr += 12;\n        }\n    } else {\n        return NULL;")
+          assert s.count(old) == 1, "the plant does not apply"
+          open(sys.argv[2], "w").write(s.replace(old, "    } else {\n        return NULL;"))
+          EOF
+          cc -shared -fPIC -O2 -o "$w/libpodnet-vnet.so" "$w/libpodnet-vnet.c" -ldl -lpthread
+          if CONSUMER_SHIM="$w/libpodnet-vnet.so" sh scripts/consumer-dotnet.sh \
+            target/${{ matrix.target }}/release/podnet > "$w/plant.log" 2>&1; then
+            cat "$w/plant.log"
+            echo "the planted shim passed"
+            exit 1
+          fi
+          grep -m1 'Connection refused' "$w/plant.log" || { cat "$w/plant.log"; echo "the plant failed for another cause"; exit 1; }
       - name: Package
         run: |
           mkdir dist

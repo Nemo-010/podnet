@@ -94,6 +94,36 @@ failure. The logs are in `LANE_DIR` (default `.work/lab-lane`), which must
 not be in `/tmp` or in `HOME`. It needs `python3`, `cc` (for the shim) and
 `timeout`.
 
+## The consumer .NET HttpClient
+
+`scripts/consumer-dotnet.sh` runs the real use of a consumer (T-358, step
+3): the HTTP client of the runner of PodUtils/podrunner, under the vnet
+shim. The client is `tests/consumers/dotnet-http` (.NET 8, no NuGet
+package). It sends GET to `http://127.0.0.1:PORT/` with the default
+`SocketsHttpHandler`, which opens dual-mode AF_INET6 sockets.
+
+1. Install the SDK: `apt-get install -y -qq dotnet-sdk-8.0`.
+2. Build the release binary of podnet (`docs/build.md`), and `podlab`
+   (above) for the lab.
+3. Run `sh scripts/consumer-dotnet.sh PODNET [PODLAB [PROFILE]]`. The
+   default PROFILE is `bind-denied`. As root, the lab cases run as uid
+   65534.
+
+The script builds the client, serves a broker on a unix socket and a TCP
+server on `127.0.0.1:PORT` with another body, and builds the shim with
+`--forward 127.0.0.1:PORT=unix:PATH`. The cases:
+
+* `direct`: no lab, no shim. The client gets the body of the TCP server.
+* `shim`: no lab, the shim. The client gets the body of the broker.
+* `lab-bare`: the lab, no shim. The connect fails with `Permission denied`.
+* `lab-shim`: the lab, the shim. The client gets the body of the broker.
+
+A shim case also checks the shim log (`connect -> forward`) and the peer
+of the AF_UNIX connection of the broker (`SO_PEERCRED`: the `dotnet`
+process). `CONSUMER_SHIM=PATH` takes another shim: the job `static` of
+`ci.yml` plants a shim with no match of the IPv4-mapped address (T-356
+removed), and the check must fail. CI runs the cases with no lab.
+
 ## Rules for tests
 
 * **A test for each fix.** A fix of a defect comes with a test that fails

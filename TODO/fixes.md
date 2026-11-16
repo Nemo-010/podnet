@@ -6887,9 +6887,30 @@ outside the lab (and a negative control with no shim), `link listen` and `link d
 
 What remains of step 1: the network labs (part 2 of `pod-lab`: `proxy-only` and the six profiles; the entry 716 of podcrates takes
 `docs/lab-profiles/`); the commands of the lane that need them (`tunnel --quick`, `warp proxy`, `relay`, `send` and
-`receive`, `doctor` against a stand-in proxy); `link` over `icmp` and `pod --allow-raw icmp` in `raw-denied`; a .NET
-client under the shim; a host where `podlab` runs as a user that is not root in CI (`gate.yml`); T-380 and T-381 (fixes
+`receive`, `doctor` against a stand-in proxy); `link` over `icmp` and `pod --allow-raw icmp` in `raw-denied`; a host where
+`podlab` runs as a user that is not root in CI (`gate.yml`); T-380 and T-381 (fixes
 of podcrates).
+
+2026-11-16, step 3, the first consumer: the .NET `HttpClient` of the runner of PodUtils/podrunner#170.
+`tests/consumers/dotnet-http` (.NET 8) sends GET to `http://127.0.0.1:PORT/` with the default `SocketsHttpHandler`.
+`sh scripts/consumer-dotnet.sh PODNET [PODLAB [PROFILE]]` (`docs/development.md`, The consumer .NET HttpClient) runs
+it with the release musl podnet, `podnet net shim --forward 127.0.0.1:PORT=unix:PATH` and a broker on a unix socket.
+Measured here with dotnet 8.0.134 (Ubuntu's `dotnet-sdk-8.0`) and `podlab` of podcrates `v0.56.0`:
+
+- No lab, no shim: the client gets the body of a TCP server on `127.0.0.1:PORT` (the control).
+- No lab, the shim: exit 0 and the body of the broker. The shim log: `socket(AF_INET6) -> AF_UNIX`, `setsockopt
+  level=41 optname=26 swallowed` (`IPV6_V6ONLY` off: the dual-mode socket of T-356), `connect -> forward PATH`. The
+  broker reads the peer of its AF_UNIX connection with `SO_PEERCRED`: `comm=dotnet`.
+- `podlab run bind-denied` as uid 65534, no shim: `HttpRequestException: Permission denied (127.0.0.1:7105)`. The lab
+  refuses AF_INET.
+- `podlab run bind-denied` as uid 65534, the shim: exit 0 and the body of the broker; the peer is `uid=65534
+  comm=dotnet`.
+- The plant: a shim with no match of the IPv4-mapped address of a forward (T-356 removed, `CONSUMER_SHIM`) fails both
+  shim cases with `Connection refused`.
+
+No defect of podnet. The four cases take about 3 s. The job `static` of `ci.yml` (x86_64) runs the cases with no lab
+on its release binary, and its plant; CI does not build `podlab`. What remains of step 3: a Python `requests` client;
+`podnet pod` around a dynamic program; the relay and the tunnel as podssh and podrunner call them.
 
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 

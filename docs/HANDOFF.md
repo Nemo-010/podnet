@@ -61,6 +61,12 @@ comment of the request.
    The first run (2026-11-16, T-358): 25 labs hold as uid 65534; the open failures are T-380 (`link-unix` in the
    Landlock labs) and T-381 (`pod-netns` in `udp-denied`), both fixes of podcrates. The lead writes the COORD issues
    `(to podcrates)` for them. `docs/lab-profiles/` is the hand-off of the six network profiles to podcrates.
+
+   Step 3, the first consumer (2026-11-16): `sh scripts/consumer-dotnet.sh PODNET [PODLAB [PROFILE]]` runs a .NET 8
+   `HttpClient` (`tests/consumers/dotnet-http`) under the shim with `--forward 127.0.0.1:PORT=unix:PATH`. It passes
+   with no lab and in `bind-denied` as uid 65534; with no shim the lab refuses the connect (`Permission denied`). The
+   job `static` of `ci.yml` runs it with no lab, with a plant (T-356 removed). It needs `apt-get install -y -qq
+   dotnet-sdk-8.0`. Next in step 3: a Python `requests` client, `podnet pod` around a dynamic program.
 1. Ask for runs of each new head with a `[gh action] requested` issue after a batch of changes.
 2. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
 3. Go on with the work order of `TODO/PROGRESS.md`. The disk holds one build: run one agent at a time in this checkout,
