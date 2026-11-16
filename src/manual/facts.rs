@@ -109,6 +109,7 @@ type FileRow = (&'static str, &'static str);
 
 /// Each file that podnet reads or writes.
 pub const FILES: &[FileRow] = &[
+    ("<state directory>/router-usage.json", "The usage of the quota of each door of podnet route that has one: the start of the period and the bytes, by the listen of the door. Mode 0600. podnet route writes it each 10 s while bytes pass, and at the end."),
     ("<state directory>/warp.json", "The WARP device, its token and its MASQUE key (mode 0600, directory mode 0700). The state directory is the first that podnet can write of PODNET_STATE_DIR, $XDG_STATE_HOME/podnet, $HOME/.local/state/podnet, $XDG_RUNTIME_DIR/podnet and podnet-<uid> in the temporary directory; never the current directory. podnet warp writes it; podnet warp delete removes it. --identity names another file."),
     ("$XDG_RUNTIME_DIR/podnet/warp-up.json, else $TMPDIR/podnet-<uid>/warp-up.json", "The pointer file of podnet warp up (mode 0600, directory mode 0700): its socket and its state directory. warp exec, warp shell, warp nc and agent read it last, so that they find a podnet warp up with another state directory. podnet reads it only when this user owns it and no other user can read it. podnet warp down removes it."),
     ("<state directory>/link-identity.key", "The Ed25519 key of this install for podnet link (mode 0600; a wider mode exits 71). podnet link listen, dial and status --create make it on first use. podnet link status prints its fingerprint. The seed is never printed, logged or put in JSON."),

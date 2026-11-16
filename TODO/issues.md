@@ -291,7 +291,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #599 | vnet: let a stock client bind a wildcard, lock a file and enumerate interfaces | closed (outside the team: verified, labelled `confirmed`; T-390 and T-391 in c3616be, T-392 in the commit of its entry) | T-390, T-391, T-392 |
 | #600 | link: an exec service never tells the peer how the program ended | open (outside the team: verified, labelled `confirmed`) | T-403 |
 | #601 | forward has no name table for a client that cannot edit its hosts file | closed (outside the team: verified, labelled `confirmed`; T-404 in the commit of its entry) | T-404 |
-| #602 | router doors count bytes but cannot cap them | open (outside the team: verified, labelled `confirmed`) | T-405 |
+| #602 | router doors count bytes but cannot cap them | closed (outside the team: verified, labelled `confirmed`; T-405 in the commit of its entry) | T-405 |
 | #603 | COORD-097: a fix in the frozen src/tunnel.rs: the quic+warp leg reconnects when its WARP session closes (T-402) (to podcrates) | open (a message to podcrates; close it when podcrates takes the fix with pod-cloudflare) | none |
 | #604 | COORD-098: the relay keeps a lost node socket for minutes after a reset (409); an ask for pod-relay and the relay server (to podcrates) | open (a message to podcrates; T-406 waits for the answer) | none |
 | #605 | COORD-099: the answer to PodUtils/podrunner#201: --loopback-rules holds each loopback port but the broker (since v0.4.0-beta.10) (to podrunner) | open (a message to podrunner; close it when podrunner closes #201) | none |

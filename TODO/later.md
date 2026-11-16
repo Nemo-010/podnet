@@ -2259,7 +2259,7 @@ the UDP and TCP queries give 127.0.0.2 and 127.0.0.3, `example.com` comes from t
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2289,3 +2289,17 @@ satellite link, a relay plan billed by the gigabyte).
 ```sh
 cargo test --workspace
 ```
+
+## Done
+
+2026-11-16, the commit of this entry. `src/router/door_limit.rs`: the keys `rate`, `quota`, `period` and `on_exhaust`
+of a door (decimal sizes; `period` and `on_exhaust` need `quota`), a token bucket for each direction, the periods of
+UTC (day, week from Monday, month), and the usage file `router-usage.json` of the state directory (each 10 s while bytes
+pass, and at the end). `Counting` of `src/router/door_stats.rs` refuses a new flow at the quota; `CountedIo` waits for
+the rate and ends a flow at the quota with `close`; a UDP datagram over a limit is dropped. The status of a door has
+`limits`; the metrics have four rows for the doors with limits. `docs/router.md`.
+
+Tests (`src/router/door_limit_tests.rs`): the sizes, the rules of the keys, the bounds of the periods (a December
+month too), the usage across a restart (each door its own row), the token bucket, and a door over TCP: 200 kB at 400
+kB/s takes 0.35 s to 3 s; a quota of 10 kB with `close` ends the open flow and refuses a new one. `cargo test --lib
+router`: each test passes.

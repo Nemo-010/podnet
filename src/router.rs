@@ -52,6 +52,7 @@ use tokio::time::Instant;
 
 pub mod change;
 pub mod control;
+pub mod door_limit;
 pub mod door_stats;
 pub mod guest;
 pub mod kernel;
@@ -222,9 +223,31 @@ pub struct DoorConfig {
     /// `dns`: the router names no resolver of its own).
     #[serde(default)]
     pub dns_upstream: Option<String>,
+    /// T-405: bytes each second in each direction (`5MB`), the bytes of a
+    /// period (`20GB`), the period (`day`, `week`, `month`, `none`) and
+    /// `refuse` or `close` at the quota.
+    #[serde(default)]
+    pub rate: Option<String>,
+    #[serde(default)]
+    pub quota: Option<String>,
+    #[serde(default)]
+    pub period: Option<String>,
+    #[serde(default)]
+    pub on_exhaust: Option<String>,
 }
 
 impl DoorConfig {
+    /// The rate and the quota of the door (T-405).
+    pub fn limits(&self, what: &str) -> Result<door_limit::Limits> {
+        door_limit::Limits::parse(
+            self.rate.as_deref(),
+            self.quota.as_deref(),
+            self.period.as_deref(),
+            self.on_exhaust.as_deref(),
+        )
+        .map_err(|e| anyhow::anyhow!("{what}.{e:#}"))
+    }
+
     /// The DNS door: its address and its upstream, or `None`.
     pub fn dns(&self, i: usize) -> Result<Option<(std::net::SocketAddr, Target)>> {
         match (&self.dns, &self.dns_upstream) {
@@ -422,7 +445,13 @@ impl RouterDoor {
             None => way.dial,
         };
         let label = inner.label();
-        let stats = Arc::new(door_stats::DoorStats::default());
+        let limits = door.limits(what)?;
+        let stats = Arc::new(if limits.is_none() {
+            door_stats::DoorStats::default()
+        } else {
+            let file = door_limit::usage_file().map(|f| (f, door.listen.clone()));
+            door_stats::DoorStats::limited(Arc::new(door_limit::Limiter::new(limits, file)))
+        });
         let dial: Arc<dyn Dial> = Arc::new(door_stats::Counting::new(inner, stats.clone()));
         let listen =
             ProxyListen::parse(&door.listen).map_err(|e| anyhow::anyhow!("{what}.listen: {e}"))?;

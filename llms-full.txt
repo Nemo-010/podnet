@@ -10355,6 +10355,10 @@ ENVIRONMENT
         man. podnet reads it and sets it.
 
 FILES
+  <state directory>/router-usage.json
+      The usage of the quota of each door of podnet route that has one: the
+      start of the period and the bytes, by the listen of the door. Mode 0600.
+      podnet route writes it each 10 s while bytes pass, and at the end.
   <state directory>/warp.json
       The WARP device, its token and its MASQUE key (mode 0600, directory mode
       0700). The state directory is the first that podnet can write of
@@ -13209,6 +13213,30 @@ Each door shows its counters: `flows` (the flows that came through the door, and
 `open` (the flows that have not ended) and `bytes` (TCP and UDP, both directions, counted at the door). The
 counters of a door start at 0 when it is added and go with it when it is removed. A door that the file
 names and a door that `--add-door` added have the same counters.
+
+A door can have limits (T-405), for a metered way out:
+
+```yaml
+doors:
+  - listen: 127.0.0.1:1080
+    via: metered
+    rate: 5MB          # bytes each second, in each direction
+    quota: 20GB        # bytes of both directions in each period
+    period: month      # day, week (from Monday) or month, UTC; none: no end
+    on_exhaust: refuse # refuse: new flows are refused; close: the open flows end too
+```
+
+* The sizes are decimal: `5MB` is 5000000 bytes; the units are `B`, `KB`, `MB`, `GB` and `TB` (`k`, `M`, `G`, `T`
+  too). `period` and `on_exhaust` need `quota` (else exit 64).
+* `rate` is a token bucket for each direction, with a burst of a tenth of a second (at least 16 KiB). A UDP datagram
+  over the rate is dropped.
+* At the quota, a new flow gets "the quota of the door is used for this period" (a policy refusal). With `close`,
+  each open flow ends at its next read or write. A UDP datagram is dropped.
+* The usage of each door with a quota is in `router-usage.json` of the state directory (mode 0600), by the `listen` of
+  the door. podnet writes it each 10 s while bytes pass, and at the end. A restart in the same period keeps the usage.
+* The status of the door has `limits`: `rate`, `quota`, `period`, `on_exhaust`, `used`, `period_end` (UNIX time,
+  or `null`) and `exhausted`. The metrics add `podnet_route_door_rate_bytes`, `podnet_route_door_quota_bytes`,
+  `podnet_route_door_quota_used_bytes` and `podnet_route_door_period_end_seconds` for the doors that have them.
 
 `podnet route --status unix:/PATH --metrics` prints the rows of the metrics in the text format of
 Prometheus (it cannot be used with `--json`). There is one row for each member and metric, with the

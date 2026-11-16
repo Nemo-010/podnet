@@ -12,7 +12,10 @@ use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::time::Instant;
 
-use crate::network::{BoxFuture, Connected, Datagrams, Dial, Failure, RecvMeta, Target, Transmit};
+use super::door_limit::{Limiter, Way};
+use crate::network::{
+    BoxFuture, Class, Connected, Datagrams, Dial, Failure, RecvMeta, Stage, Target, Transmit,
+};
 
 /// The counters of one door.
 #[derive(Debug, Default)]
@@ -20,6 +23,8 @@ pub struct DoorStats {
     flows: AtomicU64,
     open: AtomicU64,
     bytes: AtomicU64,
+    /// The rate and the quota of the door (T-405).
+    limiter: Option<Arc<Limiter>>,
 }
 
 impl DoorStats {
@@ -38,9 +43,34 @@ impl DoorStats {
         self.bytes.load(Ordering::Relaxed)
     }
 
-    /// The counters as a status document.
+    /// Counters with the limits of `limiter`.
+    pub fn limited(limiter: Arc<Limiter>) -> DoorStats {
+        DoorStats {
+            limiter: Some(limiter),
+            ..DoorStats::default()
+        }
+    }
+
+    pub fn limiter(&self) -> Option<&Arc<Limiter>> {
+        self.limiter.as_ref()
+    }
+
+    /// The counters as a status document, with `limits` when the door has
+    /// a rate or a quota.
     pub fn json(&self) -> serde_json::Value {
-        serde_json::json!({"flows": self.flows(), "open": self.open(), "bytes": self.bytes()})
+        let mut v =
+            serde_json::json!({"flows": self.flows(), "open": self.open(), "bytes": self.bytes()});
+        if let Some(limiter) = &self.limiter {
+            v["limits"] = limiter.json();
+        }
+        v
+    }
+
+    fn add(&self, bytes: usize) {
+        self.bytes.fetch_add(bytes as u64, Ordering::Relaxed);
+        if let Some(limiter) = &self.limiter {
+            limiter.count(bytes as u64);
+        }
     }
 
     fn start(self: &Arc<Self>) -> Open {
@@ -69,6 +99,18 @@ impl Counting {
     pub fn new(inner: Arc<dyn Dial>, stats: Arc<DoorStats>) -> Counting {
         Counting { inner, stats }
     }
+
+    /// A door at its quota refuses each new flow (T-405).
+    fn refuse_at_quota(&self) -> Result<(), Failure> {
+        match &self.stats.limiter {
+            Some(l) if l.exhausted() => Err(Failure::new(
+                Stage::Connect,
+                Class::Policy,
+                "the quota of the door is used for this period",
+            )),
+            _ => Ok(()),
+        }
+    }
 }
 
 impl Dial for Counting {
@@ -82,11 +124,13 @@ impl Dial for Counting {
         deadline: Instant,
     ) -> BoxFuture<'a, Result<Connected, Failure>> {
         Box::pin(async move {
+            self.refuse_at_quota()?;
             let mut connected = self.inner.dial(target, deadline).await?;
             connected.io = Box::new(CountedIo {
                 inner: connected.io,
                 stats: self.stats.clone(),
                 _open: self.stats.start(),
+                sleep: None,
             });
             Ok(connected)
         })
@@ -98,6 +142,7 @@ impl Dial for Counting {
 
     fn datagrams<'a>(&'a self) -> BoxFuture<'a, Result<Arc<dyn Datagrams>, Failure>> {
         Box::pin(async move {
+            self.refuse_at_quota()?;
             let inner = self.inner.datagrams().await?;
             Ok(Arc::new(CountedDatagrams {
                 inner,
@@ -112,11 +157,45 @@ struct CountedIo {
     inner: crate::network::BoxedIo,
     stats: Arc<DoorStats>,
     _open: Open,
+    /// The wait for the rate of the door.
+    sleep: Option<Pin<Box<tokio::time::Sleep>>>,
 }
 
 impl CountedIo {
     fn count(&self, bytes: usize) {
-        self.stats.bytes.fetch_add(bytes as u64, Ordering::Relaxed);
+        self.stats.add(bytes);
+    }
+
+    /// How many of `want` bytes may pass now (T-405): all with no limiter;
+    /// an error when the flow must end at the quota; `Pending` while the
+    /// rate waits.
+    fn allow(&mut self, cx: &mut Context<'_>, way: Way, want: usize) -> Poll<io::Result<usize>> {
+        let Some(limiter) = self.stats.limiter.clone() else {
+            return Poll::Ready(Ok(want));
+        };
+        if limiter.must_close() {
+            return Poll::Ready(Err(io::Error::other(
+                "the quota of the door is used for this period",
+            )));
+        }
+        loop {
+            if let Some(sleep) = &mut self.sleep {
+                if std::future::Future::poll(sleep.as_mut(), cx).is_pending() {
+                    return Poll::Pending;
+                }
+                self.sleep = None;
+            }
+            match limiter.take(way, want) {
+                Ok(n) => return Poll::Ready(Ok(n)),
+                Err(wait) => self.sleep = Some(Box::pin(tokio::time::sleep(wait))),
+            }
+        }
+    }
+
+    fn give_back(&self, way: Way, n: usize) {
+        if let Some(limiter) = &self.stats.limiter {
+            limiter.give_back(way, n);
+        }
     }
 }
 
@@ -127,11 +206,21 @@ impl AsyncRead for CountedIo {
         buf: &mut ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
         let this = self.get_mut();
-        let before = buf.filled().len();
-        let poll = Pin::new(&mut this.inner).poll_read(cx, buf);
+        let allowed = match this.allow(cx, Way::In, buf.remaining()) {
+            Poll::Ready(Ok(n)) => n,
+            other => return other.map(|r| r.map(|_| ())),
+        };
+        let mut part = buf.take(allowed);
+        let poll = Pin::new(&mut this.inner).poll_read(cx, &mut part);
+        let n = part.filled().len();
         if let Poll::Ready(Ok(())) = poll {
-            this.count(buf.filled().len() - before);
+            // SAFETY: `part` is the unfilled part of `buf`; `n` bytes of it
+            // are filled.
+            unsafe { buf.assume_init(n) };
+            buf.advance(n);
+            this.count(n);
         }
+        this.give_back(Way::In, allowed - if poll.is_ready() { n } else { 0 });
         poll
     }
 }
@@ -143,10 +232,17 @@ impl AsyncWrite for CountedIo {
         data: &[u8],
     ) -> Poll<io::Result<usize>> {
         let this = self.get_mut();
-        let poll = Pin::new(&mut this.inner).poll_write(cx, data);
-        if let Poll::Ready(Ok(n)) = poll {
-            this.count(n);
-        }
+        let allowed = match this.allow(cx, Way::Out, data.len()) {
+            Poll::Ready(Ok(n)) => n,
+            other => return other,
+        };
+        let poll = Pin::new(&mut this.inner).poll_write(cx, &data[..allowed]);
+        let written = match &poll {
+            Poll::Ready(Ok(n)) => *n,
+            _ => 0,
+        };
+        this.count(written);
+        this.give_back(Way::Out, allowed - written);
         poll
     }
 
@@ -156,6 +252,14 @@ impl AsyncWrite for CountedIo {
         bufs: &[io::IoSlice<'_>],
     ) -> Poll<io::Result<usize>> {
         let this = self.get_mut();
+        if this.stats.limiter.is_some() {
+            // A rate counts each byte: write the first buffer only.
+            let first = bufs
+                .iter()
+                .find(|b| !b.is_empty())
+                .map_or(&[][..], |b| &b[..]);
+            return Pin::new(this).poll_write(cx, first);
+        }
         let poll = Pin::new(&mut this.inner).poll_write_vectored(cx, bufs);
         if let Poll::Ready(Ok(n)) = poll {
             this.count(n);
@@ -164,7 +268,7 @@ impl AsyncWrite for CountedIo {
     }
 
     fn is_write_vectored(&self) -> bool {
-        self.inner.is_write_vectored()
+        self.stats.limiter.is_none() && self.inner.is_write_vectored()
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
@@ -194,10 +298,16 @@ impl Datagrams for CountedDatagrams {
     }
 
     fn try_send(&self, transmit: &Transmit<'_>) -> io::Result<()> {
+        let len = transmit.contents.len();
+        if let Some(limiter) = &self.stats.limiter {
+            // UDP has no flow control: a datagram over the rate or the
+            // quota is dropped (T-405).
+            if limiter.exhausted() || limiter.take(Way::Out, len).ok() != Some(len) {
+                return Ok(());
+            }
+        }
         self.inner.try_send(transmit)?;
-        self.stats
-            .bytes
-            .fetch_add(transmit.contents.len() as u64, Ordering::Relaxed);
+        self.stats.add(len);
         Ok(())
     }
 
@@ -210,7 +320,7 @@ impl Datagrams for CountedDatagrams {
         let poll = self.inner.poll_recv(cx, bufs, meta);
         if let Poll::Ready(Ok(n)) = &poll {
             let bytes: usize = meta.iter().take(*n).map(|m| m.len).sum();
-            self.stats.bytes.fetch_add(bytes as u64, Ordering::Relaxed);
+            self.stats.add(bytes);
         }
         poll
     }

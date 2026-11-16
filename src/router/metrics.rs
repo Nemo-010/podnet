@@ -86,6 +86,30 @@ const DOOR_METRICS: [(&str, &str, &str, &str); 3] = [
     ),
 ];
 
+/// The limits of a door (T-405): the key of `limits`, the row, its help.
+const DOOR_LIMITS: [(&str, &str, &str); 4] = [
+    (
+        "rate",
+        "podnet_route_door_rate_bytes",
+        "The rate of the door: bytes each second in each direction.",
+    ),
+    (
+        "quota",
+        "podnet_route_door_quota_bytes",
+        "The quota of the door for each period, in bytes.",
+    ),
+    (
+        "used",
+        "podnet_route_door_quota_used_bytes",
+        "The bytes of the quota that this period used.",
+    ),
+    (
+        "period_end",
+        "podnet_route_door_period_end_seconds",
+        "The end of the period of the quota (UNIX time).",
+    ),
+];
+
 fn flag(on: bool) -> String {
     if on { "1" } else { "0" }.to_string()
 }
@@ -135,6 +159,22 @@ pub fn render(status: &Value) -> String {
                 "{name}{{door=\"{}\"}} {}",
                 label(&door["listen"]),
                 door[key]
+            );
+        }
+    }
+    // T-405: the limits of the doors that have them.
+    for (key, name, help) in DOOR_LIMITS {
+        let rows: Vec<_> = doors.iter().filter(|d| d["limits"][key].is_u64()).collect();
+        if rows.is_empty() {
+            continue;
+        }
+        let _ = writeln!(out, "# HELP {name} {help}\n# TYPE {name} gauge");
+        for door in rows {
+            let _ = writeln!(
+                out,
+                "{name}{{door=\"{}\"}} {}",
+                label(&door["listen"]),
+                door["limits"][key]
             );
         }
     }

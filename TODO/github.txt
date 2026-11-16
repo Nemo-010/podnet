@@ -300,7 +300,7 @@
 599 issue closed
 600 issue open
 601 issue closed
-602 issue open
+602 issue closed
 603 issue open
 604 issue open
 605 issue open
