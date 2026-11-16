@@ -244,7 +244,14 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
         run_seccomp(args)
     };
     let result = match args.backend {
-        BackendKind::Netns => netns(args, "--backend netns"),
+        // T-382: a refused TCP connect holds in each namespace (Landlock).
+        BackendKind::Netns => match tcp_connect_refused() {
+            Some(why) => Err(anyhow::anyhow!(
+                "the netns backend cannot carry a TCP connect here ({why}; the refusal holds in each \
+                 network namespace); use --backend seccomp"
+            )),
+            None => netns(args, "--backend netns"),
+        },
         BackendKind::NetnsKernel => netns_kernel(args, "--backend netns-kernel"),
         BackendKind::Seccomp => seccomp(args, "--backend seccomp"),
         BackendKind::Auto if args.prefer_udp && doctor::probe_seccomp_notif().ok => {
@@ -379,6 +386,9 @@ fn netns_probe() -> std::result::Result<(), String> {
     if std::env::var_os(TEST_NO_NETNS_VARIABLE).is_some_and(|v| !v.is_empty()) {
         return Err(format!("{TEST_NO_NETNS_VARIABLE} is set"));
     }
+    if let Some(why) = tcp_connect_refused() {
+        return Err(why);
+    }
     if probe_unshare(libc::CLONE_NEWNET).ok {
         return Ok(());
     }
@@ -387,6 +397,45 @@ fn netns_probe() -> std::result::Result<(), String> {
         return Ok(());
     }
     Err(format!("{}: {}", probe.name, probe.detail))
+}
+
+/// Whether a TCP connect of this process is refused with `EACCES` or
+/// `EPERM` (T-382). A Landlock domain that handles `CONNECT_TCP` (the lab
+/// `bind-denied`) refuses each TCP connect of the program in each network
+/// namespace, so the program cannot reach the stack of the netns backend.
+/// The probe connects to `127.0.0.1:1` with no wait: a refused port or a
+/// listener both mean that the connect is allowed. Gives the reason.
+fn tcp_connect_refused() -> Option<String> {
+    let refused = |e: &std::io::Error| matches!(e.raw_os_error(), Some(libc::EACCES | libc::EPERM));
+    let fd = unsafe {
+        libc::socket(
+            libc::AF_INET,
+            libc::SOCK_STREAM | libc::SOCK_CLOEXEC | libc::SOCK_NONBLOCK,
+            0,
+        )
+    };
+    if fd < 0 {
+        let e = std::io::Error::last_os_error();
+        return refused(&e).then(|| format!("a TCP socket is refused: {e}"));
+    }
+    let addr = libc::sockaddr_in {
+        sin_family: libc::AF_INET as libc::sa_family_t,
+        sin_port: 1u16.to_be(),
+        sin_addr: libc::in_addr {
+            s_addr: u32::from(std::net::Ipv4Addr::LOCALHOST).to_be(),
+        },
+        sin_zero: [0; 8],
+    };
+    let rc = unsafe {
+        libc::connect(
+            fd,
+            (&addr as *const libc::sockaddr_in).cast(),
+            std::mem::size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        )
+    };
+    let e = std::io::Error::last_os_error();
+    unsafe { libc::close(fd) };
+    (rc != 0 && refused(&e)).then(|| format!("a TCP connect to 127.0.0.1 is refused: {e}"))
 }
 
 /// Add `single-request` to `RES_OPTIONS` of a program environment (issue

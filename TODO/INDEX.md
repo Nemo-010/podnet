@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**381 entries: 12 open, 10 partial, 39 blocked, 320 done.**
+**384 entries: 14 open, 10 partial, 39 blocked, 321 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 2 | 3 | 34 | 39 |
-| P2 | 6 | 4 | 11 | 165 | 186 |
-| P3 | 6 | 4 | 25 | 120 | 155 |
-| **All** | 12 | 10 | 39 | 320 | 381 |
+| P1 | 0 | 2 | 3 | 35 | 40 |
+| P2 | 7 | 4 | 11 | 165 | 187 |
+| P3 | 7 | 4 | 25 | 120 | 156 |
+| **All** | 14 | 10 | 39 | 321 | 384 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -427,3 +427,6 @@ M8 Overlays, M9 Later.
 | [T-379](fixes.md) | P1 | S | M5 | defect | done | A unix listener of podnet fails with EXDEV in a Landlock domain |
 | [T-380](fixes.md) | P1 | S | M5 | defect | blocked | link listen over the unix carrier fails with EXDEV in a Landlock domain (pod-link) |
 | [T-381](fixes.md) | P2 | S | M5 | defect | blocked | The netns backend of podnet pod needs an AF_INET datagram socket (pod-hold) |
+| [T-382](fixes.md) | P1 | S | M5 | defect | done | podnet pod takes the netns backend where each TCP connect of the program is refused (Landlock) |
+| [T-383](fixes.md) | P2 | M | M5 | defect | open | podnet pod: no name resolves when the program cannot make a UDP socket (udp-denied) |
+| [T-384](fixes.md) | P3 | S | M5 | defect | open | podnet pod --backend netns-kernel reads the ports of its listeners with getsockname (getsockname-denied) |

@@ -301,3 +301,96 @@ fn warp_exec_falls_back_to_seccomp() {
         "{lines:?}"
     );
 }
+
+/// Refuse each TCP connect and bind of the calling process with Landlock
+/// (ABI 4 or later), as the lab `bind-denied` of pod-lab does. Call it in
+/// the child, before the exec. The refusal holds in each network namespace.
+fn landlock_refuse_tcp() -> std::io::Result<()> {
+    // struct landlock_ruleset_attr of ABI 4: handled_access_fs and
+    // handled_access_net.
+    let attr: [u64; 2] = [0, 0b11]; // LANDLOCK_ACCESS_NET_BIND_TCP | _CONNECT_TCP
+    let fd = unsafe {
+        libc::syscall(
+            libc::SYS_landlock_create_ruleset,
+            attr.as_ptr(),
+            std::mem::size_of_val(&attr),
+            0,
+        )
+    };
+    if fd < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    let fd = fd as libc::c_int;
+    if unsafe { libc::prctl(libc::PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) } != 0
+        || unsafe { libc::syscall(libc::SYS_landlock_restrict_self, fd, 0) } != 0
+    {
+        return Err(std::io::Error::last_os_error());
+    }
+    unsafe { libc::close(fd) };
+    Ok(())
+}
+
+/// The Landlock ABI of this kernel, or 0.
+fn landlock_abi() -> i64 {
+    let abi = unsafe {
+        libc::syscall(
+            libc::SYS_landlock_create_ruleset,
+            std::ptr::null::<u8>(),
+            0,
+            1, // LANDLOCK_CREATE_RULESET_VERSION
+        )
+    };
+    abi.max(0)
+}
+
+/// `podnet pod --backend B --name-backend -x socks5://unix:S -- true` with
+/// each TCP connect of podnet and of the program refused by Landlock.
+fn pod_with_tcp_refused(host: &Host, backend: &str) -> Output {
+    use std::os::unix::process::CommandExt;
+    let mut cmd = podnet();
+    cmd.args(["pod", "--backend", backend, "--name-backend", "-x"])
+        .arg(format!("socks5://unix:{}", host.socket.display()))
+        .args(["--", "true"])
+        .env("HOME", host.dir.path())
+        .env("XDG_RUNTIME_DIR", host.dir.path())
+        .env_remove("PODNET_NETNS_QUIET")
+        .env_remove("PODNET_NETNS_TEST_NO_NETNS");
+    unsafe { cmd.pre_exec(landlock_refuse_tcp) };
+    cmd.output().unwrap()
+}
+
+/// T-382: where each TCP connect is refused in each namespace (Landlock:
+/// the lab `bind-denied`), the netns backend cannot carry a TCP flow. An
+/// explicit `--backend netns` exits 3 with the reason; `auto` takes the
+/// seccomp backend and names the reason.
+#[test]
+fn netns_is_refused_where_tcp_connect_is_refused() {
+    if landlock_abi() < 4 {
+        eprintln!("skipping: no Landlock with TCP rules (ABI 4) on this host");
+        return;
+    }
+    let (netns, seccomp) = backends();
+    if !netns {
+        eprintln!("skipping: the netns backend cannot run on this host");
+        return;
+    }
+    let host = Host::new();
+    let out = pod_with_tcp_refused(&host, "netns");
+    assert_eq!(out.status.code(), Some(3), "{}", stderr(&out));
+    assert!(
+        stderr(&out).contains("the netns backend cannot carry a TCP connect here"),
+        "{}",
+        stderr(&out)
+    );
+    if !seccomp {
+        return;
+    }
+    let out = pod_with_tcp_refused(&host, "auto");
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let lines = backend_lines(&out);
+    assert!(lines[0].contains("seccomp backend: "), "{lines:?}");
+    assert!(
+        lines[0].contains("auto takes netns first, but netns cannot run here (a TCP connect"),
+        "{lines:?}"
+    );
+}

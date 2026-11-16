@@ -7340,3 +7340,122 @@ ends the block.
 datagram socket", not "no capability". Measured with the release binary as uid 65534: `podlab run udp-denied -- podnet
 pod doctor` gives that reason for `unshare(NEWUSER|NEWNET)` and the veth wire; `podlab run no-kvm` still gives the netns
 backend `ok`. The backend itself still needs the socket: the fix is in `pod-hold` (COORD-095, GitHub #592).
+
+# T-382: podnet pod takes the netns backend where each TCP connect of the program is refused (Landlock)
+
+**Source:** T-358 step 3, podnet pod in bind-denied, 2026-11-16.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+In the lab `bind-denied` of `pod-lab` (Landlock refuses each TCP bind and connect of `AF_INET` and `AF_INET6` with
+`EACCES`: the host of PodUtils/podrunner#170), `podnet pod -x socks5://unix:PATH -- PROGRAM` with `--backend auto` takes
+the netns backend, and the program fails with `Permission denied` at its first TCP connect. A Landlock domain holds in
+each network namespace, so the program cannot reach the stack of the pod. `--backend seccomp` works there: the
+supervisor answers the connect, and the kernel does not run it.
+
+## Premise
+
+- Measured on 2026-11-16 with the release musl binary and `podlab` of podcrates `v0.56.0`, as uid 65534:
+  `sh scripts/consumer-pod.sh PODNET PODLAB bind-denied` gave `fail (exit 1)` for `auto` and `netns` with python3
+  (`URLError: [Errno 13] Permission denied`) and curl (exit 7); `seccomp` passed.
+- The choice of `auto` is in `crates/podnet-netns/src/lib.rs` (`netns_probe`). It probes `unshare` only.
+
+## Approach
+
+1. A probe: a TCP connect to `127.0.0.1:1` with `SOCK_NONBLOCK`. `EACCES` or `EPERM` means that each TCP connect of the
+   program is refused (a refused port or a listener means that the connect is allowed).
+2. `auto` takes the seccomp backend and names the reason. `--backend netns` exits 3 with the reason.
+
+## Prove
+
+```sh
+cargo test --test pod_backend_line netns_is_refused_where_tcp_connect_is_refused
+sh scripts/consumer-pod.sh PODNET PODLAB bind-denied
+```
+
+## Done
+
+2026-11-16, the commit of this record. The test `netns_is_refused_where_tcp_connect_is_refused` of
+`tests/pod_backend_line.rs` runs `podnet pod` under a Landlock domain that handles `BIND_TCP` and `CONNECT_TCP` (ABI 4;
+it skips with no ABI 4). It failed on the code before the fix (`--backend netns` exited 0) and passes after it (6 of 6
+tests of the file). `sh scripts/consumer-pod.sh` with the release binary in `bind-denied`: `auto` passes with python3
+and curl (the seccomp backend, with the reason `auto takes netns first, but netns cannot run here (a TCP connect to
+127.0.0.1 is refused: Permission denied (os error 13))`); `--backend netns` exits 3 with `the netns backend cannot carry
+a TCP connect here`. Not done: `podnet pod doctor` still gives the netns backend `ok` there.
+
+# T-383: podnet pod: no name resolves when the program cannot make a UDP socket (udp-denied)
+
+**Source:** T-358 step 3, podnet pod in udp-denied, 2026-11-16.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+In the lab `udp-denied` of `pod-lab` (seccomp refuses `socket(AF_INET or AF_INET6, SOCK_DGRAM)` with `EPERM`), a program
+in `podnet pod --backend seccomp` (and `auto`, which takes seccomp there, as T-381 refuses netns) cannot resolve a name:
+python3 gives `gaierror: [Errno -3] Temporary failure in name resolution`, curl exits 6. The filter of the lab runs
+before the filter of the pod, so the fake DNS of the pod never sees the query.
+
+## Premise
+
+- Measured on 2026-11-16 with the release musl binary and `podlab` of podcrates `v0.56.0`, as uid 65534
+  (`sh scripts/consumer-pod.sh PODNET PODLAB udp-denied`).
+- With an address in place of a name, the TCP connect of the same program goes through the pod to the SOCKS5 upstream.
+- With `RES_OPTIONS=use-vc`, glibc asks over TCP: the pod sends the connect to `8.8.8.8:53` (the nameserver of
+  `/etc/resolv.conf`) through the upstream, not to the fake DNS. The seccomp backend answers DNS over UDP only.
+- Not measured: a musl program; the netns backend (T-381 refuses it in this lab).
+
+## Approach
+
+1. The seccomp backend answers a TCP connect to port 53 of a nameserver of the program from the fake DNS (DNS over
+   TCP, RFC 7766 framing), as it answers a datagram.
+2. When the probe finds the UDP socket refused, the pod adds `use-vc` to `RES_OPTIONS` of the program (as
+   `with_single_request` adds `single-request`).
+
+## Prove
+
+```sh
+sh scripts/consumer-pod.sh PODNET PODLAB udp-denied
+```
+
+# T-384: podnet pod --backend netns-kernel reads the ports of its listeners with getsockname (getsockname-denied)
+
+**Source:** T-358 step 3, podnet pod in getsockname-denied, 2026-11-16.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+In the lab `getsockname-denied` of `pod-lab` (seccomp refuses `getsockname` with `EOPNOTSUPP`: a host of podrunner),
+`podnet pod --backend netns-kernel` exits 3 with `local address: Not supported (os error 95)`. The child binds its TCP,
+UDP and DNS listeners to port 0 in the new namespace and reads each port with `getsockname`; the parent reads the UDP
+port again (`kernel_serve.rs`). The other backends pass in this lab.
+
+## Premise
+
+- Measured on 2026-11-16 with the release musl binary and `podlab` of podcrates `v0.56.0`, as uid 65534
+  (`sh scripts/consumer-pod.sh PODNET PODLAB getsockname-denied`).
+- The code is in `crates/podnet-netns/src/kernel.rs` (`child_setup`) and `kernel_serve.rs`. The namespace is new, so
+  each port is free in it.
+
+## Approach
+
+1. Bind the listeners to fixed ports of the new namespace when `getsockname` is refused (or always), and send the
+   ports to the parent with the descriptors.
+
+## Prove
+
+```sh
+sh scripts/consumer-pod.sh PODNET PODLAB getsockname-denied
+```
