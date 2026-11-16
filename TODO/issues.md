@@ -283,6 +283,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #591 | [gh action] requested: ci, deny, secrets and the dry run of issue-sync on the takes of v0.56.0 and the fix of the man page | closed: ci 43774698575, deny 43774702318, secrets 43774705423 and the dry run of issue-sync 43774709310 passed on f2d96fc (the dry run: 196 status blocks, one close of #436, 76 notes of authors outside the team) | none |
 | #592 | COORD-095: podnet's lane in the labs of pod-lab v0.56.0; two defects of podcrates crates (pod-link under Landlock, pod-hold under udp-denied); the six network profiles (to podcrates) | open (a COORD issue between sessions) | T-358, T-380, T-381 |
 | #593 | [gh action] requested: ci and deny on the lane of podnet and the fix of unix listeners under Landlock (T-358, T-379) | closed: deny 43779619505 passed on 31f357a; ci 43779615497 failed at shellcheck (SC2046 in scripts/lab-lane.sh), fixed in b2faf08 | none |
-| #594 | [gh action] requested: ci and deny on the fix of shellcheck and the reason of pod doctor (T-358, T-381) | open (a request of runs to the owner) | none |
+| #594 | [gh action] requested: ci and deny on the fix of shellcheck and the reason of pod doctor (T-358, T-381) | closed: ci 43782124302 and deny 43782129951 passed on 077a9d1 | none |
+| #595 | [gh action] requested: ci on the consumer .NET HttpClient under the shim (T-358 step 3) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
