@@ -97,6 +97,8 @@ fn install_test(root: &Path, shell: &str) -> Output {
 #[test]
 fn the_install_test_passes_in_each_shell() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    // The fake release is served on 127.0.0.1.
+    crate::test_host::need_loopback!();
     if which("python3").is_none() {
         eprintln!("skip: no python3 for the fake release");
         return;
@@ -113,6 +115,7 @@ fn the_install_test_passes_in_each_shell() {
 // SHA-256 with the pin fails scripts/install-test.sh.
 #[test]
 fn an_installer_with_no_pin_check_fails_the_install_test() {
+    crate::test_host::need_loopback!();
     if which("python3").is_none() || which("dash").is_none() {
         eprintln!("skip: no python3 or no dash");
         return;

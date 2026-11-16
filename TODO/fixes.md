@@ -7113,6 +7113,14 @@ no-proc, ro-etc-ssl and seccomp-nonewprivs; a copy with no pin check fails it (p
 install_script`: 33 passed. `shellcheck -S warning` passes; `shellcheck --shell=sh` gives info SC2317 only, on two
 hooks of the inline core. `sh scripts/agent/check.sh` passed, and clippy with `--features full` passed.
 
+## Correction
+
+2026-11-16: ci 43796824990 on 1852fcc failed in the jobs `restricted-host` and `no-loopback`.
+`the_install_test_passes_in_each_shell` and `an_installer_with_no_pin_check_fails_the_install_test` run
+`scripts/install-test.sh`, which serves the fake release on `127.0.0.1`. The two tests now skip with `need_loopback!()`
+on a host with no loopback or with `bind(AF_INET)` refused. `sh scripts/restricted-host.sh --test install_script`:
+2 tests skipped, 33 passed, exit 0.
+
 # T-361: git init: make the root when it does not exist
 
 **Source:** T-358 step 2, the documented command at docs/serve.md:197 (`podnet git init --root ./repos app`), run on

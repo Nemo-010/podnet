@@ -6,6 +6,8 @@
 //! `cosign`. A fake downloader copies the files of a fake release (a
 //! directory) by the last part of the URL, so no network is used.
 
+mod test_host;
+
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
