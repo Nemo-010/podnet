@@ -55,12 +55,9 @@ None. The head is the commit of this handoff.
    the case or of podnet).
 1. T-400: cut `v0.4.0-beta.14` when `ci` and `live` pass on the head: the dry run of `release.yml` (with the gate),
    then `publish=v0.4.0-beta.14`, then `release-proofs.yml` (`docs/maintenance.md`, Release).
-2. T-402 (P2): the tunnel over `quic+warp` does not recover after its MASQUE session closes. The reactor of
-   `src/tunnel.rs` (frozen, allowlisted: it may only shrink) should watch the WARP session; write the fix as a COORD
-   issue to podcrates too.
+2. T-402 is done (the reactor watches the WARP session); its COORD issue to podcrates names the frozen files.
 3. T-398: scenarios for the 3 commands left (see its Correction).
-4. T-358, what remains: the row `way-out` (a quick tunnel in `podlab run --way-out proxy-only`) is not in the lane
-   yet: it waits for T-402; the lane rows with `podlab run --way-out PROFILE` and `--serve PORT`, WebSocket through the
+4. T-358, what remains: the row `way-out` (a quick tunnel in `podlab run --way-out proxy-only`) is a default row now; the lane rows with `podlab run --way-out PROFILE` and `--serve PORT`, WebSocket through the
    proxy, `ipv6-only` on a host with IPv6, the `icmp` rows; the relay and the tunnel as podssh and podrunner call them.
 5. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
    Write the take into COORD-096 (#597).

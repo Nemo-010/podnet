@@ -9,5 +9,5 @@
 1608 src/edge_h2.rs
 2034 src/proxy.rs
 850 src/quicktunnel.rs
-1370 src/tunnel.rs
+1322 src/tunnel.rs
 817 src/warp/up.rs

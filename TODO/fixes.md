@@ -1995,9 +1995,9 @@ CONNECT ...: 502`, exit 69, and `curl --proxy ... URL` gives 200. `--no-verify` 
 
 ## Premise
 
-- Read: `verify_fetch` (`src/tunnel.rs:1230-1311`). The Dns arm (`:1276-1279`) and the other `Err` arm
-  (`:1280-1283`) only change the retry text. After the loop only `last_status` can demote the verdict
-  (`:1301-1306`). Otherwise `fault(Unavailable)` (`:1307-1310`).
+- Read: `verify_fetch` (`src/tunnel.rs:1182-1263`). The Dns arm (`:1228-1231`) and the other `Err` arm
+  (`:1232-1235`) only change the retry text. After the loop only `last_status` can demote the verdict
+  (`:1253-1258`). Otherwise `fault(Unavailable)` (`:1259-1262`).
 - Read: the three front ends each shut down and return the error (`src/cli/cmd/run.rs:17-198`).
   `run_demo` passes a body token, so the warn branch cannot apply; it prints PROOF from `check.dns`
   (`run.rs:153-160`). `wants_verify` (`tunnel.rs:1208`) has no caller. The ready document has
@@ -2054,9 +2054,9 @@ Operators of restricted hosts need the flag: the fresh `*.trycloudflare.com` nam
 ## Premise
 
 - `src/cli/opts.rs:59-61` declares it (`global = true`); `src/cli/opts.rs:174` sets `config.verify`.
-- `src/cli/cmd/run.rs:23,69` read `config.verify` and gate `verify_accepting`; `src/tunnel.rs:1230`
+- `src/cli/cmd/run.rs:23,69` read `config.verify` and gate `verify_accepting`; `src/tunnel.rs:1182`
   runs the fetch. `crates/podnet-core/src/net.rs` takes `no_tls_verify` from the ingress rule. The two flags share no state.
-- `grep -n -e '--no-verify' README.md docs/*.md` finds nothing. `wants_verify` (`src/tunnel.rs:1220`) has no caller.
+- `grep -n -e '--no-verify' README.md docs/*.md` finds nothing. `wants_verify` (`src/tunnel.rs:1172`) has no caller.
 - Not measured: the runtime fetch on a restricted host.
 
 ## Approach
@@ -2176,13 +2176,13 @@ cargo test -p podnet quicktunnel::tests::a_dns_failure_is_retried_once
 
 ## Problem
 
-`verify_fetch` retries 180 s (`VERIFY_BUDGET`, `src/tunnel.rs:1315`). On a host with no resolver the
+`verify_fetch` retries 180 s (`VERIFY_BUDGET`, `src/tunnel.rs:1267`). On a host with no resolver the
 error text repeats `system resolver: no answer ... Network unreachable`. The final error
-(`src/tunnel.rs:1307-1310`) names no remedy: `--resolve HOST=IP`, or `--no-verify`.
+(`src/tunnel.rs:1259-1262`) names no remedy: `--resolve HOST=IP`, or `--no-verify`.
 
 ## Premise
 
-- The loop keeps `last = "waiting for DNS: ..."` (`src/tunnel.rs:1276-1279`). `Verified.dns` records the
+- The loop keeps `last = "waiting for DNS: ..."` (`src/tunnel.rs:1228-1231`). `Verified.dns` records the
   step on success only. `Hop::Dns` has a hint (`crates/podnet-core/src/hop.rs:45`).
 - `run_tunnel`, `run_share` and `run_demo` (`src/cli/cmd/run.rs`) wait for the verify.
 - Overlap: #357 (exit 69 and teardown on an unresolved name). Do both in one pass; the verdict of the
@@ -3013,7 +3013,7 @@ to true. Each `serve --dir DIR` of a directory with no `index.html` logs `WARN .
 - `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:115` (field), `:125` (`root_404: false`),
   `src/cli/cmd/run.rs:44` (read).
 - `serve` passes `args.common.show()`: `src/cli/cmd/serve.rs:225`.
-- The warn branch: `src/tunnel.rs:1266-1270`. `static_router` gives 404 at `/` with no index: `crates/podnet-serve/src/files/mod.rs:73-137`.
+- The warn branch: `src/tunnel.rs:1218-1222`. `static_router` gives 404 at `/` with no index: `crates/podnet-serve/src/files/mod.rs:73-137`.
 - `src/config.rs` is in the size allowlist: do not add the field there.
 
 ## Approach
@@ -7860,7 +7860,7 @@ device 30 s earlier.
 
 ## Premise
 
-- A quick tunnel with no `--warp-identity` registers a new WARP device for each run (`src/tunnel/warp_targets.rs:27`,
+- A quick tunnel with no `--warp-identity` registers a new WARP device for each run (`src/tunnel/warp_targets.rs:28`,
   `docs/tunnels.md`). podnet names the limit and the wait in its error. The fault is in the check, not in podnet.
 - live passed on 3f203cc with the same steps: the limit holds at some times only.
 
@@ -8084,7 +8084,7 @@ sh scripts/lab-lane.sh PODLAB PODNET no-proc   # link-control passes
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -8109,11 +8109,20 @@ for 180 s the public URL gave HTTP 502 and 530, and podnet logged no reconnect: 
    opens a new session at once.
 3. A test with the stand-in WARP edge of `pod-testkit`: close the session, the tunnel reconnects in a few seconds.
 
-The lane has the row `way-out` (`scripts/lab-lane.sh`, the case `way-tunnel`); it runs only when it is named, until this
-entry is done. Then it goes into the default rows (the gate).
-
 ## Prove
 
 ```sh
 sh scripts/lab-lane.sh PODLAB PODNET way-out
 ```
+
+## Done
+
+2026-11-16, the commit of this entry. `EndpointSource::closed` (now in `src/tunnel/warp_targets.rs`, with `WarpLink`)
+reads the WARP session of a `quic+warp` leg each 2 s; the reactor of `src/tunnel.rs` takes a closed session as a lost
+connection ("the WARP session of the edge leg closed; a reconnect follows"), and the reconnect opens a new session. The
+move makes `src/tunnel.rs` smaller (1370 to 1322 lines; `scripts/size-allow.txt`).
+
+Measured here: `podnet tunnel --hello-world --protocol quic --transport warp` (debug build, MASQUE through the relay),
+then `ss -K` of each TCP connection of the process: the leg logged the closed session at 16:35:25 and "reconnected
+conn_index=0" at 16:35:28, and the URL answered HTTP 200. The lane row `way-out` passed twice; it is now a default row of
+the lane (the gate). Not proven: a test with stand-ins (the QUIC leg has no stand-in, T-316).

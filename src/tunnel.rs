@@ -31,7 +31,7 @@ mod verify;
 mod warp_targets;
 pub use verify::Verified;
 use verify::{verify_fetch, VERIFY_BUDGET, VERIFY_INTERVAL};
-use warp_targets::warp_targets;
+use warp_targets::{warp_targets, EndpointSource, WarpLink};
 
 /// Fluent builder for a [`Tunnel`].
 pub struct TunnelBuilder {
@@ -816,60 +816,6 @@ async fn direct_targets() -> Result<Vec<edge::EdgeAddr>> {
     Ok(discovered)
 }
 
-/// The WARP session of the `quic+warp` leg, and the QUIC endpoint in it.
-/// When the session closes, or a reconnect fails twice, the next reconnect
-/// opens a new session with the same device (no new registration).
-pub(crate) struct WarpLink {
-    client: WarpClient,
-    current: tokio::sync::Mutex<(crate::warp::WarpStack, noq::Endpoint, std::time::Instant)>,
-}
-
-/// A new session at most this often for failed reconnects (an HA leg must
-/// not replace the session that another leg just opened).
-const WARP_REBUILD_GAP: Duration = Duration::from_secs(10);
-
-impl WarpLink {
-    async fn endpoint(&self, stale: bool) -> Result<noq::Endpoint> {
-        let mut current = self.current.lock().await;
-        let closed = current.0.is_closed();
-        if closed || (stale && current.2.elapsed() >= WARP_REBUILD_GAP) {
-            warn!(
-                session_closed = closed,
-                "opening a new WARP session for the edge leg"
-            );
-            let stack = self
-                .client
-                .connect()
-                .await
-                .context("opening the WARP MASQUE tunnel on TCP 443 again")?;
-            let endpoint = crate::warp::quic::endpoint(&stack)
-                .await
-                .context("building the QUIC socket inside the new WARP session")?;
-            *current = (stack, endpoint, std::time::Instant::now());
-        }
-        Ok(current.1.clone())
-    }
-}
-
-/// Where the QUIC reactor gets its endpoint for each reconnect.
-#[derive(Clone)]
-enum EndpointSource {
-    /// A kernel UDP socket: always the same endpoint.
-    Fixed(noq::Endpoint),
-    /// The WARP session: a new one when it closed (see [`WarpLink`]).
-    Warp(Arc<WarpLink>),
-}
-
-impl EndpointSource {
-    /// The endpoint for reconnect attempt `attempt` (1 for the first).
-    async fn endpoint(&self, attempt: u32) -> Result<noq::Endpoint> {
-        match self {
-            EndpointSource::Fixed(endpoint) => Ok(endpoint.clone()),
-            EndpointSource::Warp(link) => link.endpoint(attempt >= 3).await,
-        }
-    }
-}
-
 async fn connect_once(
     endpoint: &noq::Endpoint,
     auth: &rpc::TunnelAuth,
@@ -927,6 +873,12 @@ async fn reactor(
             _ = shutdown.changed() => {
                 control.shutdown_graceful(SHUTDOWN_GRACE).await;
                 return None;
+            }
+            // T-402: a closed WARP session stops the timers of the QUIC
+            // connection in it, so the loss is seen here, not by accept_bi.
+            _ = source.closed() => {
+                warn!(conn_index, "the WARP session of the edge leg closed; a reconnect follows");
+                true
             }
             accepted = conn.accept_bi() => {
                 match accepted {

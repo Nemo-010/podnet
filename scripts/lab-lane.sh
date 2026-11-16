@@ -7,8 +7,8 @@
 # cli), or a directory from scripts/get-podlab.sh: the lane then checks the
 # asset podlab-ARCH-unknown-linux-musl against the SHA256SUMS of the
 # directory and runs it. PODNET is the podnet binary to test. With no
-# PROFILE, the lane runs in each profile of `podlab list`, and in the row
-# allow-connect (way-out runs only when it is named, until T-402 is done). Each command
+# PROFILE, the lane runs in each profile of `podlab list`, and in the rows
+# allow-connect and way-out. Each command
 # runs in a lab of the profile: `podlab run PROFILE -- sh lab-lane.sh
 # --case NAME ...`.
 #
@@ -905,7 +905,7 @@ if test $# -eq 0; then
     # Each profile name is one word with no space or glob character: the
     # split of the list into the arguments is the intent.
     # shellcheck disable=SC2046
-    set -- $("$podlab" list | awk '/^[^ ]/ { print $1 }') allow-connect
+    set -- $("$podlab" list | awk '/^[^ ]/ { print $1 }') allow-connect way-out
 fi
 
 failed=0
