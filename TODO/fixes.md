@@ -8132,3 +8132,42 @@ Measured here: `podnet tunnel --hello-world --protocol quic --transport warp` (d
 then `ss -K` of each TCP connection of the process: the leg logged the closed session at 16:35:25 and "reconnected
 conn_index=0" at 16:35:28, and the URL answered HTTP 200. The lane row `way-out` passed twice; it is now a default row of
 the lane (the gate). Not proven: a test with stand-ins (the QUIC leg has no stand-in, T-316).
+
+# T-406: live: the relay keeps a lost socket of a node for minutes after a reset (409), and SSH through it hangs
+
+**Source:** live 43912914825 on ce9456d (2026-11-16), the step "SSH through the reverse relay", failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+The node connected to the relay (17:12:56). Two seconds later the link ended with "Connection reset by peer (os error
+104)" and no Close. From then on, each new connect of the node got HTTP 409 ("the relay still holds the node's lost
+socket"), for the 150 s of the step. The SSH client of the operator reached the relay and stopped in the key exchange
+(`expecting SSH2_MSG_KEX_ECDH_REPLY`): the relay sent it to the lost socket.
+
+## Premise
+
+- The node is `pod_relay::reverse::node` of podcrates (taken crate): it retries a 409 for `rejoin` (600 s) after a lost
+  socket, as designed. podnet does not change it.
+- The relay server (the service of the relay pool) keeps the socket of a node until it notices that it is dead. The
+  same step passed on 725214f and earlier on this day.
+
+## Approach
+
+1. Ask podcrates (COORD): the relay server drops a node socket after a reset or a failed write at once, and the node
+   asks for a new pair after a time of 409 shorter than the step of an operator.
+2. Until then, the step of `live.yml` gives the error with the 409 lines (as now).
+
+## Prove
+
+```sh
+# live passes the step "SSH through the reverse relay" each day for a week
+```
+
+## Blocker
+
+The relay server and `pod-relay` of PodUtils/podcrates.
