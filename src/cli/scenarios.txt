@@ -38,8 +38,8 @@ net demo | lane:local
 net doctor | live:UDP probe, answered and refused
 net shim | ci:The consumer .NET HttpClient under the shim; ci:The consumer check fails on its plant; ci:The consumer Python HTTP client under the shim; ci:The consumer Python check fails on its plant; lane:shim-forward
 net addresses | lane:local
-net proxy | lane:net-proxy-unix
-net switch |
+net proxy | lane:net-proxy-unix; lane:net-switch
+net switch | lane:net-switch
 net tailscale |
 net socksify | lane:local
 net passwd-shim | lane:local

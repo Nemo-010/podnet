@@ -7937,5 +7937,8 @@ experimental: `autostart run`, `bench`, `exit`, `expose`, `link mesh`, `net swit
 https://lab.test/ --duration 2 --json` through the proxy of the lab: about 1000 requests, 0 errors) and `net-exit` (a
 client runs SOCKS5 CONNECT `lab.test:443`, then TLS and `GET /` over the pipe of `podnet exit --stdio`: `HTTP/1.1 200
 OK`). As uid 65534 with `podlab` v0.63.0, both pass in `proxy-only`, `proxy-tls-reterminate`, `proxy-per-name` and
-`ws-upgrade-refused`, and are n.a. in the labs with no proxy. 9 commands stay experimental: `autostart run`, `expose`,
-`net switch`, `net tailscale`, `ssh-relay`, `warp license`, `warp rotate`, `warp shell` and `wg serve`.
+`ws-upgrade-refused`, and are n.a. in the labs with no proxy. A new case `net-switch` runs `net switch` on a unix socket and two stacks
+(`net proxy --switch`): a SOCKS5 client of stack B connects `10.66.0.2:8080`, which stack A forwards to the echo server
+(`echo:ping`). It passes in `bind-denied`, `no-kvm` and `udp-denied`, and is n.a. in `listen-denied`. 8 commands stay
+experimental, each with a live service: `autostart run`, `expose`, `net tailscale`, `ssh-relay`, `warp license`, `warp
+rotate`, `warp shell` and `wg serve`.

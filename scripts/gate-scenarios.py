@@ -174,6 +174,7 @@ LANE_MAP = {
     "pod-seccomp": ["pod"],
     "pod-netns": ["pod"],
     "net-proxy-unix": ["net proxy"],
+    "net-switch": ["net switch", "net proxy"],
     "net-curl": [],
     "net-bench": ["bench"],
     "net-exit": ["exit"],

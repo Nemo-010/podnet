@@ -40,7 +40,7 @@
 
 set -u
 
-CASES="version man local doctor shim-forward link-unix link-control pod-seccomp pod-netns net-proxy-unix"
+CASES="version man local doctor shim-forward link-unix link-control net-switch pod-seccomp pod-netns net-proxy-unix"
 NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni-allowlist no-proxy-no-dns ipv6-only"
 NET_CASES="version doctor net-curl net-bench net-exit net-pod-auto net-pod-seccomp net-pod-netns"
 PROXY_CASES="proxy-direct proxy-port proxy-pod-auto proxy-pod-seccomp proxy-pod-env proxy-doctor"
@@ -254,6 +254,33 @@ case_main() {
             "$dir"/rotate.txt "$dir"/close.txt "$dir"/closel.txt 2>/dev/null
         echo "bad $bad"
         exit $bad
+        ;;
+    net-switch)
+        # Two stacks on a unix switch (T-398): stack A forwards
+        # 10.66.0.2:8080 to the echo server; a SOCKS5 client of stack B
+        # connects 10.66.0.2:8080 through the switch.
+        "$podnet" net switch --listen "unix:$dir/sw" >"$dir/sw.txt" 2>&1 &
+        sw=$!
+        if ! wait_path "$dir/sw"; then
+            kill $sw 2>/dev/null
+            cat "$dir/sw.txt"
+            listen_refused "$dir"
+            exit $?
+        fi
+        "$podnet" net proxy --switch "unix:$dir/sw" --address 10.66.0.2 --listen "unix:$dir/a.sock" \
+            --forward "10.66.0.2:8080=unix:$dir/../echo.sock" >"$dir/a.txt" 2>&1 &
+        sa=$!
+        "$podnet" net proxy --switch "unix:$dir/sw" --address 10.66.0.3 --listen "unix:$dir/b.sock" >"$dir/b.txt" 2>&1 &
+        sb=$!
+        got=fail
+        if wait_path "$dir/a.sock" && wait_path "$dir/b.sock"; then
+            got=$(timeout 30 python3 -I "$dir/../socks-echo.py" "$dir/b.sock" 10.66.0.2 8080 2>&1)
+        fi
+        kill $sa $sb $sw 2>/dev/null
+        cat "$dir/sw.txt" "$dir/a.txt" "$dir/b.txt"
+        echo "client: $got"
+        test "$got" = "echo:ping"
+        exit $?
         ;;
     net-proxy-unix)
         "$podnet" net proxy --listen "unix:$dir/proxy.sock" >"$dir/proxy.txt" 2>&1 &
@@ -548,6 +575,29 @@ while b"\r\n" not in reply:
         inc.write(chunk)
 print(reply.split(b"\r\n")[0].decode())
 w.close(); p.wait(timeout=10)
+EOF
+    cat >"$1/socks-echo.py" <<'EOF'
+import socket, sys
+# SOCKS5 CONNECT IPV4:PORT through the unix door PATH, send ping, print the answer.
+path, addr, port = sys.argv[1], sys.argv[2], int(sys.argv[3])
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.connect(path)
+s.sendall(b"\x05\x01\x00")
+if s.recv(2) != b"\x05\x00":
+    raise SystemExit("no method")
+s.sendall(b"\x05\x01\x00\x01" + socket.inet_aton(addr) + port.to_bytes(2, "big"))
+reply = s.recv(10)
+if len(reply) < 2 or reply[1] != 0:
+    raise SystemExit("CONNECT reply %r" % reply)
+s.sendall(b"ping")
+s.shutdown(socket.SHUT_WR)
+data = b""
+while True:
+    b = s.recv(4096)
+    if not b:
+        break
+    data += b
+print(data.decode())
 EOF
     cat >"$1/unix-client.py" <<'EOF'
 import socket, sys
