@@ -86,6 +86,7 @@ scripts/lab-lane.sh PODLAB DIR/podnet [PROFILE...]`.
 | #560 (COORD-081, the take of v0.45.0) | The answer of podcrates on the ws listener (a refused pin: `Refused` or no peer). |
 | #555 (COORD-079) | The fuzz crash of `pod-proxy` is fixed in v0.45.0 (T-349); the crash of `pod-cloudflare` waits for its take (their entry 029). |
 | #597 (COORD-096, the takes of v0.58.0 to v0.63.0) | podcrates reads it; close it when podcrates closes #200, #204, #206, #209, #210 and #211. |
+| #603 (COORD-097, the fix T-402 of the frozen `src/tunnel.rs`) | podcrates takes it with `pod-cloudflare`. |
 | #592 (COORD-095) | T-358 (the release gate; step 4 is done); T-380 and T-381 are done. |
 | #587, #589 | podcrates closes #185 and #188. |
 | #413, #425, #437, #439, #440, #448, #460 | Older proposals and asks; see `TODO/issues.md`. |

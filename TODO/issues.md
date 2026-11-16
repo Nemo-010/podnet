@@ -292,5 +292,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #600 | link: an exec service never tells the peer how the program ended | open (outside the team: verified, labelled `confirmed`) | T-403 |
 | #601 | forward has no name table for a client that cannot edit its hosts file | open (outside the team: verified, labelled `confirmed`) | T-404 |
 | #602 | router doors count bytes but cannot cap them | open (outside the team: verified, labelled `confirmed`) | T-405 |
+| #603 | COORD-097: a fix in the frozen src/tunnel.rs: the quic+warp leg reconnects when its WARP session closes (T-402) (to podcrates) | open (a message to podcrates; close it when podcrates takes the fix with pod-cloudflare) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
