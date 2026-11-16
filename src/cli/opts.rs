@@ -201,8 +201,8 @@ pub(crate) struct DetachArgs {
     #[arg(long, value_name = "NAME")]
     pub(crate) name: Option<String>,
     /// With --detach: seconds to wait for the instance to be ready (else
-    /// exit 124).
-    #[arg(long, value_name = "SECS", default_value_t = 60)]
+    /// exit 124). The default covers the check of a new public name (180 s).
+    #[arg(long, value_name = "SECS", default_value_t = 240)]
     pub(crate) ready_timeout: u64,
     /// Stop a running instance of the same name that has other arguments,
     /// and start this one (needs --detach). connect: also take a unix

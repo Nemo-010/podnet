@@ -147,7 +147,7 @@ jobs:
           mkdir -p "$www/in"
           printf '0123456789' > "$www/a.txt"
           printf 'live:write:@%s\n' "$pass" > "$RUNNER_TEMP/files-users"
-          sh scripts/live-run.sh files timeout 120 target/release/podnet serve "$www" --list --upload --users "$RUNNER_TEMP/files-users" --detach --name files
+          sh scripts/live-run.sh files timeout 300 target/release/podnet serve "$www" --list --upload --users "$RUNNER_TEMP/files-users" --detach --name files
           url=$(tail -1 files.out | jq -r .url)
           url=${url%/}
           # Issue 119: the resolver of the runner can keep a negative answer for a new name.
@@ -177,7 +177,7 @@ jobs:
           repos="$RUNNER_TEMP/repos"
           mkdir -p "$repos"
           target/release/podnet git init --root "$repos" app
-          sh scripts/live-run.sh gitserve timeout 120 target/release/podnet git serve --root "$repos" --anon-read --push-user live --push-password-file "$pass" --detach --name gitserve
+          sh scripts/live-run.sh gitserve timeout 300 target/release/podnet git serve --root "$repos" --anon-read --push-user live --push-password-file "$pass" --detach --name gitserve
           url=$(tail -1 gitserve.out | jq -r .url)
           url=${url%/}
           # Issue 119: the resolver of the runner can keep a negative answer for a new name.

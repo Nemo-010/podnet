@@ -8214,3 +8214,43 @@ cargo test --lib ws::tests
 2026-11-16, the commit of this entry. `dial_again` of `src/ws.rs`, with one warning line for each new try. The test
 `a_refused_upgrade_is_tried_again`: a server that answers the first upgrade with HTTP 503 and accepts the second gives a
 session; a server that answers HTTP 403 gets one connection and the error names 403.
+
+# T-408: a detached tunnel stops at 60 s while the check of its new public name may take 180 s
+
+**Source:** live 43926742960 on c448b49 (2026-11-16): the step "File server through a quick tunnel" failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet serve DIR --detach` registered its tunnel at once, then waited for the check of the public URL: "this host does
+not resolve the new name yet", and "Cloudflare and Google say that ... does not exist" for each try. At 60 s: "--detach:
+files was not ready in 60 s; it is stopped" (exit 124). The check of a new name allows 180 s
+(`VERIFY_BUDGET` of `src/tunnel/verify.rs`).
+
+## Premise
+
+- The default of `--ready-timeout` was 60 s (`src/cli/opts.rs`), shorter than the time that the command itself gives
+  its check. In the foreground the same command waits up to 180 s and works.
+- The step wraps the start in `timeout 120`.
+
+## Approach
+
+1. The default of `--ready-timeout` is 240 s: the 180 s of the check, and the provision of the tunnel.
+2. The steps of `live.yml` that start a detached tunnel wrap it in `timeout 300`.
+
+## Prove
+
+```sh
+cargo test --test cli
+# live passes the step on the next push
+```
+
+## Done
+
+2026-11-16, the commit of this entry. `--ready-timeout` defaults to 240 s (`docs/background.md`, the help); a command
+that fails still ends at once with its own exit code. `live.yml`: the file server and git serve steps use `timeout 300`.
+The notes of `v0.4.0-beta.14` name it.

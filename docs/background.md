@@ -27,7 +27,7 @@ or a container that kills each process of its run also ends it.
   document and starts nothing. Other arguments exit 69; `--replace` stops
   the instance and starts the new one.
 * Without `--name`, the name is the command and a hash of its arguments.
-* `--ready-timeout SECS` (default 60): after it, the start stops the
+* `--ready-timeout SECS` (default 240: the check of a new public name takes up to 180 s): after it, the start stops the
   instance and exits 124 (as `timeout`). An instance that ends before it is ready gives its
   own exit code.
 * A token or a proxy password on the command line goes to the environment

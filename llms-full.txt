@@ -196,7 +196,8 @@ podnet tunnel
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -405,7 +406,8 @@ podnet serve
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -669,7 +671,8 @@ podnet share
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -939,7 +942,8 @@ podnet git serve
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -1509,7 +1513,8 @@ podnet connect
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -1834,7 +1839,8 @@ podnet route
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -2010,7 +2016,8 @@ podnet ssh-relay
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -2624,7 +2631,8 @@ podnet demo
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -3110,7 +3118,8 @@ podnet net proxy
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -3258,7 +3267,8 @@ podnet net switch
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -5037,7 +5047,8 @@ podnet warp forward
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -5240,7 +5251,8 @@ podnet warp proxy
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -5857,7 +5869,8 @@ podnet warp exec
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -6478,7 +6491,8 @@ podnet warp tun
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -7086,7 +7100,8 @@ podnet relay node
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -7207,7 +7222,8 @@ podnet relay connect
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -7626,7 +7642,8 @@ podnet link listen
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -8087,7 +8104,8 @@ podnet link connect
         and stop see it.
     --ready-timeout SECS
         With --detach: seconds to wait for the instance to be ready (else exit
-        124). Default: 60.
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
     --replace
         Stop a running instance of the same name that has other arguments, and
         start this one (needs --detach). connect: also take a unix socket of -L
@@ -13972,7 +13990,7 @@ or a container that kills each process of its run also ends it.
   document and starts nothing. Other arguments exit 69; `--replace` stops
   the instance and starts the new one.
 * Without `--name`, the name is the command and a hash of its arguments.
-* `--ready-timeout SECS` (default 60): after it, the start stops the
+* `--ready-timeout SECS` (default 240: the check of a new public name takes up to 180 s): after it, the start stops the
   instance and exits 124 (as `timeout`). An instance that ends before it is ready gives its
   own exit code.
 * A token or a proxy password on the command line goes to the environment
