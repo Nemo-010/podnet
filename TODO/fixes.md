@@ -8155,6 +8155,9 @@ socket"), for the 150 s of the step. The SSH client of the operator reached the 
   socket, as designed. podnet does not change it.
 - The relay server (the service of the relay pool) keeps the socket of a node until it notices that it is dead. The
   same step passed on 725214f and earlier on this day.
+- live 43918102449 on 6369056 (18:00 UTC): the step "200 MiB each way through the reverse relay with --resume" failed.
+  Each lost leg ended with `NeverReady { code: Some(1013), reason: "node open timeout" }` from the relay, and each new
+  leg "ended before the far end greeted", for 600 s. The relay did not reach the node in that time.
 
 ## Approach
 

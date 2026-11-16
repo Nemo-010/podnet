@@ -294,5 +294,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #602 | router doors count bytes but cannot cap them | open (outside the team: verified, labelled `confirmed`) | T-405 |
 | #603 | COORD-097: a fix in the frozen src/tunnel.rs: the quic+warp leg reconnects when its WARP session closes (T-402) (to podcrates) | open (a message to podcrates; close it when podcrates takes the fix with pod-cloudflare) | none |
 | #604 | COORD-098: the relay keeps a lost node socket for minutes after a reset (409); an ask for pod-relay and the relay server (to podcrates) | open (a message to podcrates; T-406 waits for the answer) | none |
+| #606 | live: two runs in a row failed | open (live 43912914825 attempt 2: T-407; live 43918102449: the relay, T-406) | T-406, T-407 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
