@@ -28,9 +28,8 @@ None. No subagent runs.
   session can dispatch a workflow and cancel a run with the MCP tool `actions_run_trigger`. No `[gh action] requested`
   issue is needed (`docs/maintenance.md`, Runs from the session). Push in batches: `ci` has about 12 jobs, and the
   runners are shared; cancel the runs of a head that a newer push replaces.
-* GitHub #598 (ci on `1852fcc`): ci failed in `restricted-host` and `no-loopback` on the two install-test cases (T-360).
-  The fix is `c24e0cf` (`need_loopback!()`). Close #598 through the record when ci passes on the head: its row in
-  `TODO/issues.md` and its line in `TODO/github.txt`, with the run ids.
+* Each workflow passed on `01487d8`: ci 43820922609, deny 43820922608, secrets 43820922620, live 43820922672, gate
+  43820928202 (the first run of `gate.yml`). GitHub #598 is closed in the record.
 * Read each run when the watcher reports its end (`CLAUDE.md` step 1). Do not wait for a comment.
 
 ## The work of 2026-11-16, second session (all on `main`)
@@ -51,8 +50,8 @@ None. No subagent runs.
    3. As root: `setpriv --reuid=65534 --regid=65534 --clear-groups env -i PATH=/usr/bin:/bin HOME=OTHERDIR
       LANE_DIR=DIR/out sh scripts/lab-lane.sh .work/podlab-v0.60.0 DIR/podnet [PROFILE...]`.
 
-   Left in T-358: a `gate.yml` CI job that runs the lane as a user that is not root (CI gets podlab with
-   `scripts/get-podlab.sh`); a row with WebSocket through the proxy (`ws-upgrade-refused`: the relay and the tunnel);
+   `gate.yml` runs the same lane on a GitHub runner (by hand; it passed on `01487d8`). Left in T-358: `release.yml`
+   waits for `gate.yml` (step 4); a row with WebSocket through the proxy (`ws-upgrade-refused`: the relay and the tunnel);
    `ipv6-only` on a host with IPv6; the `icmp` rows; the relay and the tunnel as podssh and podrunner call them; T-384.
    No beta before the gate.
 1. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).

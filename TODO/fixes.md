@@ -6985,8 +6985,14 @@ The full lane with `podlab` v0.60.0 as uid 65534 (each profile of `podlab list` 
 22 are n.a., none fails. `arm64-tcg`, `cgroup-v1` and `ipv6-only` do not hold here. A first run put the podnet binary
 in HOME: each row of `noexec-home` failed (the lab mounts HOME noexec). The binary and `LANE_DIR` must not be in HOME.
 
+2026-11-16, `gate.yml` (01487d8): the lane on a GitHub runner (ubuntu-24.04, kernel 7.0, uid 1001, the AppArmor limit of
+user namespaces off). Run 43820928202 passed: each row passes or is n.a.; `arm64-tcg` and `cgroup-v1` do not hold;
+`ipv6-only` holds there (`version` and `doctor` pass; the pod rows are n.a., no proxy). The plant step passed (the 3
+`net-pod` rows of `proxy-only` fail with the plant). `gate.yml` runs by hand; step 4 (`release.yml` waits for it) is
+open.
+
 What remains of step 1: a row that uses WebSocket through the proxy (`ws-upgrade-refused`: the relay and the tunnel);
-`ipv6-only` on a host with IPv6; the `icmp` rows; a `gate.yml` job that runs the lane as a user that is not root.
+`ipv6-only` on a host with IPv6; the `icmp` rows.
 
 
 # T-359: One shared crate for the help and the manual of each PodUtils command line
