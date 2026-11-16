@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**397 entries: 11 open, 11 partial, 36 blocked, 339 done.**
+**398 entries: 11 open, 11 partial, 36 blocked, 340 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 38 | 42 |
-| P2 | 5 | 5 | 10 | 178 | 198 |
+| P2 | 5 | 5 | 10 | 179 | 199 |
 | P3 | 6 | 4 | 24 | 122 | 156 |
-| **All** | 11 | 11 | 36 | 339 | 397 |
+| **All** | 11 | 11 | 36 | 340 | 398 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -443,3 +443,4 @@ M8 Overlays, M9 Later.
 | [T-396](link.md) | P3 | S | M9 | chore | done | link: remove the entry 305 and the empty feature `portable` (GitHub #475) |
 | [T-397](fixes.md) | P2 | S | M5 | defect | done | live: two quick tunnels over WARP within a minute register two devices, and WARP answers HTTP 429 |
 | [T-398](fixes.md) | P2 | M | M5 | chore | partial | The release gate: a scenario for each experimental command |
+| [T-399](fixes.md) | P2 | S | M5 | defect | done | live: the WebSocket client of a --url origin dials a name that has no IPv4 answer yet |

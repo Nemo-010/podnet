@@ -48,6 +48,9 @@ done
 url=$(jq -r 'select(.event == "ready") | .url' "$dir/tunnel.out")
 host=${url#https://}
 echo "::add-mask::$host"
+# T-399: the name must resolve to IPv4 first (a new name, or an IPv6 answer
+# only, gave ENETUNREACH in live 43898114234).
+sh "$(dirname "$0")/live-wait-name.sh" "$host" 240
 
 i=0
 until python3 -I -c '

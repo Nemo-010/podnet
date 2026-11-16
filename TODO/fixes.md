@@ -7950,3 +7950,49 @@ rotate`, `warp shell` and `wg serve`.
 10.66.0.2:8080 -- --switch ...` (it passes in `bind-denied` and `udp-denied`). 5 commands stay experimental: `autostart
 run`, `net tailscale` (a `tailscaled`), `ssh-relay` (an SSH relay of another party), `warp license` (a WARP+ key) and `wg
 serve` (WireGuard keys for a client; a key in the repository would need an exception of the secret scan).
+
+2026-11-16, the fourth part. A new lane case `wg-serve` makes the keys of the server and of the client for each run (X25519
+of RFC 7748 in Python: no key in the repository), runs `podnet wg serve` on UDP with `--egress socks5h+unix:` to a SOCKS5
+stub that echoes, and `podnet forward --network wg:CLIENT.conf -L unix:PATH=192.0.2.10:7`: a client of PATH gets
+`echo:ping`. The public keys agree with the module `cryptography`. As uid 65534: pass in `bind-denied` and `no-kvm`, n.a. in
+`udp-denied` and `no-loopback` (no UDP on the loopback). 4 commands stay experimental: `autostart run`, `net tailscale`,
+`ssh-relay` and `warp license`.
+
+# T-399: live: the WebSocket client of a --url origin dials a name that has no IPv4 answer yet
+
+**Source:** live 43898114234 on c591bab (2026-11-16), failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The step "WebSocket through a --url origin" of `.github/workflows/live.yml` failed on the QUIC leg: the tunnel registered
+(`the leg won the race leg=quic`), and each of 30 tries of the Python client failed with `OSError: [Errno 101] Network
+is unreachable` at the connect. The runner has no IPv6 route.
+
+## Premise
+
+- `scripts/live-ws-url.sh` dials the new quick-tunnel name at once, with the system resolver, and does not wait for the
+  name as `scripts/live-share.sh` and `scripts/live-throughput.sh` do (`scripts/live-wait-name.sh`).
+- `scripts/live-wait-name.sh` took `getent hosts`, which an IPv6 answer alone satisfies.
+- The same step passed on defa106 and on 3f203cc. The fault is in the check, not in podnet.
+
+## Approach
+
+1. `scripts/live-wait-name.sh` waits for an IPv4 answer (`getent ahostsv4`), else the DoH answer of type A in
+   `/etc/hosts`.
+2. `scripts/live-ws-url.sh` calls it before the client.
+
+## Prove
+
+```sh
+shellcheck -S warning scripts/live-wait-name.sh scripts/live-ws-url.sh
+# live passes on the next push
+```
+
+## Done
+
+2026-11-16, the commit of this entry. Both scripts are changed as in the Approach. The next push runs live.

@@ -40,7 +40,7 @@
 
 set -u
 
-CASES="version man local doctor shim-forward link-unix link-control net-switch pod-seccomp pod-netns net-proxy-unix"
+CASES="version man local doctor shim-forward link-unix link-control net-switch wg-serve pod-seccomp pod-netns net-proxy-unix"
 NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni-allowlist no-proxy-no-dns ipv6-only"
 NET_CASES="version doctor net-curl net-bench net-exit net-pod-auto net-pod-seccomp net-pod-netns"
 PROXY_CASES="proxy-direct proxy-port proxy-pod-auto proxy-pod-seccomp proxy-pod-env proxy-doctor"
@@ -278,6 +278,52 @@ case_main() {
         fi
         kill $sa $sb $sw 2>/dev/null
         cat "$dir/sw.txt" "$dir/a.txt" "$dir/b.txt"
+        echo "client: $got"
+        test "$got" = "echo:ping"
+        exit $?
+        ;;
+    wg-serve)
+        # podnet wg serve on UDP, with keys made for this run; a client of
+        # podnet (forward --network wg:FILE) sends a stream through it; the
+        # server dials through a SOCKS5 stub that echoes (T-398).
+        if ! python3 -I -c 'import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.bind(("127.0.0.1", 0)); s.sendto(b"x", s.getsockname())' 2>/dev/null; then
+            echo "the lab refuses UDP on the loopback"
+            exit 77
+        fi
+        python3 -I "$dir/../wgkeys.py" >"$dir/keys" || exit 1
+        sk=$(awk '$1 == "server" { print $2 }' "$dir/keys")
+        sp=$(awk '$1 == "server" { print $3 }' "$dir/keys")
+        ck=$(awk '$1 == "client" { print $2 }' "$dir/keys")
+        cp=$(awk '$1 == "client" { print $3 }' "$dir/keys")
+        python3 -I "$dir/../socks-stub.py" "$dir/stub.sock" >"$dir/stub.txt" 2>&1 &
+        stub=$!
+        (
+            umask 077
+            printf '[Interface]\nPrivateKey = %s\nListenPort = 0\nAddress = 10.9.0.1/24\n\n[Peer]\nPublicKey = %s\nAllowedIPs = 10.9.0.2/32\n' \
+                "$sk" "$cp" >"$dir/server.conf"
+        )
+        "$podnet" wg serve --config "$dir/server.conf" --egress "socks5h+unix:$dir/stub.sock" >"$dir/wg.txt" 2>&1 &
+        wg=$!
+        i=0
+        port=
+        while test -z "$port" && test $i -lt 100; do
+            port=$(sed -n 's/.*udp:0\.0\.0\.0:\([0-9]*\).*/\1/p' "$dir/wg.txt" | head -n 1)
+            i=$((i + 1))
+            sleep 0.1
+        done
+        (
+            umask 077
+            printf '[Interface]\nPrivateKey = %s\nAddress = 10.9.0.2/32\n\n[Peer]\nPublicKey = %s\nEndpoint = 127.0.0.1:%s\nAllowedIPs = 0.0.0.0/0\n' \
+                "$ck" "$sp" "$port" >"$dir/client.conf"
+        )
+        "$podnet" forward --network "wg:$dir/client.conf" -L "unix:$dir/f.sock=192.0.2.10:7" >"$dir/forward.txt" 2>&1 &
+        fwd=$!
+        got=fail
+        if test -n "$port" && wait_path "$dir/f.sock"; then
+            got=$(timeout 30 python3 -I "$dir/../unix-client.py" "$dir/f.sock" 2>&1)
+        fi
+        kill $fwd $wg $stub 2>/dev/null
+        cat "$dir/wg.txt" "$dir/forward.txt"
         echo "client: $got"
         test "$got" = "echo:ping"
         exit $?
@@ -598,6 +644,72 @@ while True:
         break
     data += b
 print(data.decode())
+EOF
+    cat >"$1/wgkeys.py" <<'EOF'
+import base64, os
+# X25519 (RFC 7748) for test keys made at run time: NAME PRIVATE PUBLIC.
+P = 2**255 - 19
+def x25519(k, u):
+    k = bytearray(k); k[0] &= 248; k[31] &= 127; k[31] |= 64
+    k = int.from_bytes(k, "little"); u = int.from_bytes(u, "little")
+    x1, x2, z2, x3, z3, swap = u, 1, 0, u, 1, 0
+    for t in reversed(range(255)):
+        b = (k >> t) & 1
+        swap ^= b
+        if swap: x2, x3, z2, z3 = x3, x2, z3, z2
+        swap = b
+        A = x2 + z2; AA = A * A; B = x2 - z2; BB = B * B; E = AA - BB
+        C = x3 + z3; D = x3 - z3; DA = D * A; CB = C * B
+        x3 = (DA + CB) ** 2 % P; z3 = x1 * (DA - CB) ** 2 % P
+        x2 = AA * BB % P; z2 = E * (AA + 121665 * E) % P
+    if swap: x2, x3, z2, z3 = x3, x2, z3, z2
+    return (x2 * pow(z2, P - 2, P) % P).to_bytes(32, "little")
+for name in ("server", "client"):
+    k = os.urandom(32)
+    print(name, base64.b64encode(k).decode(), base64.b64encode(x25519(k, (9).to_bytes(32, "little"))).decode())
+EOF
+    cat >"$1/socks-stub.py" <<'EOF'
+import os, socket, sys, threading
+# A SOCKS5 server on the unix socket PATH: each CONNECT, to any target,
+# gets success, and the stream gets the echo of the echo server.
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.bind(sys.argv[1])
+s.listen(8)
+def read(c, n):
+    data = b""
+    while len(data) < n:
+        b = c.recv(n - len(data))
+        if not b:
+            raise EOFError
+        data += b
+    return data
+def serve(c):
+    try:
+        n = read(c, 2)[1]
+        read(c, n)
+        c.sendall(b"\x05\x00")
+        head = read(c, 4)
+        if head[3] == 1:
+            read(c, 4)
+        elif head[3] == 4:
+            read(c, 16)
+        else:
+            read(c, read(c, 1)[0])
+        read(c, 2)
+        c.sendall(b"\x05\x00\x00\x01\x00\x00\x00\x00\x00\x00")
+        data = b""
+        while True:
+            b = c.recv(4096)
+            if not b:
+                break
+            data += b
+        c.sendall(b"echo:" + data)
+    except EOFError:
+        pass
+    c.close()
+while True:
+    c, _ = s.accept()
+    threading.Thread(target=serve, args=(c,), daemon=True).start()
 EOF
     cat >"$1/unix-client.py" <<'EOF'
 import socket, sys

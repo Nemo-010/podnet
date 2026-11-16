@@ -1,6 +1,6 @@
 #!/bin/sh
-# Wait until HOST resolves, for at most SECONDS (default 240). Ask the
-# system resolver, then DoH at Cloudflare and at Google. When only DoH has
+# Wait until HOST resolves to an IPv4 address, for at most SECONDS (default
+# 240). Ask the system resolver, then DoH at Cloudflare and at Google. When only DoH has
 # the address, add it to /etc/hosts, so that curl, python and podnet resolve
 # the name the same way (issue 119: the system resolver of the runner keeps
 # a negative answer for a new quick-tunnel name). The script prints no host
@@ -12,7 +12,9 @@ host=$1
 budget=${2:-240}
 start=$(date +%s)
 while :; do
-    if getent hosts "$host" > /dev/null 2>&1; then
+    # An IPv4 answer: the runner has no IPv6 route, and a name with an
+    # IPv6 answer only gives ENETUNREACH (T-399).
+    if getent ahostsv4 "$host" > /dev/null 2>&1; then
         echo "the name resolves (system) after $(($(date +%s) - start)) s"
         exit 0
     fi

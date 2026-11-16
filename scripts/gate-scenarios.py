@@ -175,6 +175,7 @@ LANE_MAP = {
     "pod-netns": ["pod"],
     "net-proxy-unix": ["net proxy"],
     "net-switch": ["net switch", "expose", "net proxy"],
+    "wg-serve": ["wg serve", "forward"],
     "net-curl": [],
     "net-bench": ["bench"],
     "net-exit": ["exit"],
