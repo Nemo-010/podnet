@@ -7615,3 +7615,118 @@ port again (`kernel_serve.rs`). The other backends pass in this lab.
 ```sh
 sh scripts/consumer-pod.sh PODNET PODLAB getsockname-denied
 ```
+
+# T-390: vnet shim: fcntl reads the struct flock pointer of the lock commands as an int
+
+**Source:** GitHub #599 (Nemo-010, outside the team; verified and labelled `confirmed` on 2026-11-16).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+GitHub #599: "`fcntl` reads a `struct flock *` as an `int`. `:1401-1409` lists the pointer-taking commands the shim
+knows; `:1412-1419` forwards every other command through `int arg = va_arg(ap, int)`. `F_GETLK`, `F_SETLK` and
+`F_SETLKW` take a `struct flock *` and are \"other\", so on x86-64 the pointer is truncated to 32 bits and the kernel
+answers `EFAULT`. Qt takes a `QLockFile` on the profile, so the client never binds a listener." Measured with
+`qbittorrent-nox` 5.1.0 under the shim.
+
+## Premise
+
+- Reproduced on 2026-11-16 at 5fbb2e3: a C program with `fcntl(fd, F_SETLK, &fl)` and `F_GETLK` gives rc 0 with no
+  shim, and `-1 Bad address` for both under `LD_PRELOAD` of the shim of `podnet net shim --out DIR`.
+- `F_OFD_GETLK`, `F_OFD_SETLK`, `F_OFD_SETLKW`, `F_GETOWN_EX` and `F_SETOWN_EX` also take a pointer.
+
+## Approach
+
+1. Move the lock commands (`F_GETLK`, `F_SETLK`, `F_SETLKW`, the `F_OFD_*` forms under `#ifdef`) and `F_GETOWN_EX`,
+   `F_SETOWN_EX` into the arm that reads a pointer.
+2. A test under the shim: a lock and its query on a file give rc 0; a planted shim with the old arm fails it.
+
+## Prove
+
+```sh
+cargo test -p podnet-vnet
+```
+
+# T-391: vnet shim: a bind to the wildcard address gets a name that no peer dials
+
+**Source:** GitHub #599 (Nemo-010, outside the team; verified and labelled `confirmed` on 2026-11-16).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+GitHub #599: "A wildcard bind registers a name no peer can dial. `bind_one` passes the caller's address to
+`to_abstract` verbatim, so `bind(0.0.0.0, 19101)` registers `\0podnet-vnet/4/0.0.0.0/19101`, while a peer dialling
+`10.66.0.2` builds `\0podnet-vnet/4/10.66.0.2/19101`. Different names, connection refused. `INADDR_ANY` is what a
+daemon binds when nothing told it otherwise, so this is most servers, not a corner." The proposal: `INADDR_ANY` and
+`in6addr_any` become the local address of the shim (`PODNET_VNET_LOCAL_ADDR`) before the bind.
+
+## Premise
+
+- Reproduced on 2026-11-16 at 5fbb2e3: `python3 -m http.server 19101 --bind 0.0.0.0` under the shim, and curl under
+  the shim to `http://10.66.0.2:19101/`: `000`. With `--bind 10.66.0.2`: `200`.
+- `to_abstract` maps `127.0.0.0/8` and `::1` to the local address when `map_loopback` is on; it leaves `0.0.0.0` and
+  `::`.
+- `getsockname` after a wildcard bind: Linux gives the wildcard. Decide whether the shim gives the wildcard or the local
+  address, and say it in `docs/virtual-network.md`.
+
+## Approach
+
+1. In `bind_one`, a wildcard address of either family becomes the local address (IPv4; for `AF_INET6` the mapped
+   form), as for a loopback address.
+2. A test under the shim: a server bound to `0.0.0.0` and to `::` answers a client that dials the local address and
+   `127.0.0.1`; a planted shim with no rewrite fails it.
+
+## Prove
+
+```sh
+cargo test -p podnet-vnet
+```
+
+# T-392: vnet shim: answer netlink route dumps with the virtual interfaces
+
+**Source:** GitHub #599 (Nemo-010, outside the team; verified and labelled `confirmed` on 2026-11-16).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+GitHub #599: "Interface enumeration reports the host's interfaces. `socket()` virtualises `AF_INET` and `AF_INET6`
+and forwards every other domain to the host, so `AF_NETLINK` dumps are answered by the real kernel. [...] libtorrent
+2.0.11 imports neither symbol [`getifaddrs`, `if_nameindex`] and asks netlink directly — `RTM_GETLINK`, `RTM_GETADDR`,
+`RTM_GETROUTE`. Under the shim the client listens on and advertises the host's addresses [...] inside the
+networkspace." The proposal: answer `AF_NETLINK` (protocol `NETLINK_ROUTE`) in the process over a
+`socketpair(AF_UNIX, SOCK_DGRAM)`: `RTM_GETLINK` gives `lo` and `vnet0`, `RTM_GETADDR` gives `127.0.0.1/8`, `::1/128`
+and the local address `/24`, each other type `NLMSG_DONE`. "`getsockname` on a netlink socket writes `nl_pid =
+getpid()`, and libtorrent passes that value as the expected `nlmsg_pid`, discarding any reply that carries another."
+
+## Premise
+
+- Read on 2026-11-16 at 5fbb2e3: `socket()` of `crates/podnet-vnet/shim/podnet-vnet.c` (`:851`) gives each other domain
+  to the host. Not measured here with libtorrent.
+- `getifaddrs` of glibc reads netlink too: the answer also changes what `getifaddrs` gives a program.
+- A program that needs the host's netlink (for example `ip`) under the shim: decide whether a variable turns the answer
+  off.
+
+## Approach
+
+1. A fake `NETLINK_ROUTE` socket in the shim, with the dumps of the Problem, the `nl_pid` of `getpid()` in
+   `getsockname` and in each reply, and `NLM_F_MULTI` then `NLMSG_DONE`.
+2. Tests under the shim: `getifaddrs` gives `lo` and the local address only; `ip -br addr` (when there) shows the same;
+   a planted shim that forwards netlink fails the test.
+
+## Prove
+
+```sh
+cargo test -p podnet-vnet
+```
