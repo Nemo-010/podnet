@@ -6981,6 +6981,10 @@ and its credential, and the HTTP 403 of `proxy-only` on port 7844. 8 rows are n.
 rows of `allow-connect` pass. The plant `LANE_PLANT=net` (a proxy that does not listen) fails each `net-pod` row. No
 defect of podnet.
 
+The full lane with `podlab` v0.60.0 as uid 65534 (each profile of `podlab list` and `allow-connect`): 223 rows pass,
+22 are n.a., none fails. `arm64-tcg`, `cgroup-v1` and `ipv6-only` do not hold here. A first run put the podnet binary
+in HOME: each row of `noexec-home` failed (the lab mounts HOME noexec). The binary and `LANE_DIR` must not be in HOME.
+
 What remains of step 1: a row that uses WebSocket through the proxy (`ws-upgrade-refused`: the relay and the tunnel);
 `ipv6-only` on a host with IPv6; the `icmp` rows; a `gate.yml` job that runs the lane as a user that is not root.
 

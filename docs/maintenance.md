@@ -50,8 +50,16 @@ state of the open work.
 * **Writes to GitHub** (a comment, the close of an issue, the dispatch of a
   workflow): the MCP tools of GitHub (`add_issue_comment`, `issue_write`,
   `actions_run_trigger`). No comment has an attribution line (`CLAUDE.md`).
+* **Runs from the session** (measured 2026-11-16): a push to `main` of the
+  session starts `ci`, `deny`, `secrets`, `live` and `issue-sync`. The
+  session can also start a workflow (`actions_run_trigger`, method
+  `run_workflow`, ref `main`) and cancel a run (`cancel_workflow_run`).
+  Do not dispatch a workflow that the push already started. Push in
+  batches: each push starts about 12 jobs of `ci`, and the runners of the
+  organization are shared. Cancel the runs of a head that a newer push
+  replaces. A release (`release.yml -f publish=vX`) is also a dispatch.
 * **A run when a push starts no workflow** (the rule of the owner,
-  2026-11-06): the local agent of the owner runs the commands, and it is a
+  2026-11-06; the fallback when the session cannot start a run): the local agent of the owner runs the commands, and it is a
   smaller model. For each run, open a NEW issue in `PodUtils/podnet` titled
   exactly `[gh action] requested`, with ONE workflow in each request (the
   agent starts only the first `gh workflow run` of a block), and:
@@ -213,6 +221,7 @@ into `TODO/github.txt`, and its row in `TODO/issues.md` has the entries
 | `ci.yml` | each push | fmt, clippy, tests, static musl builds |
 | `live.yml` | each push to `main`, each day, by hand | podnet against the real edge and WARP, on a GitHub runner |
 | `deny.yml`, `secrets.yml` | each push | licences and advisories; secret scan (`.github/secrets-allow.txt`) |
+| `gate.yml` | by hand, before a release | the release gate (T-358): `scripts/lab-lane.sh` in the labs of `pod-lab`, as the runner user, and its plant |
 | `release.yml` | a tag, or by hand | the release binaries; a dry run with no input |
 | `publish.yml` | a tag `v*`, or by hand | `cargo publish --workspace --dry-run`; the real publish only when `[workspace.metadata.podnet] crates-io = true` (trusted publishing, no token) |
 | `release-proofs.yml` | after a release | checks the release files, SHA256SUMS and the signatures |

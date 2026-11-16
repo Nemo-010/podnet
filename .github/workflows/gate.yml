@@ -1,0 +1,93 @@
+name: gate
+
+# The release gate (T-358): the lane of scripts/lab-lane.sh in the labs of
+# pod-lab, with the static release binary, as the runner user (not root).
+# podlab is the release asset of the podcrates tag that Cargo.toml names
+# (scripts/get-podlab.sh checks its SHA-256). docs/development.md, The lane
+# in the profiles of pod-lab, gives the rows and the results.
+#
+# * lane: each profile of `podlab list` and the row allow-connect. A row
+#   that fails fails the job. A lab that does not hold on the runner is n.a.
+# * The plant: LANE_PLANT=net (a proxy that does not listen) must fail the
+#   rows of podnet pod in the lab proxy-only.
+#
+# Each action is pinned by its commit. No job may write to the repository.
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  RUST_TOOLCHAIN: "1.99.1"
+  CARGO_TERM_COLOR: never
+
+jobs:
+  lane:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: |
+          sh scripts/retry.sh rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal -t x86_64-unknown-linux-musl
+          rustup default "$RUST_TOOLCHAIN"
+      - name: Install the C compiler for musl
+        run: |
+          sh scripts/retry.sh sudo apt-get update -qq
+          sh scripts/retry.sh sudo apt-get install -y -qq clang musl-tools > /dev/null
+      - name: Build
+        env:
+          CC_x86_64_unknown_linux_musl: clang
+        run: cargo build --locked --release --target x86_64-unknown-linux-musl
+      - name: Get podlab of the podcrates tag of Cargo.toml
+        run: |
+          set -eu
+          tag=$(sed -n 's/^pod-core = .*tag = "\(v[0-9][0-9.]*\)".*/\1/p' Cargo.toml)
+          test -n "$tag"
+          echo "podlab of podcrates $tag"
+          sh scripts/get-podlab.sh "$tag" "$RUNNER_TEMP/podlab"
+      # Ubuntu 24.04 refuses a user namespace to an unconfined program
+      # (AppArmor). The labs need one. The binary and LANE_DIR must not be
+      # in HOME (the lab noexec-home) or in /tmp (each lab hides /tmp).
+      - name: Prepare the host of the labs
+        run: |
+          set -eu
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          sudo install -d -m 1777 /var/tmp/lane
+          cp target/x86_64-unknown-linux-musl/release/podnet /var/tmp/lane/podnet
+          echo "uid $(id -u), kernel $(uname -r)"
+      - name: The lane
+        run: |
+          set -u
+          status=0
+          env -i PATH=/usr/local/bin:/usr/bin:/bin HOME="$HOME" LANE_DIR=/var/tmp/lane/out \
+            sh scripts/lab-lane.sh "$RUNNER_TEMP/podlab" /var/tmp/lane/podnet > "$RUNNER_TEMP/lane.txt" 2>&1 || status=$?
+          cat "$RUNNER_TEMP/lane.txt"
+          {
+            echo '```'
+            cat "$RUNNER_TEMP/lane.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if test $status -ne 0; then
+            for f in $(grep -o '/var/tmp/lane/out/[^ )]*' "$RUNNER_TEMP/lane.txt"); do
+              echo "== $f"
+              tail -n 40 "$f"
+            done
+            exit 1
+          fi
+      - name: The lane fails on its plant
+        run: |
+          set -u
+          if env -i PATH=/usr/local/bin:/usr/bin:/bin HOME="$HOME" LANE_DIR=/var/tmp/lane/plant LANE_PLANT=net \
+            sh scripts/lab-lane.sh "$RUNNER_TEMP/podlab" /var/tmp/lane/podnet proxy-only > "$RUNNER_TEMP/plant.txt" 2>&1; then
+            cat "$RUNNER_TEMP/plant.txt"
+            echo "the planted lane passed"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/plant.txt"
+          test "$(grep -c '^proxy-only  *net-pod-[a-z]*  *fail' "$RUNNER_TEMP/plant.txt")" -eq 3

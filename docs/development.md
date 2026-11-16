@@ -103,8 +103,17 @@ The script prints one row for each profile and command: `pass`, `fail`
 with the log, or `n.a.` with the reason (a lab that does not hold here; a
 pod backend that podnet refuses with exit 3 and a reason). It exits 1 on a
 failure. The logs are in `LANE_DIR` (default `.work/lab-lane`), which must
-not be in `/tmp` or in `HOME`. It needs `python3`, `cc` (for the shim) and
+not be in `/tmp` or in `HOME`. The podnet binary must not be in `HOME`
+(the lab `noexec-home` mounts it noexec). It needs `python3`, `cc` (for the shim) and
 `timeout`.
+
+`.github/workflows/gate.yml` runs the lane on a GitHub runner as the
+user `runner` (not root): the static release binary, `podlab` of the
+podcrates tag of `Cargo.toml`, each profile and `allow-connect`, then the
+plant `LANE_PLANT=net` in `proxy-only`. It turns off
+`kernel.apparmor_restrict_unprivileged_userns` first: the labs need a user
+namespace. Start it by hand: `gh workflow run gate.yml -R PodUtils/podnet
+--ref main`.
 
 ### The network labs
 
