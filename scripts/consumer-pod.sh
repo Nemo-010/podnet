@@ -149,7 +149,6 @@ refusal_expected() {
 known() {
     case $1:$2 in
     netns-kernel:getsockname-denied) entry="T-384: the backend reads the ports of its listeners with getsockname" ;;
-    auto:udp-denied | seccomp:udp-denied | netns:udp-denied) entry="T-383: no name resolves when the program has no UDP socket" ;;
     *) return 1 ;;
     esac
 }

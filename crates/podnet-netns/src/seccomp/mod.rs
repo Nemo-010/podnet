@@ -21,7 +21,8 @@ pub(crate) use send::*;
 // socketpair end with `SECCOMP_IOCTL_NOTIF_ADDFD`; the child's own `connect(2)`
 // is then answered by the supervisor, which dials the proxy and splices. Only
 // `socket` and `connect` need emulating for TCP, because the socketpair carries
-// the bytes natively. UDP port 53 is answered from the fake-IP pool.
+// the bytes natively. UDP port 53 is answered from the fake-IP pool, and so
+// is a TCP connect to port 53 (DNS over TCP, T-383).
 
 /// Find `name` as `execvp` does: a name with a `/` is used as it is; another
 /// name is looked up in the directories of `PATH`.
@@ -79,6 +80,7 @@ fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> 
     let resolved = resolve_program(&program[0])?;
     let mut env = crate::child_env(args.keep_proxy_env);
     crate::with_single_request(&mut env);
+    crate::with_dns_over_tcp(&mut env);
     let program = pod_hold::spawn::Program::with_env(&resolved, &program, env)?;
     let started = pod_hold::spawn::start(program, &crate::seccomp::calls(args.allow_raw))?;
     let (lfd, pid) = (
@@ -146,11 +148,14 @@ pub(crate) async fn supervise_seccomp(
     let mut map = crate::fdtable::Table::new(pid, crate::fdtable::ceiling());
     let mut dns = FakeDns::new();
     let mut dials = crate::connect::Dials::new();
+    // T-383: the queries of the DNS connections of the program.
+    let mut dns_tcp = crate::dnstcp::Queries::new();
     let (writes_tx, mut writes) = tokio::sync::mpsc::channel(crate::udp::WRITES);
     let route = crate::connect::Route {
         proxies: &proxies,
         rules: &rules,
         inbound_dir: &inbound_dir,
+        dns_tcp: dns_tcp.asker(),
         verbose,
     };
     let egress = crate::udp::Egress {
@@ -179,6 +184,11 @@ pub(crate) async fn supervise_seccomp(
             // T-143: a datagram that the program wrote with `write(2)`.
             Some(written) = writes.recv() => {
                 crate::udp::relay_written(&mut map, written, &mut dns, &egress).await;
+                continue;
+            }
+            // T-383: a query of a DNS connection of the program.
+            Some(query) = dns_tcp.next() => {
+                query.answer(&mut dns);
                 continue;
             }
             _ = tokio::time::sleep(Duration::from_millis(50)) => continue,

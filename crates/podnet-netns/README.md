@@ -256,6 +256,13 @@ see it. Use a unix socket for it (`-L unix:///path`).
   `single-request` to `RES_OPTIONS` of the program: glibc then sends the A
   and the AAAA query in two calls (issue 113). A program that clears its
   environment loses this option.
+* A TCP connect to port 53 is answered by the fake-IP pool too (DNS over
+  TCP, RFC 7766; T-383). The `netns` backend does the same for port 53 of
+  the gateway. When the pod cannot make an `AF_INET` UDP socket (`EPERM`,
+  `EACCES` or `ENOSYS`: a seccomp filter of the host), the program has the
+  same filter. The pod then adds `use-vc` to `RES_OPTIONS` of the program
+  and prints one line: glibc sends each query over TCP. musl reads no
+  `use-vc` and needs a UDP socket, so a musl program resolves no name there.
 * The filter does not stop `write` and `writev`: a stop costs one
   notification for each write of each program. On a UDP socket, a reader
   task of the supervisor takes each datagram that the program writes on the

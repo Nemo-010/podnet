@@ -243,5 +243,5 @@ fn child_setup(sock: RawFd, args: &Args) -> Result<()> {
             "warning: the program keeps the resolver of the host ({e:#})"
         ));
     }
-    exec_program(sock, args)
+    exec_program(sock, args, false)
 }

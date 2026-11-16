@@ -49,6 +49,7 @@ pub mod upstream;
 mod cli;
 mod connect;
 mod dgram;
+mod dnstcp;
 mod doctor;
 mod fakedns;
 mod fdtable;
@@ -445,22 +446,55 @@ fn tcp_connect_refused() -> Option<String> {
 /// first message as not sent, and `getaddrinfo` with `AF_UNSPEC` fails.
 /// A value that has `single-request` or `single-request-reopen` stays.
 pub(crate) fn with_single_request(env: &mut Vec<std::ffi::CString>) {
+    with_res_option(env, "single-request", &["single-request-reopen"]);
+}
+
+/// Add `use-vc` to `RES_OPTIONS` of a program environment when this
+/// process cannot make a UDP socket (T-383). The program gets the same
+/// filter, so its resolver cannot send a datagram; with `use-vc`, glibc
+/// sends each query over TCP, and the pod answers it from its fake DNS
+/// ([`dnstcp`]). Prints one line when it adds the option. musl does not
+/// read `use-vc`: a musl program cannot resolve a name there.
+pub(crate) fn with_dns_over_tcp(env: &mut Vec<std::ffi::CString>) {
+    let Some(why) = dnstcp::udp_socket_refused() else {
+        return;
+    };
+    if with_res_option(env, "use-vc", &[]) {
+        warn(&format!(
+            "the program gets RES_OPTIONS use-vc ({why}): glibc asks the fake DNS of the pod over TCP; a musl program cannot resolve a name"
+        ));
+    }
+}
+
+/// Add `option` to `RES_OPTIONS` of `env`. A value that has `option` or
+/// one of `same` stays. True when the option was added.
+fn with_res_option(env: &mut Vec<std::ffi::CString>, option: &str, same: &[&str]) -> bool {
     const KEY: &[u8] = b"RES_OPTIONS=";
     match env.iter_mut().find(|e| e.as_bytes().starts_with(KEY)) {
         Some(entry) => {
             let value = String::from_utf8_lossy(&entry.as_bytes()[KEY.len()..]).into_owned();
             if value
                 .split_whitespace()
-                .any(|o| o == "single-request" || o == "single-request-reopen")
+                .any(|o| o == option || same.contains(&o))
             {
-                return;
+                return false;
             }
-            let value = format!("{} single-request", value.trim());
-            if let Ok(new) = std::ffi::CString::new(format!("RES_OPTIONS={}", value.trim())) {
-                *entry = new;
+            let value = format!("{} {option}", value.trim());
+            match std::ffi::CString::new(format!("RES_OPTIONS={}", value.trim())) {
+                Ok(new) => {
+                    *entry = new;
+                    true
+                }
+                Err(_) => false,
             }
         }
-        None => env.push(std::ffi::CString::new("RES_OPTIONS=single-request").unwrap()),
+        None => match std::ffi::CString::new(format!("RES_OPTIONS={option}")) {
+            Ok(new) => {
+                env.push(new);
+                true
+            }
+            Err(_) => false,
+        },
     }
 }
 
@@ -499,7 +533,7 @@ fn warn_unreachable(proxies: &[upstream::Proxy]) {
 
 #[cfg(test)]
 mod tests {
-    use super::with_single_request;
+    use super::{with_res_option, with_single_request};
     use crate::prelude::*;
 
     fn res_options(env: &[std::ffi::CString]) -> Vec<String> {
@@ -528,6 +562,18 @@ mod tests {
         assert_eq!(res_options(&env), ["single-request-reopen"]);
         with_single_request(&mut env);
         assert_eq!(res_options(&env).len(), 1);
+    }
+
+    // T-383: use-vc goes after the options of the program, once.
+    #[test]
+    fn res_options_gets_use_vc_once() {
+        let c = |s: &str| std::ffi::CString::new(s).unwrap();
+        let mut env = vec![c("RES_OPTIONS=ndots:2")];
+        with_single_request(&mut env);
+        assert!(with_res_option(&mut env, "use-vc", &[]));
+        assert_eq!(res_options(&env), ["ndots:2 single-request use-vc"]);
+        assert!(!with_res_option(&mut env, "use-vc", &[]));
+        assert_eq!(res_options(&env), ["ndots:2 single-request use-vc"]);
     }
 
     #[test]

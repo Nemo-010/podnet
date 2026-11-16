@@ -247,12 +247,16 @@ pub(crate) fn child_setup(sock: RawFd, args: &Args) -> Result<()> {
         ));
     }
 
-    exec_program(sock, args)
+    // T-383: the probe of a UDP socket runs here, under the filters that
+    // the program gets.
+    exec_program(sock, args, true)
 }
 
 /// Start the program of `args` under the reaper of the namespace, and
-/// report its status on `sock`. Return only on an error.
-pub(crate) fn exec_program(sock: RawFd, args: &Args) -> Result<()> {
+/// report its status on `sock`. Return only on an error. With
+/// `dns_over_tcp`, the program gets `use-vc` when its UDP socket is
+/// refused (T-383: the stack answers DNS over TCP at the gateway).
+pub(crate) fn exec_program(sock: RawFd, args: &Args, dns_over_tcp: bool) -> Result<()> {
     let program = &args.program;
     let path = CString::new(program[0].as_bytes())?;
     let mut argv: Vec<CString> = Vec::with_capacity(program.len() + 1);
@@ -264,7 +268,10 @@ pub(crate) fn exec_program(sock: RawFd, args: &Args) -> Result<()> {
         .map(|c| c.as_ptr())
         .chain(std::iter::once(std::ptr::null()))
         .collect();
-    let env = crate::child_env(args.keep_proxy_env);
+    let mut env = crate::child_env(args.keep_proxy_env);
+    if dns_over_tcp {
+        crate::with_dns_over_tcp(&mut env);
+    }
     let envp: Vec<*const libc::c_char> = env
         .iter()
         .map(|c| c.as_ptr())

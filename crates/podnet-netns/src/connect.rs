@@ -116,6 +116,8 @@ pub(crate) struct Route<'a> {
     pub(crate) proxies: &'a [Proxy],
     pub(crate) rules: &'a [Rule],
     pub(crate) inbound_dir: &'a std::path::Path,
+    /// The connections to the fake DNS (T-383).
+    pub(crate) dns_tcp: crate::dnstcp::Asker,
     pub(crate) verbose: bool,
 }
 
@@ -164,6 +166,11 @@ pub(crate) fn handle_connect(
             udp.inbox.set_dest(Some((ip, port)));
         }
         return notif_respond(lfd, id, 0, 0);
+    }
+    if port == DNS_PORT {
+        // T-383: the fake DNS answers a TCP connect to port 53 (DNS over
+        // TCP), as it answers a datagram to port 53.
+        return connect_fake_dns(lfd, (id, pid, fd), (key, ip), dials, route);
     }
     let target = match (dns.name_for_ip_synced(ip), ip) {
         (Some(name), _) => format!("{name}:{port}"),
@@ -241,6 +248,40 @@ pub(crate) fn handle_connect(
             let _ = tx.send(done);
         });
     }
+    match started {
+        Started::InProgress => notif_respond(lfd, id, -1, libc::EINPROGRESS),
+        Started::Waits => Ok(()),
+    }
+}
+
+/// A TCP connect of the program to port 53 of `ip`: the fake DNS of the
+/// pod answers the connection (T-383). The end of the dial goes to the
+/// loop as the end of another dial does, so a nonblocking connect gets
+/// `EINPROGRESS` first, as in the kernel.
+fn connect_fake_dns(
+    lfd: RawFd,
+    (id, pid, fd): (u64, u32, i32),
+    (key, ip): (Key, IpAddr),
+    dials: &mut Dials,
+    route: &Route<'_>,
+) -> Result<()> {
+    if route.verbose {
+        eprintln!(
+            "{}: connect {} goes to the fake DNS of the pod (DNS over TCP)",
+            crate::cli::program_name(),
+            SocketAddr::new(ip, DNS_PORT)
+        );
+    }
+    let started = dials.state.start(key, id, is_nonblocking(pid, fd));
+    let done = Dialed {
+        key,
+        caller: Caller { id, pid, fd },
+        peer: (ip, DNS_PORT),
+        target: SocketAddr::new(ip, DNS_PORT).to_string(),
+        result: Ok(Link::Relay(route.dns_tcp.connect())),
+        flow: None,
+    };
+    let _ = dials.tx.send(done);
     match started {
         Started::InProgress => notif_respond(lfd, id, -1, libc::EINPROGRESS),
         Started::Waits => Ok(()),

@@ -39,8 +39,19 @@ The other backends answer DNS from a fake-IP pool (`198.18.0.0/15`; the
 name to the upstream. Thus no DNS query leaves the host. With the `netns`
 backend, `--host-gateway` lets the program reach a service on the loopback
 of the host at the gateway `10.66.255.254` (TCP and UDP, as the gateway of
-podman and slirp4netns); without it, the gateway refuses. See
+podman and slirp4netns); without it, the gateway refuses. Port 53 of the
+gateway is always the fake DNS. See
 [`crates/podnet-netns/README.md`](../crates/podnet-netns/README.md) for all options.
+
+The fake DNS answers a query over UDP and over TCP (the framing of RFC 7766).
+The `seccomp` backend answers each connection to port 53; the `netns` backend
+answers the gateway `10.66.255.254`, the nameserver of its `resolv.conf`.
+Where a seccomp filter of the host refuses each UDP socket (the lab
+`udp-denied` of pod-lab), the pod adds `use-vc` to `RES_OPTIONS` of the
+program, and prints one line on stderr. A glibc program then sends each query
+over TCP to the pod. A musl program cannot resolve a name there: musl reads
+no `use-vc`, and its resolver stops when its UDP socket is refused. Give such
+a program an address in place of a name.
 
 ## Upstreams
 

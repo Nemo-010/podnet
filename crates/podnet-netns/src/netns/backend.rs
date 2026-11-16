@@ -56,6 +56,8 @@ pub(crate) struct Backend {
     /// The records of the flows of the program, for their close lines.
     open: OpenFlows,
     pub(crate) dns: FakeDns,
+    /// The queries of the DNS connections of the program (T-383).
+    dns_tcp: crate::dnstcp::Queries,
     /// The UDP flows of the program other than DNS (T-111).
     pub(crate) udp: UdpFlows,
     /// `--host-gateway` (T-112): a flow to the gateway goes to the loopback
@@ -116,6 +118,7 @@ impl Backend {
             hold: SynHold::new(config, settings),
             open: Arc::new(Mutex::new(HashMap::new())),
             dns,
+            dns_tcp: crate::dnstcp::Queries::new(),
             udp: UdpFlows::new(),
             host_gateway: false,
             proxies,
@@ -152,6 +155,7 @@ impl Backend {
             proxies: &self.proxies,
             rules: &self.rules,
             dns: &self.dns,
+            dns_tcp: self.dns_tcp.asker(),
             host_gateway: self.host_gateway,
             verbose: self.verbose,
         };
@@ -171,6 +175,10 @@ impl Backend {
     /// smoltcp UDP socket cannot set that source address, so the reply packet
     /// is made here with the two addresses swapped.
     pub(crate) fn answer_dns(&mut self) {
+        // T-383: the queries of the DNS connections to the gateway.
+        while let Some(query) = self.dns_tcp.try_next() {
+            query.answer(&mut self.dns);
+        }
         let mut kept = VecDeque::with_capacity(self.device.rx.len());
         while let Some(pkt) = self.device.rx.pop_front() {
             match dns_reply_packet(&pkt, &mut self.dns) {
@@ -221,6 +229,8 @@ struct TcpRoute<'a> {
     proxies: &'a [Proxy],
     rules: &'a [Rule],
     dns: &'a FakeDns,
+    /// The connections to the fake DNS (T-383).
+    dns_tcp: crate::dnstcp::Asker,
     host_gateway: bool,
     verbose: bool,
 }
@@ -264,10 +274,22 @@ impl TcpRoute<'_> {
         (Box::pin(dial), flow)
     }
 
-    /// The dial of a connection to the gateway on `port` (T-112): TCP to
-    /// 127.0.0.1 and `port` on the host with `--host-gateway`, else a
-    /// refusal (the program gets a RST).
+    /// The dial of a connection to the gateway on `port` (T-112): the fake
+    /// DNS on port 53 (T-383), else TCP to 127.0.0.1 and `port` on the host
+    /// with `--host-gateway`, else a refusal (the program gets a RST).
     fn spawn_gateway_dial(&self, port: u16) -> DialFuture {
+        if port == DNS_PORT {
+            // T-383: the gateway is the nameserver of the program; the fake
+            // DNS answers a TCP connection to it (DNS over TCP).
+            if self.verbose {
+                eprintln!(
+                    "{}: {TUN_GW}:{port} (the gateway) goes to the fake DNS of the pod (DNS over TCP)",
+                    crate::cli::program_name()
+                );
+            }
+            let dns = self.dns_tcp.clone();
+            return Box::pin(async move { Ok(dns.connect()) });
+        }
         let on = self.host_gateway;
         if self.verbose {
             let what = match on {
