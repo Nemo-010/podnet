@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-16 07:10 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-16 08:45 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -13,10 +13,10 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`; add
   `rustfmt`, `clippy` and the target `x86_64-unknown-linux-musl` in a new container).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.60.0` (T-387), with `pod-warp`: `src/warp/` is glue
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.61.0` (T-388), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.13` (T-355, 0a0f3e5).
-* The record is `TODO/`. `cargo todo check` agrees: 387 entries, 12 open, 10 partial, 37 blocked, 328 done.
+* The record is `TODO/`. `cargo todo check` agrees: 389 entries, 12 open, 10 partial, 37 blocked, 330 done.
 
 ## Unfinished work (not on `main`)
 
@@ -37,6 +37,8 @@ None. No subagent runs.
 * T-360 Correction (`c24e0cf`): the two install-test cases skip on a host with no loopback.
 * T-387 done (`ad8abd4`): podcrates v0.60.0. The manual now gives clap's `requires` rules; `llms-full.txt` is written
   again. COORD-096 (#597) has the take.
+* T-388 and T-389 done (`45a683a`): podcrates v0.61.0 and its installer core (`core.sh` and `core-net.sh`). The copy of
+  a release checks the cosign signature in the core; the copy of the tree keeps its own check. `PODNET_COSIGN`.
 * T-358 step 1 (`f32483a`): the lane runs in the network labs of podlab v0.60.0. The old row `proxy-only` is now
   `allow-connect`. The full lane: 223 pass, 22 n.a., 0 fail (as uid 65534; HOME away from the binary).
 
@@ -75,7 +77,7 @@ None. No subagent runs.
 | #522, #526, #532 (takes of v0.37.0, v0.39.0 and v0.40.0) | podcrates records the take. |
 | #560 (COORD-081, the take of v0.45.0) | The answer of podcrates on the ws listener (a refused pin: `Refused` or no peer). |
 | #555 (COORD-079) | The fuzz crash of `pod-proxy` is fixed in v0.45.0 (T-349); the crash of `pod-cloudflare` waits for its take (their entry 029). |
-| #597 (COORD-096, the takes of v0.58.0, v0.59.0 and v0.60.0) | podcrates reads it; close it when podcrates closes #200, #204 and #206. |
+| #597 (COORD-096, the takes of v0.58.0 to v0.61.0) | podcrates reads it; close it when podcrates closes #200, #204, #206 and #209. |
 | #592 (COORD-095) | T-358 (the release gate); T-380 and T-381 are done. |
 | #587, #589 | podcrates closes #185 and #188. |
 | #413, #425, #437, #439, #440, #448, #460 | Older proposals and asks; see `TODO/issues.md`. |
