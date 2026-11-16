@@ -1383,7 +1383,7 @@ static build with zig (no zig on the host). The questions of podcrates T-169 (th
 **Milestone:** M3
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1417,3 +1417,24 @@ cargo test --locked -p podnet --bin podnet manual
 cargo todo check
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-16, commit dd903e3 and the commit of this record. Each podcrates tag is `v0.58.0`; `Cargo.lock` and
+`fuzz/Cargo.lock` change only the crates of podcrates. `fill_env`, the filter of the rules and 7 words of `EXEMPT`
+(`pod_proxy`, `F_GETFL`, `F_SETFL`, `SO_ORIGINAL_DST`, `AF_INET`, `AF_INET6`, `SHA2_256`) are removed; the tests of
+`src/cli/manual_tests.rs` pass with no glue. `TARGET` and `RUST_LOG` stay in `EXEMPT` (no fact names them). The
+filter of the flags of clap for help and version (`is_clap_flag`) stays: the crate does not remove them.
+
+The output before and after (debug binary): `podnet --help` and `COMMAND --help` of 13 commands are the same.
+`podnet man`, `man --roff` and `man --json` lose no line: the commands of a command come before its options, and 6
+rules with a positional are new (serve: `--dir`/`DIR`, `--hash-password`/`DIR`; send: `--text`/`PATH`; autostart add:
+`--from`/`ARGS`; stop: one of `NAME`/`--all`, and not both). The variable of each flag is the same. The JSON gets
+the fields `env`, `groups` and `lead`. `llms-full.txt` is written again.
+
+`PodUtils/podcrates:scripts/check-strings.py` with `--data` of the `services/` of the tag on the release musl binary:
+no fault (exit 0); `--self-test` holds 14 cases. `PodUtils/podcrates:scripts/check-man.sh`: each check is ok,
+also the plant (exit 0). `sh scripts/agent/check.sh` exits 0; `cargo clippy --locked --workspace --all-targets
+--features full -- -D warnings` exits 0; `cargo check --workspace --target i686-unknown-linux-musl` exits 0.
+
+Not done: `--help` from the model (`Command::groups`, `Command::lead`). The help of clap (`src/cli/help.rs`) stays.
