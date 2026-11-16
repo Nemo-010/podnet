@@ -4,7 +4,8 @@
 # (scripts/check-size.py), the layers of the modules
 # (scripts/check-layers.py), the docs (cargo doc, as CI) and the class of each
 # sh block of the documents (scripts/doc-commands.py --check), and the man page
-# with groff and mandoc when both exist, the rules of the workflows, and the
+# with groff and mandoc when both exist, the installer core
+# (scripts/check-install.py), the rules of the workflows, and the
 # shell scripts with shellcheck when it exists (as CI). Print each
 # exit code, and the first faults; exit 1 on a fault. With the argument notest, the tests are skipped.
 #
@@ -41,6 +42,8 @@ if command -v groff > /dev/null 2>&1 && command -v mandoc > /dev/null 2>&1; then
 else
     echo "man skipped (no groff or mandoc on this host)"
 fi
+python3 -I scripts/check-install.py > "$log/install.log" 2>&1; i=$?
+echo "install $i"; [ "$i" -eq 0 ] || { rc=1; head -20 "$log/install.log"; }
 python3 scripts/check-workflows.py > "$log/workflows.log" 2>&1; w=$?
 echo "workflows $w"; [ "$w" -eq 0 ] || { rc=1; head -20 "$log/workflows.log"; }
 # The shell scripts, as the job "workflows" of CI checks them.

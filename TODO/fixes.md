@@ -4130,10 +4130,10 @@ H, not H" with the same hash twice.
   `..`), used by `src/update.rs:185`, `src/update.rs:271` and `src/update.rs:348`.
 - `src/update/cosign.rs:160-174` (`sum_of`) returns the first matching line and does not check the length
   of the hash. SHA256SUMS is signed, so this is a hardening gap, not a hole.
-- `tests/install_script.rs:102-112` (`Lab::curl`): the argument loop skips each word that starts with `-`,
+- `tests/install_script.rs:105-115` (`Lab::curl`): the argument loop skips each word that starts with `-`,
   so no flag can change a result. `Lab::run` clears the environment and sets no `TMPDIR`; one test sets it
-  (`tests/install_script.rs:408`). The script passes `--proto` at `scripts/install.sh:272` and
-  `scripts/install.sh:292`.
+  (`tests/install_script.rs:408`). The script passes `--proto` at `scripts/install.sh:887` and
+  `scripts/install.sh:911` (after T-360).
 - Closed issues that touch the same files and add no such rule: GitHub #227 (`valid_tag` for `update`
   only), #290 (seven defects of the script), #216, #246, #168, #169, #2, #17, #19. No entry of the record
   covers it.

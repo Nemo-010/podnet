@@ -64,7 +64,8 @@ fail.
 ## Install script
 
 `scripts/install.sh` installs the binary of the newest release
-(prereleases too) for this machine. It is POSIX `sh`:
+(prereleases too) for this machine. It is POSIX `sh` (`dash`, `bash
+--posix`, `busybox sh`):
 
 ```sh
 s=$(curl -fsSL https://raw.githubusercontent.com/PodUtils/podnet/main/scripts/install.sh) && sh -c "$s"
@@ -74,38 +75,88 @@ With wget: `s=$(wget -qO- URL) && sh -c "$s"`. Do not use `curl URL | sh`
 in a script or a CI step: a pipe has the exit status of `sh`, and `sh`
 exits 0 when `curl` fails or is missing.
 
-* It uses the first downloader that it finds: `curl`, `wget`, `aria2c`,
-  `http` (HTTPie), `python3`, `python` or `perl` (`HTTP::Tiny` with TLS),
-  and last `busybox wget` (also a `wget` that is the busybox applet: it
-  goes after `python3`, `python` and `perl`).
-  HTTPS only; redirects to plain HTTP are refused. busybox wget does not
-  check TLS certificates: the script says so in a warning, and with no
-  `cosign` the check of `SHA256SUMS` then does not protect the download. A
-  busybox with no TLS (no `ssl_client`) is not used.
-* It checks the binary against `SHA256SUMS` (`sha256sum`, `shasum`,
-  `openssl`, `busybox` or `python3`), and the cosign signature of
-  `SHA256SUMS` when `cosign` is installed. A failed check stops it, and
-  cosign then shows its output.
-* It runs the new binary (`--version`) in the install directory before it
-  replaces the old binary. A binary that does not run on this machine, or
-  that does not print `podnet VERSION` of the release, does not replace the
-  old one. The copy is a new file from `mktemp` with mode 0755 (also with
-  a restrictive umask). When the path of the binary is a directory or
-  another file that is not a regular file, the script stops before the
-  downloads.
-* The directory: `PODNET_INSTALL_DIR`, else `/usr/local/bin` for root, else
-  `$XDG_BIN_HOME`, else `~/.local/bin`. A line says how to add it to `PATH`.
-  The script checks the directory before the downloads.
-* `PODNET_VERSION=<TAG>` (for example `v0.4.0-beta.1`) installs that release, with no request to
-  the GitHub API. For the newest release, the script reads the API; when
-  the API refuses (403 on a shared address), it reads `releases.atom`.
-  A draft release is not used.
+The script is the installer core of PodUtils/podcrates
+(`scripts/install/core.sh` at the tag of `scripts/install/SOURCES`,
+inline and unchanged) and the part of podnet after it. Each release also
+has `podnet-install.sh`: the same script with the pins of the release (the
+SHA-256 and the size of each file, written by
+`scripts/install/pins.py stamp` in `release.yml`). Its line in
+`SHA256SUMS` is under the cosign signature.
+
+* The copy of the tree finds the release, gets `SHA256SUMS`, checks its
+  cosign signature when `cosign` is installed, and takes the pin of the
+  binary from its one line in `SHA256SUMS`. `podnet-install.sh` of a
+  release has the pins in the file: it needs no `SHA256SUMS`, no API and
+  no cosign.
+* A second run with the same version changes nothing and says so (`podnet
+  VERSION is already installed`): a binary in place that agrees with its
+  pin stays (its inode and its time too), and no binary is downloaded.
+* A new binary goes to a temporary name in the install directory. Its
+  SHA-256 must agree with the pin, and it must run (`--version`, with no
+  stdin) and print `podnet VERSION` of the release. Only then does a rename
+  put it in place, with mode 0755 (also with a restrictive umask). A file
+  in place is old or new, never half. A binary that does not agree, does
+  not run or prints another version does not replace the old one. When the
+  path of the binary is a directory or another file that is not a regular
+  file, the script stops before the downloads.
+* The directory: `--prefix DIR`, else `PODNET_INSTALL_DIR`, else
+  `/usr/local/bin` for root, else `$XDG_BIN_HOME`, else `~/.local/bin`.
+  The script checks the directory before the downloads. A directory that
+  cannot run programs (`noexec`) is refused with its reason, and the free
+  space is checked with `df`. A line says how to add the directory to
+  `PATH`; `--add-path FILE` adds the line to FILE once.
+* The downloader: the first of `curl`, `wget`, `aria2c`, `http` (HTTPie),
+  `python3`, `python` or `perl` (`HTTP::Tiny` with TLS), and last `busybox
+  wget` (also a `wget` that is the busybox applet). `PODNET_DOWNLOADER=TOOL`
+  selects one. An https URL allows no redirect to plain HTTP. busybox wget
+  does not check TLS certificates: the script says so in a warning, and
+  with no `cosign` the check of `SHA256SUMS` then does not protect the copy
+  of the tree. A busybox with no TLS (no `ssl_client`) is not used.
+* The SHA-256 tool: `sha256sum`, `shasum`, `openssl`, `busybox` or
+  `python3`. With none, the script stops; `PODNET_NO_VERIFY=1` then
+  installs with no check, with a warning.
+* `PODNET_VERSION=<TAG>` or `--version <TAG>` (for example
+  `v0.4.0-beta.1`) installs that release, with no request to the GitHub
+  API. For the newest release, the script reads the API; when the API
+  refuses (403 on a shared address), it reads `releases.atom`. A draft
+  release is not used. `podnet-install.sh` of a release installs its own
+  version only, and refuses another one with the name of its installer.
   `GITHUB_TOKEN` or `GH_TOKEN` goes to `api.github.com` only. The token is
-  not in the trace of `DEBUG=1` and not in the arguments of the downloader:
-  curl reads it from stdin, wget from a private file.
-* `PODNET_DOWNLOADER=wget` selects the downloader.
-* A missing file of the release, an empty download and a failed download
-  have different messages. INT, TERM and HUP stop the script and remove its files.
+  not in the trace of `DEBUG=1` and not in the arguments of the
+  downloader: curl reads it from stdin, wget from a private file.
+* `PODNET_REPO=OWNER/NAME` sets the repository of the releases.
+  `PODNET_MIRROR=URL` gets each file from `URL/FILE` (`https://`,
+  `http://` or `file://`); with no `cosign`, a warning says that nothing
+  checks `SHA256SUMS` of a mirror. `PODNET_TARGET=TRIPLE` selects the
+  binary of a target. The proxy comes from `https_proxy`, `HTTPS_PROXY`,
+  `no_proxy` and `NO_PROXY`; the output shows it with no credential.
+* `--dry-run` shows the plan and changes no file. The copy of the tree
+  still gets `SHA256SUMS` (and the release list for the newest release),
+  but no binary.
+* `--offline DIR` (`podnet-install.sh` of a release only) installs from a
+  directory with the files of the release, or from a `.tar.gz` of them,
+  with no network.
+* A missing `SHA256SUMS`, an empty download and a failed download have
+  different messages. INT, TERM and HUP stop the script and remove its
+  files (exit 130, 143, 129). After a KILL, the next run removes the
+  temporary files of a run that does not run.
+* Each line of the output starts with `podnet-install:`. The exit codes:
+  0 done, 1 a fault, 2 a usage error.
+
+The release of a version, with no API and no `SHA256SUMS` download:
+
+```sh
+curl -fsSLO https://github.com/PodUtils/podnet/releases/download/<TAG>/podnet-install.sh
+sh podnet-install.sh
+```
+
+`sh scripts/install-test.sh SHELL` tests the script in one shell with a
+fake release on the loopback and in a `file://` directory, and no network
+(`cargo test --test install_script` runs it in `dash`, `bash --posix` and
+`busybox sh`). `python3 -I scripts/check-install.py` checks that
+`scripts/install/core.sh` and `scripts/install/pins.py` have the SHA-256
+of `scripts/install/SOURCES`, that `scripts/install.sh` holds the core
+inline, and that it holds no pins.
 
 ## Ephemeral hosts
 

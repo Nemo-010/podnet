@@ -1,8 +1,8 @@
-//! Strict checks of scripts/install.sh (issue 430).
+//! Strict checks of scripts/install.sh.
 
 use super::*;
 
-// Issue 430: the flags of the downloader are part of the contract.
+// the flags of the downloader are part of the contract.
 #[test]
 fn curl_gets_https_only_flags() {
     let lab = Lab::new("flags");
@@ -17,7 +17,7 @@ fn curl_gets_https_only_flags() {
     }
 }
 
-// Issue 430: a copy of the script without the --proto words shows in the
+// a copy of the script without the --proto words shows in the
 // argument log, so the flag test above fails for it.
 #[test]
 fn a_script_without_proto_fails_the_flag_test() {
@@ -27,8 +27,8 @@ fn a_script_without_proto_fails_the_flag_test() {
         std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/install.sh"))
             .unwrap();
     let planted = src
-        .replace("--proto '=https' ", "")
-        .replace("--proto-redir '=https' ", "");
+        .replace("--proto \"$proto\" --proto-redir \"$proto\" ", "")
+        .replace("--proto \"$inst_p\" --proto-redir \"$inst_p\" ", "");
     assert_ne!(planted, src);
     let copy = lab.root.join("install-planted.sh");
     std::fs::write(&copy, planted).unwrap();
@@ -52,7 +52,7 @@ fn a_script_without_proto_fails_the_flag_test() {
     );
 }
 
-// Issue 430: a hostile version stops the script before any download.
+// a hostile version stops the script before any download.
 #[test]
 fn hostile_versions_stop_before_any_download() {
     let hostile = [
@@ -94,7 +94,7 @@ fn a_bad_repo_stops_before_any_download() {
     }
 }
 
-// Issue 430: one strict line for the asset in SHA256SUMS.
+// one strict line for the asset in SHA256SUMS.
 #[test]
 fn sha256sums_needs_exactly_one_valid_line() {
     let asset = "podnet-x86_64-unknown-linux-musl";

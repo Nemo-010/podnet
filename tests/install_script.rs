@@ -1,4 +1,5 @@
-//! Tests of scripts/install.sh (issues 174, 175, 169, 166, 165).
+//! Tests of scripts/install.sh: the part of podnet and the installer core of
+//! podcrates (scripts/install/core.sh, inline).
 //!
 //! Each test runs the script with `sh` and a PATH of its own: links to the
 //! real tools that the script needs, and fake `uname`, downloaders and
@@ -42,6 +43,8 @@ const TOOLS: &[&str] = &[
     "tail",
     "kill",
     "sort",
+    "df",
+    "timeout",
 ];
 
 struct Lab {
@@ -221,7 +224,7 @@ fn curl_installs_the_release() {
     assert!(lab.dest().join("podnet").exists());
 }
 
-// Issue 174: busybox wget goes after each other downloader.
+// busybox wget goes after each other downloader.
 #[test]
 fn busybox_is_last_in_the_default_order() {
     let lab = Lab::new("bblast");
@@ -232,7 +235,7 @@ fn busybox_is_last_in_the_default_order() {
     assert!(!t.contains("does not check TLS"), "{t}");
 }
 
-// Issue 174: busybox with TLS is used, with the warning.
+// busybox with TLS is used, with the warning.
 #[test]
 fn busybox_with_tls_warns() {
     let lab = Lab::new("bbwarn");
@@ -245,7 +248,7 @@ fn busybox_with_tls_warns() {
     assert!(t.contains("does not protect you"), "{t}");
 }
 
-// Issue 174: a busybox with no TLS would send https as plain HTTP.
+// a busybox with no TLS would send https as plain HTTP.
 #[test]
 fn busybox_without_tls_is_not_selected() {
     let lab = Lab::new("bbnotls");
@@ -257,7 +260,7 @@ fn busybox_without_tls_is_not_selected() {
     assert!(!lab.dest().join("podnet").exists());
 }
 
-// Issue 174: a wget that is the busybox applet (Alpine) is busybox.
+// a wget that is the busybox applet (Alpine) is busybox.
 #[test]
 fn wget_that_is_busybox_is_treated_as_busybox() {
     let lab = Lab::new("bbwget");
@@ -273,7 +276,7 @@ fn wget_that_is_busybox_is_treated_as_busybox() {
     assert!(t.contains("does not check TLS certificates"), "{t}");
 }
 
-// Issue 174: with cosign, the warning says that the signature protects.
+// with cosign, the warning says that the signature protects.
 #[test]
 fn busybox_with_cosign_names_the_signature() {
     let lab = Lab::new("bbcosign");
@@ -286,7 +289,7 @@ fn busybox_with_cosign_names_the_signature() {
 
 const SERVE: &str = "[ -f \"$f\" ] || exit 22\ncp \"$f\" \"$out\"";
 
-// Issue 169: a bad PODNET_DOWNLOADER names the variable.
+// a bad PODNET_DOWNLOADER names the variable.
 #[test]
 fn bad_downloader_names_the_variable() {
     let lab = Lab::new("baddl");
@@ -297,7 +300,7 @@ fn bad_downloader_names_the_variable() {
     assert!(t.contains("PODNET_DOWNLOADER=nosuch: not found"), "{t}");
 }
 
-// Issues 169 and 175: a binary that does not run keeps the old one.
+// a binary that does not run keeps the old one.
 #[test]
 fn a_binary_that_does_not_run_keeps_the_old_one() {
     let lab = Lab::new("norun");
@@ -316,7 +319,7 @@ fn a_binary_that_does_not_run_keeps_the_old_one() {
     let out = lab.run(&[]);
     let t = text(&out);
     assert!(!out.status.success(), "{t}");
-    assert!(t.contains("does not run on this machine"), "{t}");
+    assert!(t.contains("does not run on this host"), "{t}");
     assert!(!t.contains("installed"), "{t}");
     assert_eq!(std::fs::read_to_string(&old).unwrap(), "old binary");
     let left: Vec<_> = std::fs::read_dir(lab.dest())
@@ -326,7 +329,7 @@ fn a_binary_that_does_not_run_keeps_the_old_one() {
     assert_eq!(left, vec![std::ffi::OsString::from("podnet")], "{left:?}");
 }
 
-// Issue 175: a cut download is a download error, not a SHA256 mismatch;
+// a cut download is a download error, not a SHA256 mismatch;
 // a missing file is "no FILE in TAG".
 #[test]
 fn a_cut_download_is_a_download_error() {
@@ -334,22 +337,19 @@ fn a_cut_download_is_a_download_error() {
     lab.curl_with("case \"$url\" in *musl) head -c 5 \"$f\" > \"$out\"; exit 56 ;; esac\n[ -f \"$f\" ] || exit 22\ncp \"$f\" \"$out\"");
     let t = text(&lab.run(&[]));
     assert!(
-        t.contains("the download of podnet-x86_64-unknown-linux-musl failed (exit 56"),
+        t.contains("podnet-x86_64-unknown-linux-musl: the download from https://github.com/PodUtils/podnet/releases/download/v9.9.9/podnet-x86_64-unknown-linux-musl failed (curl)"),
         "{t}"
     );
-    assert!(!t.contains("SHA256 of"), "{t}");
+    assert!(!t.contains("SHA-256 is"), "{t}");
 
     let lab = Lab::new("missing");
     lab.curl_with(SERVE);
-    std::fs::remove_file(lab.root.join("release/podnet-x86_64-unknown-linux-musl")).unwrap();
+    std::fs::remove_file(lab.root.join("release/SHA256SUMS")).unwrap();
     let t = text(&lab.run(&[]));
-    assert!(
-        t.contains("no podnet-x86_64-unknown-linux-musl in v9.9.9"),
-        "{t}"
-    );
+    assert!(t.contains("no SHA256SUMS in v9.9.9"), "{t}");
 }
 
-// Issue 166: latest reads releases.atom when the API refuses.
+// latest reads releases.atom when the API refuses.
 #[test]
 fn latest_falls_back_to_releases_atom() {
     let lab = Lab::new("atom");
@@ -371,7 +371,7 @@ fn latest_falls_back_to_releases_atom() {
     );
 }
 
-// Issue 175: a bad directory fails before a download; a relative
+// a bad directory fails before a download; a relative
 // directory is shown as an absolute path.
 #[test]
 fn the_directory_is_checked_first_and_made_absolute() {
@@ -408,7 +408,7 @@ fn the_directory_is_checked_first_and_made_absolute() {
     );
 }
 
-// Issue 175: the output of a failed cosign is shown.
+// the output of a failed cosign is shown.
 #[test]
 fn a_failed_cosign_shows_its_output() {
     let lab = Lab::new("cosignfail");
@@ -422,7 +422,7 @@ fn a_failed_cosign_shows_its_output() {
     assert!(t.contains("signature of SHA256SUMS is not valid"), "{t}");
 }
 
-// Issue 175: TERM stops the script, and its temporary directory goes.
+// TERM stops the script, and its temporary directory goes.
 #[test]
 fn term_stops_the_script_and_cleans_up() {
     let lab = Lab::new("term");
@@ -437,7 +437,7 @@ fn term_stops_the_script_and_cleans_up() {
     assert!(!lab.dest().join("podnet").exists());
 }
 
-// Issue 165: the documented form fails when the downloader is missing (a
+// the documented form fails when the downloader is missing (a
 // pipe to sh exits 0).
 #[test]
 fn the_assignment_form_fails_with_no_downloader() {
@@ -470,8 +470,8 @@ fn latest_is_the_highest_version() {
     assert!(t.contains("release: v1.0.0-beta.10"), "{t}");
 }
 
-/// A made-up token for the tests of issue 270.
-const TOKEN: &str = "podnet-test-token-270-not-real";
+/// A made-up token for the tests of the token.
+const TOKEN: &str = "podnet-test-token-not-real";
 
 impl Lab {
     /// The script with the umask `mask`.
@@ -509,7 +509,7 @@ impl Lab {
     }
 }
 
-// Issue 270: DEBUG=1 does not show the token, and the token is not in the
+// DEBUG=1 does not show the token, and the token is not in the
 // arguments of curl. curl reads it from stdin.
 #[test]
 fn debug_does_not_show_the_token() {
@@ -546,7 +546,7 @@ fn debug_does_not_show_the_token() {
     );
 }
 
-// Issue 270: a wget that is busybox goes after python3.
+// a wget that is busybox goes after python3.
 #[test]
 fn busybox_wget_goes_after_python3() {
     let lab = Lab::new("bbpy");
@@ -558,7 +558,7 @@ fn busybox_wget_goes_after_python3() {
     lab.script(
         "python3",
         &format!(
-            "f={rel}/$(basename \"$3\")\n[ -f \"$f\" ] || exit 1\ncp \"$f\" \"$4\"",
+            "[ \"$1\" != -I ] || shift\n[ -n \"${{3:-}}\" ] || exit 0\nf={rel}/$(basename \"$3\")\n[ -f \"$f\" ] || exit 1\ncp \"$f\" \"$4\"",
             rel = lab.root.join("release").display()
         ),
     );
@@ -569,22 +569,12 @@ fn busybox_wget_goes_after_python3() {
     assert!(!t.contains("does not check TLS"), "{t}");
 }
 
-// Issue 270: with the umask 077 the binary has mode 0755, and the copy is
-// a new file from mktemp in the install directory.
+// With the umask 077 the binary has mode 0755, and no temporary file of the
+// run stays in the directory.
 #[test]
 fn a_restrictive_umask_gives_mode_0755() {
     let lab = Lab::new("umask");
     lab.curl();
-    let real = which("mktemp").unwrap();
-    std::fs::remove_file(lab.bin().join("mktemp")).unwrap();
-    lab.script(
-        "mktemp",
-        &format!(
-            "echo \"$*\" >> {log}\nexec {real} \"$@\"",
-            log = lab.root.join("mktemp.log").display(),
-            real = real.display()
-        ),
-    );
     let out = lab.run_umask(0o077, &[]);
     let t = text(&out);
     assert!(out.status.success(), "{t}");
@@ -593,13 +583,10 @@ fn a_restrictive_umask_gives_mode_0755() {
         .permissions()
         .mode();
     assert_eq!(mode & 0o777, 0o755, "{t}");
-    let log = std::fs::read_to_string(lab.root.join("mktemp.log")).unwrap();
-    let want = format!("{}/.podnet.new.XXXXXX", lab.dest().display());
-    assert!(log.lines().any(|l| l == want), "{log}");
     assert_eq!(lab.entries(&lab.dest()), vec!["podnet"]);
 }
 
-// Issue 270: a space in the install directory leaves no copy after a
+// a space in the install directory leaves no copy after a
 // failure.
 #[test]
 fn a_space_in_the_directory_leaves_no_file() {
@@ -619,11 +606,11 @@ fn a_space_in_the_directory_leaves_no_file() {
     let out = lab.run(&[("PODNET_INSTALL_DIR", dest.to_str().unwrap())]);
     let t = text(&out);
     assert!(!out.status.success(), "{t}");
-    assert!(t.contains("does not run on this machine"), "{t}");
+    assert!(t.contains("does not run on this host"), "{t}");
     assert!(lab.entries(&dest).is_empty(), "{:?}", lab.entries(&dest));
 }
 
-// Issue 270: a directory at the path of the binary is refused before a
+// a directory at the path of the binary is refused before a
 // download.
 #[test]
 fn a_directory_at_the_binary_path_is_refused() {
@@ -639,7 +626,7 @@ fn a_directory_at_the_binary_path_is_refused() {
     assert!(lab.dest().join("podnet").is_dir());
 }
 
-// Issue 270: a binary that prints another version than the tag does not
+// a binary that prints another version than the tag does not
 // replace the old one.
 #[test]
 fn a_binary_of_another_version_is_refused() {
@@ -659,7 +646,7 @@ fn a_binary_of_another_version_is_refused() {
     assert_eq!(lab.entries(&lab.dest()), vec!["podnet"]);
 }
 
-// Issue 270: latest does not select a draft (a token with push access sees
+// latest does not select a draft (a token with push access sees
 // drafts in the API).
 #[test]
 fn latest_skips_a_draft() {
@@ -676,8 +663,8 @@ fn latest_skips_a_draft() {
     assert!(t.contains("release: v9.9.9"), "{t}");
 }
 
-// Issue 270: an empty download is named as empty, not as an exit of the
-// downloader.
+// An empty download of the binary is a file that does not agree with its
+// pin; an empty SHA256SUMS is named as empty.
 #[test]
 fn an_empty_download_is_named() {
     let lab = Lab::new("empty");
@@ -687,12 +674,18 @@ fn an_empty_download_is_named() {
     let out = lab.run(&[]);
     let t = text(&out);
     assert!(!out.status.success(), "{t}");
-    assert!(
-        t.contains("the download of podnet-x86_64-unknown-linux-musl is empty"),
-        "{t}"
+    assert!(t.contains("the file is wrong or partial"), "{t}");
+    assert!(!lab.dest().join("podnet").exists(), "{t}");
+
+    let lab = Lab::new("emptysums");
+    lab.curl_with(
+        "case \"$url\" in *SHA256SUMS) : > \"$out\"; exit 0 ;; esac\n[ -f \"$f\" ] || exit 22\ncp \"$f\" \"$out\"",
     );
-    assert!(!t.contains("exit 1 of"), "{t}");
+    let t = text(&lab.run(&[]));
+    assert!(t.contains("the download of SHA256SUMS is empty"), "{t}");
 }
 
+#[path = "install_script/core.rs"]
+mod core_tests;
 #[path = "install_script/strict.rs"]
 mod strict;

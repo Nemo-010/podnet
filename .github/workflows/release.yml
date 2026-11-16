@@ -323,12 +323,30 @@ jobs:
           cp "$RUNNER_TEMP/notes/THIRD-PARTY-LICENSES.md" dist/THIRD-PARTY-LICENSES.md
           test -s dist/THIRD-PARTY-LICENSES.md
           test -s "$RUNNER_TEMP/notes/changes.md"
-      - name: checksums
+      # The installer of the release: scripts/install.sh with the pins of the
+      # files (scripts/install/pins.py stamp, docs/install.md). SHA256SUMS
+      # then has a line for podnet-install.sh too.
+      - name: checksums and the installer with the pins
         run: |
           set -eu
+          python3 -I scripts/check-install.py
+          version=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"$/\1/p' Cargo.toml)
           cd dist
           sha256sum podnet-* podnet.1 llms.txt llms-full.txt pod-report.schema.json > SHA256SUMS
+          python3 -I ../scripts/install/pins.py stamp ../scripts/install.sh --version "$version" --assets . \
+            --out podnet-install.sh
+          sha256sum podnet-* podnet.1 llms.txt llms-full.txt pod-report.schema.json > SHA256SUMS
           cat SHA256SUMS
+      # The published installer installs from the files, and a second run
+      # changes nothing.
+      - name: the installer installs
+        run: |
+          set -eu
+          p="$RUNNER_TEMP/prefix"
+          sh dist/podnet-install.sh --offline dist --prefix "$p"
+          sh dist/podnet-install.sh --offline dist --prefix "$p" > "$RUNNER_TEMP/second.txt"
+          grep -q 'is already installed' "$RUNNER_TEMP/second.txt"
+          "$p/podnet" --version
       - name: the provenance of the binaries
         id: attest
         if: startsWith(github.ref, 'refs/tags/v')
