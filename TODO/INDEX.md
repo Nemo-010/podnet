@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**398 entries: 11 open, 11 partial, 36 blocked, 340 done.**
+**404 entries: 16 open, 11 partial, 36 blocked, 341 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 38 | 42 |
-| P2 | 5 | 5 | 10 | 179 | 199 |
-| P3 | 6 | 4 | 24 | 122 | 156 |
-| **All** | 11 | 11 | 36 | 340 | 398 |
+| P2 | 7 | 5 | 10 | 180 | 202 |
+| P3 | 9 | 4 | 24 | 122 | 159 |
+| **All** | 16 | 11 | 36 | 341 | 404 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -444,3 +444,9 @@ M8 Overlays, M9 Later.
 | [T-397](fixes.md) | P2 | S | M5 | defect | done | live: two quick tunnels over WARP within a minute register two devices, and WARP answers HTTP 429 |
 | [T-398](fixes.md) | P2 | M | M5 | chore | partial | The release gate: a scenario for each experimental command |
 | [T-399](fixes.md) | P2 | S | M5 | defect | done | live: the WebSocket client of a --url origin dials a name that has no IPv4 answer yet |
+| [T-400](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.14`: the gate, the dry run, the publish and the release proofs |
+| [T-401](fixes.md) | P2 | S | M5 | defect | done | --detach and autostart stop on a host with no /proc: podnet cannot find its own file |
+| [T-402](fixes.md) | P2 | M | M5 | defect | open | a quick tunnel over quic+warp does not recover when its MASQUE session closes |
+| [T-403](later.md) | P3 | M | M9 | feature | open | link: an exec service with the exit status and stderr of its program (`exec-status:`, `link dial --status`) (GitHub #600) |
+| [T-404](later.md) | P3 | M | M9 | feature | open | forward: a name table (`--name NAME=HOST:PORT`, `--alias-port`) with an address of 127.0.0.0/8 for each name and the DNS door (GitHub #601) |
+| [T-405](later.md) | P3 | L | M9 | feature | open | route: a rate, a quota, a period and `on_exhaust` for each door, with the usage kept across a restart (GitHub #602) |

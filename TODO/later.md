@@ -2163,3 +2163,115 @@ the access token, or a fresh connect token with `mints_for_all`), `devtunnel_no_
 class `refused`, as a refused user token; no token in the text), `two_devtunnel_credentials_are_a_usage_error_that_holds_no_token`
 (exit 64), `a_tcp_forward_with_a_tunnel_access_token_reaches_the_tunnel_host` (the command; no token in the output).
 `cargo test --workspace --no-fail-fast`: 2011 passed, 0 failed, 122 targets. Not proven: the live Dev Tunnels service.
+
+# T-403: link: an exec service with the exit status and stderr of its program (`exec-status:`, `link dial --status`) (GitHub #600)
+
+**Source:** GitHub #600 (https://github.com/PodUtils/podnet/issues/600).
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+GitHub #600 (Nemo-010, outside the team; verified and labelled `confirmed` on 2026-11-16): "Give an `exec` service of
+`podnet link` a way to send the program's exit status and its stderr to the peer, instead of logging both on the listener
+and ending the stream as if the program had succeeded." The proposal: a new target `exec-status:/ABS/PATH` with a framed
+protocol after the one-byte service answer (stdout, stderr and the exit status as separate records), and `podnet link dial
+--status`, which copies stdout and stderr locally and exits with the remote status. The raw `exec:` keeps its byte-stream
+contract. "The dial path calls `std::process::exit(0)` when the peer ends the stream before the local stdin ends." The use
+case: a CI job on host A runs a build on host B over a link, and must get the status of the build.
+
+## Premise
+
+- Read on 2026-11-16 at 1caa0be: `src/cli/cmd/link/dial.rs` ends with `std::process::exit(0)` when the far end ended the
+  stream first (`:272`). The `exec` service logs the status of the program on the listener only.
+- The frames of the link are in `pod-link` of podcrates: a new record form of a service may need an ask to podcrates.
+
+## Approach
+
+1. Define the records (a type byte, a length, the bytes; the status record ends the stream) in a document of
+   `docs/link.md` first, and decide whether `pod-link` holds the codec (a COORD issue to podcrates).
+2. `--service NAME=exec-status:/ABS/PATH` on the listener; `link dial --status` on the dialer: stdout to stdout, stderr to
+   stderr, the exit code of the program (128+N for a signal N).
+3. Tests: a program that exits 3 gives exit 3 and its stderr at the dialer; `exec:` does not change.
+
+## Prove
+
+```sh
+cargo test --workspace
+```
+
+# T-404: forward: a name table (`--name NAME=HOST:PORT`, `--alias-port`) with an address of 127.0.0.0/8 for each name and the DNS door (GitHub #601)
+
+**Source:** GitHub #601 (https://github.com/PodUtils/podnet/issues/601).
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+GitHub #601 (Nemo-010, outside the team; verified and labelled `confirmed` on 2026-11-16): "Give `podnet forward` a `--name
+NAME=HOST:PORT` table and an optional DNS door, so a client program that accepts only a hostname and one fixed port can reach
+several internal targets through one forward, without editing `/etc/hosts` and without a proxy setting." Each `--name` takes
+the next address from `127.0.0.2` to `127.0.0.255` on `--alias-port` and expands to a rule `-L ADDR:PORT=HOST:PORT`; `--dns`
+answers the names of the table. The use case: an RDP client in a locked-down container that takes only `host:port`.
+
+## Premise
+
+- Read on 2026-11-16 at 1caa0be: `podnet forward --help` has no `--name` and no `--alias-port`. `--dns` is a DNS door
+  with an upstream (`docs/forward.md`).
+
+## Approach
+
+1. `--alias-port PORT` and `--name NAME=HOST:PORT` (repeatable, 254 at most): the next address of `127.0.0.2..255` for
+   each name, a rule for each, and a table on stdout (the lines for a hosts file).
+2. `--dns ADDR:PORT` answers A for each name of the table, and sends the other names to `--dns-upstream` as before.
+3. Tests: two names, a client of each address reaches its target; the DNS door answers each name.
+
+## Prove
+
+```sh
+cargo test --workspace
+```
+
+# T-405: route: a rate, a quota, a period and `on_exhaust` for each door, with the usage kept across a restart (GitHub #602)
+
+**Source:** GitHub #602 (https://github.com/PodUtils/podnet/issues/602).
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** open
+
+## Problem
+
+GitHub #602 (Nemo-010, outside the team; verified and labelled `confirmed` on 2026-11-16): "A router door in `podnet`
+reports flows, open flows and bytes. It has no rate, no quota, no period and no persistence. Add per-door `rate`, `quota`,
+`period` and `on_exhaust` to the door configuration, enforce them on the byte path, keep quota usage across a restart, and
+expose the new numbers in the status document and in the metrics." The use case: a door over a metered uplink (a 4G modem, a
+satellite link, a relay plan billed by the gigabyte).
+
+## Premise
+
+- Read on 2026-11-16 at 1caa0be: `docs/router.md` says "The counters of a door start at 0 when it is added and go with
+  it when it is removed" (`docs/router.md:305`); `src/router/door_stats.rs` has counts and bytes, no limit.
+
+## Approach
+
+1. The keys of a door: `rate` (bytes each second, each direction; a token bucket), `quota` (bytes up and down), `period`
+   (`day`, `week`, `month` in UTC, or none) and `on_exhaust` (`refuse` new flows, or `close` the open ones too). `period`
+   with no `quota` is an error (exit 64).
+2. The usage of each door with a quota goes to a file of the state directory, written at most each 10 s and at a stop.
+3. The status document and the metrics give the rate, the quota, the usage and the end of the period.
+4. Tests: a door with `rate` keeps a transfer under the rate; a door at its quota refuses a new flow; a restart keeps the
+   usage.
+
+## Prove
+
+```sh
+cargo test --workspace
+```

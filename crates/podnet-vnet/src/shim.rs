@@ -270,7 +270,7 @@ pub fn candidate_paths() -> Vec<PathBuf> {
         }
     }
     // Beside the running executable.
-    if let Ok(exe) = std::env::current_exe() {
+    if let Ok(exe) = podnet_core::self_exe::current() {
         if let Some(dir) = exe.parent() {
             out.push(dir.join(SHIM_FILE));
             out.push(dir.join("shim").join(SHIM_FILE));
@@ -328,7 +328,7 @@ pub fn locate_socks() -> Option<Shim> {
     if let Some(path) = env_shim.clone() {
         candidates.push(path);
     }
-    if let Ok(exe) = std::env::current_exe() {
+    if let Ok(exe) = podnet_core::self_exe::current() {
         if let Some(dir) = exe.parent() {
             candidates.push(dir.join(SOCKS_SHIM_FILE));
             candidates.push(dir.join("shim").join(SOCKS_SHIM_FILE));

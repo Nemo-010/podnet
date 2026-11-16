@@ -64,8 +64,7 @@ pub fn context() -> &'static Arc<Context> {
                     .filter(|v| !v.is_empty())
                     .map(|v| CaFile::new(CA_FILE_VARIABLE, v))
             });
-        settings.extra_bundle = std::env::current_exe()
-            .ok()
+        settings.extra_bundle = crate::self_exe::this_binary()
             .and_then(|exe| exe.parent().map(|dir| dir.join(BESIDE_BINARY)));
         let provider = Arc::new(rustls::crypto::ring::default_provider());
         Arc::new(Context::new(provider, settings))

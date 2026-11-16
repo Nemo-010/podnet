@@ -126,7 +126,7 @@ pub(crate) async fn run(
     let socket = podnet::warp::find::running(&options.at)?;
     let session = session_dir(name)?;
     let _ = std::fs::remove_dir_all(&session);
-    let exe = std::env::current_exe()?;
+    let exe = podnet::self_exe::current()?;
     // SAFETY: prctl() with integer arguments.
     if unsafe { libc::prctl(libc::PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) } != 0 {
         bail!(

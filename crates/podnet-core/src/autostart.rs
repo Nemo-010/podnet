@@ -412,7 +412,7 @@ pub fn add(
             "podnet {first} cannot run as an autostart entry"
         )));
     }
-    let exe = std::env::current_exe().context("the path of this binary")?;
+    let exe = crate::self_exe::this_binary().context("the path of this binary")?;
     let exe = exe.canonicalize().unwrap_or(exe);
     for tmp in [
         std::env::temp_dir(),

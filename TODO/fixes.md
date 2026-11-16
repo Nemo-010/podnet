@@ -3127,10 +3127,10 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 ## Premise
 
-- `crates/podnet-core/src/detach.rs:166-192` (`child_begin` reads the variable). `:534-541` sets 4 detach variables and not this one.
+- `crates/podnet-core/src/detach.rs:166-192` (`child_begin` reads the variable). `:536-543` sets 4 detach variables and not this one.
   `crates/podnet-core/src/detach/supervise.rs:120` is the only writer (the supervisor).
 - `crates/podnet-core/src/autostart.rs:178-182` copies each `PODNET_` variable except `PODNET_ERROR_PROGRAM`.
-- `crates/podnet-core/src/detach.rs:712-719` (`targets()` gives `Vec::new()` for this record).
+- `crates/podnet-core/src/detach.rs:714-721` (`targets()` gives `Vec::new()` for this record).
 - The default start (restart on) runs `--detach-supervise`: the supervisor sets the variable for its own child, so that
   path is right. The defect needs `--no-restart`. I did not run it.
 - `crates/podnet-core/src/detach.rs` is in the size allowlist (1210 lines): add no net line.
@@ -3254,7 +3254,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
   proxy path pushes `--replace`).
 - `src/cli/cmd/warp/args.rs:391-435` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:529-544` (`Tun` has
   `DetachArgs`, so `--replace` exists there, and has no `--dns`).
-- `crates/podnet-core/src/detach.rs:509-516` (the refusal text).
+- `crates/podnet-core/src/detach.rs:511-518` (the refusal text).
 
 ## Approach
 
@@ -7998,3 +7998,122 @@ shellcheck -S warning scripts/live-wait-name.sh scripts/live-ws-url.sh
 ## Done
 
 2026-11-16, the commit of this entry. Both scripts are changed as in the Approach. The next push runs live.
+
+# T-400: Publish `v0.4.0-beta.14`: the gate, the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md`, Releases (2026-11-09) and the release gate (T-358, 2026-11-15): cut the next prerelease when a
+batch of fixes is green and the gate passes. The batch since `v0.4.0-beta.13`: T-356, T-357, T-379 to T-384, T-390 to
+T-392, T-396, the takes of podcrates `v0.52.0` to `v0.63.0`, the installer core (T-360), `pod-manual` (T-359) and the gate
+(T-358, T-398).
+**Category:** release
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`v0.4.0-beta.13` has none of this work. It is the first release under the gate: `release.yml` runs `gate.yml`, and the
+notes list each row of the lane and the experimental commands.
+
+## Premise
+
+- The steps are `docs/maintenance.md`, "Release". The session dispatches `release.yml` with the MCP tool
+  `actions_run_trigger`.
+
+## Approach
+
+1. Set the version `0.4.0-beta.14` (the manifests, `Cargo.lock`, `fuzz/Cargo.lock`), write the llms files again.
+2. Write `docs/releases/v0.4.0-beta.14.md`, with `## Breaking`.
+3. Push; wait until `ci` and `live` pass on that commit.
+4. Dispatch the dry run of `release.yml`; then `publish=v0.4.0-beta.14`; then check `release-proofs.yml`.
+
+## Prove
+
+```sh
+gh release view v0.4.0-beta.14 -R PodUtils/podnet   # the files, the notes with the gate and the scenarios
+```
+
+# T-401: --detach and autostart stop on a host with no /proc: podnet cannot find its own file
+
+**Source:** gate 43902956923 on c92438d (2026-11-16): the lane case `link-control` failed in the lab `no-proc`.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+In the lab `no-proc` of `pod-lab` (no `/proc` is mounted), `podnet link listen --detach` exits with "podnet: --detach:
+podnet could not run itself again: " (no path was tried). After a first fix of the parent, the supervisor stopped with
+"supervisor: no path of this binary".
+
+## Premise
+
+- `binaries()` of `crates/podnet-core/src/detach.rs` tries `/proc/self/exe`, then `std::env::current_exe`, which reads
+  the same link. With no `/proc`, the list is empty.
+- The child of `--detach` runs with `argv[0]` "podnet" (`arg0` of `spawn.rs`), so it cannot find its file from `argv[0]`.
+- `autostart add`, `autostart run` and the commands of `warp` that run the binary again use `current_exe` too.
+
+## Approach
+
+1. A module `self_exe` of `podnet-core`: `current()` is `current_exe`, else the file of `PODNET_SELF_EXE`, else the file
+   of `argv[0]` (a path, or a name in `PATH`).
+2. `--detach` adds that file to its list, and gives the child `PODNET_SELF_EXE`.
+3. `autostart`, the CA bundle beside the binary, `net shim` (the shim beside the binary) and the commands of `src/cli/cmd`
+   use it. `src/warp/` is frozen: it keeps `current_exe`.
+
+## Prove
+
+```sh
+cargo test -p podnet-core self_exe
+sh scripts/lab-lane.sh PODLAB PODNET no-proc   # link-control passes
+```
+
+## Done
+
+2026-11-16, the commit of this entry. `crates/podnet-core/src/self_exe.rs` (with a test of the forms of `argv[0]`);
+`--detach` and its supervisor find the binary with no `/proc`. As uid 65534 in the lab `no-proc` of `podlab` v0.63.0:
+`link-control` passes (before: fail), and `local` passes. `PODNET_SELF_EXE` is in the manual.
+
+# T-402: a quick tunnel over quic+warp does not recover when its MASQUE session closes
+
+**Source:** the lane row `way-out` (`podlab run --way-out proxy-only`), 2026-11-16, this container.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`podnet demo --exit-on-verify` in the lab `proxy-only` with `--way-out`: the direct MASQUE path failed ("TLS handshake
+with the MASQUE front door 162.159.198.2:443: tls handshake eof"), the relay path worked, and the leg `quic+warp`
+registered both connections. Three seconds later `pod_warp::session` logged "the MASQUE HTTP/2 connection closed". Then
+for 180 s the public URL gave HTTP 502 and 530, and podnet logged no reconnect: exit 69. A second run passed.
+
+## Premise
+
+- The reactor of `src/tunnel.rs` sees a lost connection only when `accept_bi` of the QUIC connection fails. The QUIC idle
+  timeout is 30 s (`src/cloudflare/quic.rs`). No loss was logged in 180 s: the timers of the QUIC connection seem not to
+  run after the WARP stack under its endpoint closed.
+- `WarpLink::endpoint` opens a new session when the reactor asks for a reconnect; the reactor never asked.
+- `src/tunnel.rs` and `src/warp/` are frozen: a fix goes to podcrates as a COORD issue too.
+- The container here has a proxy that re-signs TLS (the lane used `LANE_CA_FILE`); not measured on a GitHub runner yet.
+
+## Approach
+
+1. Reproduce: close the MASQUE session of a running quick tunnel (the relay path) and watch the reactor.
+2. The reactor also watches the WARP session of its endpoint: a closed session is a lost connection, so the reconnect
+   opens a new session at once.
+3. A test with the stand-in WARP edge of `pod-testkit`: close the session, the tunnel reconnects in a few seconds.
+
+The lane has the row `way-out` (`scripts/lab-lane.sh`, the case `way-tunnel`); it runs only when it is named, until this
+entry is done. Then it goes into the default rows (the gate).
+
+## Prove
+
+```sh
+sh scripts/lab-lane.sh PODLAB PODNET way-out
+```

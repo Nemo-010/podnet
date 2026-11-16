@@ -52,7 +52,7 @@ macro_rules! eprintln {
 #[doc(inline)]
 pub use podnet_core::{
     autostart, connect, decisions, detach, exit, hop, instances, metrics, net, network, ports, qr,
-    race, rlimit, services, state, trust, udp, util, yaml,
+    race, rlimit, self_exe, services, state, trust, udp, util, yaml,
 };
 
 // The modules of the services (crates/podnet-serve, T-051), at their old

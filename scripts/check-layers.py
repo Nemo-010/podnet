@@ -45,7 +45,7 @@ MIN_FILES = 100
 LAYER = {
     # core: process, files, network, supervisor
     "exit": "core", "hop": "core", "state": "core", "report": "core",
-    "decisions": "core", "metrics": "core", "rlimit": "core", "yaml": "core",
+    "decisions": "core", "metrics": "core", "rlimit": "core", "self_exe": "core", "yaml": "core",
     "race": "core", "util": "core", "qr": "core", "ports": "core",
     "net": "core", "trust": "core", "egress": "core", "resolve": "core",
     "fetch": "core", "udp": "core", "connect": "core", "detach": "core",

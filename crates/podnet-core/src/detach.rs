@@ -439,7 +439,8 @@ fn cap(path: PathBuf, file: std::fs::File) {
 }
 
 /// The ways to run this binary again: `/proc/self/exe` (this image, also
-/// after `podnet update` replaced the file), then the path of the system.
+/// after `podnet update` replaced the file), then the path of the system,
+/// then `argv[0]` (a host with no `/proc`, T-401).
 fn binaries() -> Vec<PathBuf> {
     let mut out = Vec::new();
     if Path::new("/proc/self/exe").exists() {
@@ -450,6 +451,7 @@ fn binaries() -> Vec<PathBuf> {
             out.push(path);
         }
     }
+    out.extend(crate::self_exe::from_argv0().filter(|p| !out.contains(p)));
     out
 }
 

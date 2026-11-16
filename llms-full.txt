@@ -3,7 +3,7 @@
 The manual is the output of `podnet man --no-pager`.
 
 ```text
-podnet 0.4.0-beta.13 - Bring your own network to hosts with strong network limits: tunnels, WARP, pods, router, relays, virtual networks and file serving
+podnet 0.4.0-beta.14 - Bring your own network to hosts with strong network limits: tunnels, WARP, pods, router, relays, virtual networks and file serving
 
 SYNOPSIS
   podnet COMMAND [OPTIONS]
@@ -10007,12 +10007,13 @@ ENVIRONMENT
       each link instance in the run directory. Used by: forward, any command
       with a peer:FINGERPRINT/SERVICE network.
   PODNET_DETACH_NAME, PODNET_DETACH_HASH, PODNET_DETACH_COMMAND,
-  PODNET_DETACH_SUPERVISED, PODNET_DETACH_READY_TIMEOUT
+  PODNET_DETACH_SUPERVISED, PODNET_DETACH_READY_TIMEOUT, PODNET_SELF_EXE
       podnet sets them for the child of --detach: the name of the instance, the
       hash of its arguments, the command, and whether a supervisor runs it.
       PODNET_DETACH_READY_TIMEOUT is the --ready-timeout of the first start: a
-      provision of a quick tunnel does not wait past it. Do not set them. Used
-      by: --detach.
+      provision of a quick tunnel does not wait past it. PODNET_SELF_EXE is the
+      path of the binary, for a host with no /proc. Do not set them. Used by:
+      --detach.
   PODNET_MAILBOX
       The value of --mailbox when the flag is not given: the mailboxes of
       magic-wormhole (wss:// or ws://), separated by commas, in order. The

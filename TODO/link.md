@@ -3104,6 +3104,12 @@ cargo test --test link_features
 cargo todo check
 ```
 
+## Correction
+
+2026-11-16: ci 43902951966 on c92438d failed in the job `features`: with `--features full` each arm of `built` of
+`src/build_features.rs` is true, and clippy asks for `matches!`. The function allows `clippy::match_like_matches_macro`
+(each arm is the gate of one feature). `cargo clippy --workspace --all-targets --features full -- -D warnings` passes.
+
 ## Done
 
 2026-11-16, the commit of this entry. The entry 305 and the feature `portable` are removed; `full` holds each optional

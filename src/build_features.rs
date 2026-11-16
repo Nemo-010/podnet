@@ -28,6 +28,9 @@ pub const FULL: [&str; 12] = [
 
 /// True when this binary holds the optional feature `name`. An unknown
 /// name is false.
+// With `--features full` each arm is true: `matches!` would hide the gate
+// of each feature.
+#[allow(clippy::match_like_matches_macro)]
 pub fn built(name: &str) -> bool {
     match name {
         "tcp" => cfg!(feature = "tcp"),

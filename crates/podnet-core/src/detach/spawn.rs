@@ -39,6 +39,7 @@ pub(super) fn child_command(
     .args(args)
     .envs(vars.iter().map(|(k, v)| (k.as_str(), v.as_str())))
     .env_remove(SUPERVISED_VARIABLE)
+    .env(crate::self_exe::SELF_VARIABLE, program)
     .env(NAME_VARIABLE, name)
     .env(HASH_VARIABLE, hash)
     .env(

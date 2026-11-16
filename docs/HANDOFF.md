@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-16 16:10 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-16 16:45 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -17,7 +17,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue). The installer core in
   `scripts/install/` is that of `v0.63.0` (`core.sh`, `core-net.sh`, `pins.py`; `scripts/install/SOURCES`).
 * The newest release is `v0.4.0-beta.13` (T-355, 0a0f3e5).
-* The record is `TODO/`. `cargo todo check` agrees: 398 entries, 11 open, 11 partial, 36 blocked, 340 done.
+* The record is `TODO/`. `cargo todo check` agrees: 404 entries, 16 open, 11 partial, 36 blocked, 341 done.
 
 ## Unfinished work (not on `main`)
 
@@ -30,10 +30,10 @@ None. The head is the commit of this handoff.
   head that a newer push replaces. `live` has one concurrency group: a newer push replaces a pending `live`, so let a
   running `live` end before the next push when its result matters.
 * Read each run when the watcher reports its end (`CLAUDE.md` step 1).
-* The runs to read first: `ci` 43902951966, `live` 43902951342 and `gate` 43902956923 (dispatched) on `c92438d`. The
-  live run checks T-397 (the shared WARP device of the quick tunnel); the gate runs the new lane cases (`local`,
-  `link-control`, `net-switch`, `net-bench`, `net-exit`). The commits after `c92438d` (`51e6004`: live runs `warp
-  rotate` and `warp shell`; `1e4a1e5`: `expose` in `net-switch`) were not pushed at the time of the first line here.
+* On `c92438d`: `live` 43902951342 passed (T-397 holds); `gate` 43902956923 failed in `no-proc link-control`
+  (T-401, fixed); `ci` 43902951966 failed in the job `features` (clippy with `--features full`, fixed: T-396
+  Correction). The head after this handoff has the version `0.4.0-beta.14` and its notes (T-400). Read its `ci` and
+  `live` first; then dispatch the dry run of `release.yml` (it runs the gate).
 * `record-issues` (each day) no longer fails on #475: the owner removed the entry 305 (T-396).
 
 ## The work of 2026-11-16, third session (all on `main`)
@@ -53,14 +53,18 @@ None. The head is the commit of this handoff.
 
 0. Read the runs of "CI" above. Fix each failure first (a new lane case that fails on the GitHub runner is a defect of
    the case or of podnet).
-1. Cut `v0.4.0-beta.14` when `ci`, `live` and `gate` pass on one head (the steps of T-331 and `docs/maintenance.md`,
-   the release steps: dry run, then `publish=vX`, then `release-proofs.yml`). The notes list the experimental commands.
-2. T-398: scenarios for the 3 commands left (see its Correction).
-3. T-358, what remains: the lane rows with `podlab run --way-out PROFILE` and `--serve PORT`, WebSocket through the
+1. T-400: cut `v0.4.0-beta.14` when `ci` and `live` pass on the head: the dry run of `release.yml` (with the gate),
+   then `publish=v0.4.0-beta.14`, then `release-proofs.yml` (`docs/maintenance.md`, Release).
+2. T-402 (P2): the tunnel over `quic+warp` does not recover after its MASQUE session closes. The reactor of
+   `src/tunnel.rs` (frozen, allowlisted: it may only shrink) should watch the WARP session; write the fix as a COORD
+   issue to podcrates too.
+3. T-398: scenarios for the 3 commands left (see its Correction).
+4. T-358, what remains: the row `way-out` (a quick tunnel in `podlab run --way-out proxy-only`) is not in the lane
+   yet: it waits for T-402; the lane rows with `podlab run --way-out PROFILE` and `--serve PORT`, WebSocket through the
    proxy, `ipv6-only` on a host with IPv6, the `icmp` rows; the relay and the tunnel as podssh and podrunner call them.
-4. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
+5. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
    Write the take into COORD-096 (#597).
-5. Go on with the work order of `TODO/PROGRESS.md`. Most open entries wait for crates of podcrates. The disk allowance
+6. Go on with the work order of `TODO/PROGRESS.md`. Most open entries wait for crates of podcrates. The disk allowance
    holds about one debug build: build with `CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0`.
    After a change of a document, run `cargo test --bin podnet write_the_llms_files -- --ignored`. Issues #484 to #501
    are deferred by the owner: leave them open and unlabelled.

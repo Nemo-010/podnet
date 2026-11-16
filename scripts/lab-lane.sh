@@ -8,7 +8,7 @@
 # asset podlab-ARCH-unknown-linux-musl against the SHA256SUMS of the
 # directory and runs it. PODNET is the podnet binary to test. With no
 # PROFILE, the lane runs in each profile of `podlab list`, and in the row
-# allow-connect. Each command
+# allow-connect (way-out runs only when it is named, until T-402 is done). Each command
 # runs in a lab of the profile: `podlab run PROFILE -- sh lab-lane.sh
 # --case NAME ...`.
 #
@@ -21,6 +21,11 @@
 # 127.0.0.1:PORT+1. LANE_PROXY_PORT gives PORT (default 7120). LANE_PLANT
 # plants a defect: refuse (the proxy refuses each CONNECT) or port (podnet
 # gets the port PORT+2, which the lab refuses). Each pod row must then fail.
+#
+# The row way-out is the lab `podlab run --way-out proxy-only` (podlab
+# 0.61.0 or later): the proxy of the lab sends each CONNECT to the real
+# network. It runs the rows of WAYOUT_CASES: a quick tunnel of podnet from
+# a host whose only way out is a proxy. It needs the network of the host.
 #
 # The network labs of NET_LABS (podlab 0.60.0 or later) run the rows of
 # NET_CASES. A lab gives its own proxy (HTTPS_PROXY, maybe with a
@@ -43,6 +48,7 @@ set -u
 CASES="version man local doctor shim-forward link-unix link-control net-switch wg-serve pod-seccomp pod-netns net-proxy-unix"
 NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni-allowlist no-proxy-no-dns ipv6-only"
 NET_CASES="version doctor net-curl net-bench net-exit net-pod-auto net-pod-seccomp net-pod-netns"
+WAYOUT_CASES="way-tunnel"
 PROXY_CASES="proxy-direct proxy-port proxy-pod-auto proxy-pod-seccomp proxy-pod-env proxy-doctor"
 
 # The cases. Each one runs inside the lab and exits 0 (pass), 1 (fail) or
@@ -343,6 +349,22 @@ case_main() {
         cat "$dir/proxy.txt"
         echo "greeting exit $code: $got"
         test $code -eq 0 && test "$got" = "0500"
+        exit $?
+        ;;
+    way-tunnel)
+        # A quick tunnel from a host whose only way out is a proxy: the lab
+        # proxy-only with --way-out sends each CONNECT to the real network
+        # (T-358). LANE_CA_FILE names the roots of a proxy of the host that
+        # re-signs TLS (not on a GitHub runner).
+        if test -n "${LANE_CA_FILE:-}"; then
+            timeout 300 "$podnet" demo --exit-on-verify --ca-file "$LANE_CA_FILE" >"$dir/out.txt" 2>&1
+        else
+            timeout 300 "$podnet" demo --exit-on-verify >"$dir/out.txt" 2>&1
+        fi
+        code=$?
+        grep -v '^ ' "$dir/out.txt" | grep -v trycloudflare.com | tail -20
+        echo "demo exit $code"
+        test $code -eq 0 && grep -q 'verified public URL' "$dir/out.txt"
         exit $?
         ;;
     proxy-*)
@@ -896,6 +918,9 @@ for profile in "$@"; do
     if test "$profile" = allow-connect; then
         lab="--allow-connect $LANE_PROXY_PORT bind-denied"
         cases=$PROXY_CASES
+    elif test "$profile" = way-out; then
+        lab="--way-out proxy-only"
+        cases=$WAYOUT_CASES
     elif in_list "$profile" "$NET_LABS"; then
         cases=$NET_CASES
     fi

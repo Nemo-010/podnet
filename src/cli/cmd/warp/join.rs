@@ -139,7 +139,7 @@ pub(crate) async fn join(name: &str, program: &[String]) -> Result<i32> {
         }
         PodKind::Seccomp => {
             use std::os::unix::process::CommandExt as _;
-            let exe = std::env::current_exe()?;
+            let exe = podnet::self_exe::current()?;
             let pod = super::pod::Pod {
                 socket: &target.socket,
                 backend: "seccomp",

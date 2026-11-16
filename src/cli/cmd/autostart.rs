@@ -133,7 +133,7 @@ pub(crate) fn autostart(command: AutostartCommand) -> Result<()> {
         AutostartCommand::Run { name, dir } => {
             use std::os::unix::process::CommandExt;
             let (args, vars) = autostart::load(&name, &dir).fault(Fault::Config)?;
-            let exe = std::env::current_exe().context("the path of this binary")?;
+            let exe = podnet::self_exe::current().context("the path of this binary")?;
             let err = std::process::Command::new(exe)
                 .args(&args)
                 .envs(vars)

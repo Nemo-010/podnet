@@ -104,7 +104,7 @@ pub(crate) async fn before_client(args: &WarpArgs) -> Result<bool> {
             if let Some(host) = host {
                 podnet::warp::ssh_config::check_host(host).fault(Fault::Usage)?;
             }
-            let exe = std::env::current_exe()?.canonicalize()?;
+            let exe = podnet::self_exe::current()?.canonicalize()?;
             if !(*write || *remove || *check) {
                 print!(
                     "{}",

@@ -92,7 +92,7 @@ pub(crate) fn exec_in_pod(
         Ok(s) => s,
         Err(e) => return e,
     };
-    let exe = match std::env::current_exe() {
+    let exe = match podnet::self_exe::current() {
         Ok(e) => e,
         Err(e) => return e.into(),
     };
@@ -131,7 +131,7 @@ pub(crate) fn shell(options: &PodOptions) -> anyhow::Error {
         .unwrap_or_else(|| "/bin/sh".into());
     match (
         podnet::warp::find::running(&options.at),
-        std::env::current_exe(),
+        podnet::self_exe::current(),
     ) {
         (Ok(socket), Ok(exe)) => {
             let program = std::slice::from_ref(&shell);

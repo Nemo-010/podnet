@@ -56,6 +56,7 @@ pub mod qr;
 pub mod race;
 pub mod report;
 pub mod rlimit;
+pub mod self_exe;
 pub mod services;
 pub mod state;
 pub mod trust;
