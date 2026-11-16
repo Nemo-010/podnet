@@ -1632,3 +1632,44 @@ signature with `--certificate-identity https://github.com/PodUtils/podnet/.githu
 case 12: `PODNET_COSIGN=none` runs no cosign and says so, and a bad signature stops the copy of a release). `cargo test
 --test install_script`: 33 passed. `docs/install.md` and `docs/decisions.md` (2026-11-16, The installer core v0.61.0)
 give the change.
+
+# T-393: Take podcrates v0.62.0 (the servers of the command in a network lab, the resume line of pod-session)
+
+**Source:** PodUtils/podcrates#210 (COORD-122 of podcrates, 2026-11-16).
+**Category:** chore
+**Milestone:** M3
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podcrates v0.62.0 is at the commit `b6b1f479`. Its notes give `podlab run --serve PORT` (a server of the command behind
+the rules of a network lab, their entry 759), the event `session.resume` of the far end of `pod-session` (their entry
+767), `pod_enter::Plan::userns_ids` (their entry 786), and the proxy variables of other tools in a network lab (their
+entry 760). Breaking: `pod_hostprobe::userns::map_line`, `pod_enter::Plan::userns_ids`, `pod_lab::Options::serve` and
+`serve_ca`, and the builder `by` of `pod_session::far::Accepted`.
+
+## Premise
+
+- Read at the tag: the notes through COORD-122. The installer core (`core.sh`, `core-net.sh`, `pins.py`) is the same as
+  at v0.61.0.
+- podnet does not use `pod_hostprobe`, `pod_enter`, `pod_lab` or `pod_session::far::Accepted`.
+
+## Approach
+
+1. Move each podcrates tag of the `Cargo.toml` files to `v0.62.0`; update `Cargo.lock` and `fuzz/Cargo.lock`.
+2. Move `uses:` and `podcrates_ref` of `.github/workflows/issue-sync.yml` to the commit of the tag.
+3. A row of the lane with `--serve` (the relay of podnet in a network lab) goes under T-358.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-16, the commit of this entry. Each podcrates tag is `v0.62.0`; `Cargo.lock` and `fuzz/Cargo.lock` change only
+the crates of podcrates. `issue-sync.yml` calls the workflow of podcrates at `b6b1f479bd3978359f1dbe7dc3ed3b79c9949740`
+with `podcrates_ref: v0.62.0`. No code change. `sh scripts/agent/check.sh` passed.
