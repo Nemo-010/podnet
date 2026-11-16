@@ -70,14 +70,23 @@ profiles of `pod-lab` (`PodUtils/podcrates:crates/pod-lab/LANES.md`). It
 takes the binary `podlab` and the podnet binary to test, and runs each
 command in a lab of each profile with `podlab run PROFILE -- ...`.
 
-1. Build `podlab` in a clone of podcrates at the tag that podnet takes:
-   `cargo build --release -p pod-lab --features cli --target
-   x86_64-unknown-linux-musl` (with `CC_x86_64_unknown_linux_musl=clang`).
+1. Get `podlab`. From podcrates `v0.58.0`, the release has the static
+   binary: `sh scripts/get-podlab.sh v0.58.0` downloads
+   `podlab-ARCH-unknown-linux-musl` and `SHA256SUMS` into the new directory
+   `.work/podlab-v0.58.0` and checks the SHA-256. The release has no
+   signature of its assets (their entry 717 of podcrates), so the check stops at
+   `SHA256SUMS`. Give the directory as PODLAB: the lane checks the asset
+   against `SHA256SUMS` again before each run. Or build `podlab` in a clone
+   of podcrates at the tag that podnet takes: `cargo build --release -p
+   pod-lab --features cli --target x86_64-unknown-linux-musl` (with
+   `CC_x86_64_unknown_linux_musl=clang`), and give the binary as PODLAB.
 2. Build the release binary of podnet (`docs/build.md`).
 3. Run `sh scripts/lab-lane.sh PODLAB PODNET [PROFILE...]` as a user that
    is not root. With no PROFILE, it runs each profile of `podlab list`.
    As root, the profile `nonroot-nocaps` does not hold, and each other lab
-   runs as root.
+   runs as root. As root, run it as uid 65534: `setpriv --reuid 65534
+   --regid 65534 --clear-groups env LANE_DIR=DIR sh scripts/lab-lane.sh
+   PODLAB PODNET`, with a DIR that uid 65534 can write.
 
 The commands: `podnet --version`, `podnet man --no-pager`, `podnet doctor`
 (exit 0 or 1, no panic), `podnet net shim --forward
@@ -93,6 +102,41 @@ pod backend that podnet refuses with exit 3 and a reason). It exits 1 on a
 failure. The logs are in `LANE_DIR` (default `.work/lab-lane`), which must
 not be in `/tmp` or in `HOME`. It needs `python3`, `cc` (for the shim) and
 `timeout`.
+
+### The row proxy-only
+
+The profile `proxy-only` of `pod-lab` has no lab of its own. The lane runs
+its row in `podlab run --allow-connect PORT bind-denied` (podlab
+`v0.58.0` or later): Landlock refuses each TCP connect, except a connect to
+PORT. Outside the lab, a stand-in HTTP CONNECT proxy
+(`tests/consumers/connect-proxy.py`) listens on `127.0.0.1:PORT`. It writes
+each request line to `LANE_DIR/proxy.txt`, and connects only
+`proxy.test:PORT+1`, to a server on `127.0.0.1:PORT+1` with the body
+`podnet-proxy-only`. It refuses each other target with HTTP 403. PORT is
+`LANE_PROXY_PORT` (default 7120). Run the row alone with
+`sh scripts/lab-lane.sh PODLAB PODNET proxy-only`.
+
+The commands:
+
+* `proxy-direct`: no podnet. A GET of `http://127.0.0.1:PORT+1/` must
+  fail with `Permission denied` (the negative control).
+* `proxy-port`: no podnet. A CONNECT through the proxy gets the body (the
+  control of the lab: the proxy port is open).
+* `proxy-pod-auto` and `proxy-pod-seccomp`: `podnet pod [--backend
+  seccomp] -x http://127.0.0.1:PORT -- python3 client.py urllib
+  http://proxy.test:PORT+1/`.
+* `proxy-pod-env`: `podnet pod` with no `-x`, and `HTTPS_PROXY`,
+  `HTTP_PROXY` and `NO_PROXY=localhost,127.0.0.1` as a proxy-only host
+  sets them.
+* `proxy-doctor`: `podnet doctor` with `HTTPS_PROXY`. It must exit 0 or
+  1 with no panic, the proxy must log its CONNECT requests, and the doctor
+  must name the HTTP 403 of the proxy.
+
+A pod command passes when the pod exits 0, the program printed the body,
+and the proxy logged `CONNECT proxy.test:PORT+1`. `LANE_PLANT` plants a
+defect: `refuse` (the proxy refuses each CONNECT) or `port` (podnet gets
+the port PORT+2, which the lab refuses). With each plant, each pod command
+must fail.
 
 ## The consumer .NET HttpClient
 

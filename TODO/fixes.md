@@ -6937,6 +6937,37 @@ on its release binary, and its plant; CI does not build `podlab`. What remains o
 What remains of step 3: the relay and the tunnel as podssh and podrunner call them; T-381, T-383 and T-384; the
 consumers in the network labs (part 2 of `pod-lab`), and in `gate.yml`.
 
+2026-11-16, step 1, the row `proxy-only`. podcrates `v0.58.0` ships `podlab` as a release asset and has `podlab run
+--allow-connect PORT PROFILE`. `sh scripts/get-podlab.sh VERSION [DIR]` downloads the asset of this machine and
+`SHA256SUMS` into a new directory and checks the SHA-256; `scripts/lab-lane.sh` takes that directory as PODLAB and checks
+the asset again. The release has no signature of its assets (their entry 717 of podcrates): no signature was checked. The asset
+`podlab-x86_64-unknown-linux-musl` of `v0.58.0` has the SHA-256
+`1de3b930907efd833566f1779d492a55f234a7d3f0843d26b90719af3a89e9de`, which is the line of `SHA256SUMS` and the digest that
+the GitHub API gives for the asset.
+
+The lane runs the row `proxy-only` in `podlab run --allow-connect PORT bind-denied` (`docs/development.md`, The row
+proxy-only), with the stand-in HTTP CONNECT proxy `tests/consumers/connect-proxy.py` on `127.0.0.1:PORT` outside the lab.
+Measured with the release musl podnet of `947096d`, as uid 65534:
+
+- `proxy-direct`: the GET of `127.0.0.1:PORT+1` with no podnet fails with `[Errno 13] Permission denied`: pass.
+- `proxy-port`: a CONNECT through the proxy with no podnet gets the body: pass (the lab opens the proxy port only).
+- `proxy-pod-auto`, `proxy-pod-seccomp` (`podnet pod -x http://127.0.0.1:PORT -- python3 ...`) and `proxy-pod-env`
+  (`HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY=localhost,127.0.0.1`, no `-x`): exit 0, the body, and the proxy logged `CONNECT
+  proxy.test:PORT+1 HTTP/1.1`: pass.
+- `proxy-doctor`: exit 1 (no leg can work), the proxy logged the CONNECT of each probe, and the doctor names `proxy 403`
+  for each leg: pass.
+- The plants: `LANE_PLANT=refuse` fails `proxy-port` and the three pod rows (the program gets `Connection refused`);
+  `LANE_PLANT=port` fails the three pod rows and `proxy-doctor` (podnet: `the upstream 127.0.0.1:PORT+2 does not answer
+  (Permission denied)`).
+
+No defect of podnet. The lane gave `pod-netns` in `bind-denied` as a failure: since T-382 the backend exits 3 with a
+reason there. The lane now gives it n.a., as `scripts/consumer-pod.sh` does. The whole lane with `podlab` `v0.58.0` as
+uid 65534: 181 rows pass; the failures are the known ones (`link-unix` in the 5 Landlock labs, T-380; `pod-netns` in
+`udp-denied`, T-381); 9 labs do not hold here (`noexec-home` among them: the lab gives `home-noexec` fails for uid
+65534). What remains of the row: a lab where the
+direct egress is refused by the network and not by Landlock (`proxy-only` of `pod-lab` part 2), and `tunnel --quick`,
+`warp proxy`, `relay`, `send` and `receive` against a stand-in that carries their protocols.
+
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 
 **Source:** the owner, 2026-11-15: "it is time everyone shared a single crate for cli help/man".

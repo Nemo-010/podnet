@@ -4,9 +4,21 @@
 # Usage: sh scripts/lab-lane.sh PODLAB PODNET [PROFILE...]
 #
 # PODLAB is the binary podlab of PodUtils/podcrates (crate pod-lab, feature
-# cli). PODNET is the podnet binary to test. With no PROFILE, the lane runs
-# in each profile of `podlab list`. Each command runs in a lab of the
-# profile: `podlab run PROFILE -- sh lab-lane.sh --case NAME ...`.
+# cli), or a directory from scripts/get-podlab.sh: the lane then checks the
+# asset podlab-ARCH-unknown-linux-musl against the SHA256SUMS of the
+# directory and runs it. PODNET is the podnet binary to test. With no
+# PROFILE, the lane runs in each profile of `podlab list`. Each command
+# runs in a lab of the profile: `podlab run PROFILE -- sh lab-lane.sh
+# --case NAME ...`.
+#
+# The profile proxy-only runs the rows of PROXY_CASES in the lab
+# `podlab run --allow-connect PORT bind-denied` (podlab 0.58.0 or later):
+# each TCP connect is refused, except to PORT. A stand-in HTTP CONNECT
+# proxy (tests/consumers/connect-proxy.py) listens on 127.0.0.1:PORT
+# outside the lab. It connects only proxy.test:PORT+1, to a server on
+# 127.0.0.1:PORT+1. LANE_PROXY_PORT gives PORT (default 7120). LANE_PLANT
+# plants a defect: refuse (the proxy refuses each CONNECT) or port (podnet
+# gets the port PORT+2, which the lab refuses). Each pod row must then fail.
 #
 # The script prints one row for each profile and command: pass, fail or
 # n.a. with the reason. It exits 1 when a command fails, else 0. The logs
@@ -21,6 +33,7 @@
 set -u
 
 CASES="version man doctor shim-forward link-unix pod-seccomp pod-netns net-proxy-unix"
+PROXY_CASES="proxy-direct proxy-port proxy-pod-auto proxy-pod-seccomp proxy-pod-env proxy-doctor"
 
 # The cases. Each one runs inside the lab and exits 0 (pass), 1 (fail) or
 # 77 (not applicable, with the reason on the last line of its output).
@@ -125,6 +138,10 @@ case_main() {
         test $code -eq 0 && test "$got" = "0500"
         exit $?
         ;;
+    proxy-*)
+        proxy_case "$name" "$podnet" "$dir"
+        exit $?
+        ;;
     *)
         echo "unknown case $name"
         exit 2
@@ -132,11 +149,80 @@ case_main() {
     esac
 }
 
+# The rows of proxy-only, in the lab with --allow-connect of the proxy
+# port. The proxy log is $dir/../proxy.txt; the outer script empties it
+# before each row.
+proxy_case() {
+    name=$1
+    podnet=$2
+    dir=$3
+    port=$LANE_PROXY_PORT
+    tport=$((port + 1))
+    upstream="http://127.0.0.1:$LANE_UPSTREAM_PORT"
+    url="http://proxy.test:$tport/"
+    body='podnet-proxy-only'
+    log="$dir/../proxy.txt"
+    # The variables of the host of this script are not the proxy of the lab.
+    unset HTTPS_PROXY https_proxy HTTP_PROXY http_proxy ALL_PROXY all_proxy NO_PROXY no_proxy
+    case $name in
+    proxy-direct)
+        # The negative control: with no podnet and no proxy, the lab
+        # refuses the connect to the server.
+        python3 -I "$dir/../http-client.py" urllib "http://127.0.0.1:$tport/" >"$dir/out.txt" 2>&1
+        code=$?
+        cat "$dir/out.txt"
+        echo "client exit $code"
+        test $code -ne 0 && grep -q 'Permission denied' "$dir/out.txt"
+        return $?
+        ;;
+    proxy-port)
+        # The control of the lab: the proxy port is open, with no podnet.
+        python3 -I "$dir/../connect.py" "$port" "proxy.test:$tport" >"$dir/out.txt" 2>&1
+        code=$?
+        cat "$dir/out.txt" "$log"
+        echo "client exit $code"
+        test $code -eq 0 && grep -qx "$body" "$dir/out.txt"
+        return $?
+        ;;
+    proxy-pod-auto | proxy-pod-seccomp)
+        backend=${name#proxy-pod-}
+        timeout 60 "$podnet" pod --backend "$backend" -x "$upstream" -- \
+            python3 -I "$dir/../http-client.py" urllib "$url" >"$dir/out.txt" 2>&1
+        code=$?
+        ;;
+    proxy-pod-env)
+        # The upstream from the environment, as a proxy-only host sets it.
+        HTTPS_PROXY=$upstream HTTP_PROXY=$upstream NO_PROXY=localhost,127.0.0.1 \
+            timeout 60 "$podnet" pod -- python3 -I "$dir/../http-client.py" urllib "$url" >"$dir/out.txt" 2>&1
+        code=$?
+        ;;
+    proxy-doctor)
+        # The doctor sends its probes through the proxy, and names the
+        # refusals of the proxy (the stand-in refuses each other target).
+        HTTPS_PROXY=$upstream timeout 120 "$podnet" doctor >"$dir/out.txt" 2>&1
+        code=$?
+        cat "$dir/out.txt" "$log"
+        echo "doctor exit $code"
+        case $code in 0 | 1) ;; *) return 1 ;; esac
+        grep -q 'panicked' "$dir/out.txt" && return 1
+        grep -q '^request CONNECT ' "$log" && grep -q 'proxy 403' "$dir/out.txt"
+        return $?
+        ;;
+    esac
+    cat "$dir/out.txt" "$log"
+    echo "pod exit $code"
+    test $code -eq 0 && grep -qx "$body" "$dir/out.txt" && grep -q "^request CONNECT proxy.test:$tport " "$log"
+}
+
 # The profiles that take what a pod backend needs, by design. It sets why.
 refusal_expected() {
     case $1:$2 in
     pod-netns:userns-off | pod-netns:nonroot-nocaps | pod-netns:seccomp-nonewprivs)
         why="no user namespace"
+        ;;
+    pod-netns:bind-denied)
+        # Since T-382 the backend probes a TCP connect first.
+        why="the lab refuses each TCP connect of the program (Landlock), in each namespace"
         ;;
     pod-netns:no-proc | pod-netns:proc-masked)
         why="no /proc for the id maps"
@@ -225,6 +311,27 @@ while True:
     data += b
 sys.stdout.write(data.decode())
 EOF
+    cat >"$1/connect.py" <<'EOF'
+import socket, sys
+c = socket.create_connection(("127.0.0.1", int(sys.argv[1])), timeout=10)
+c.sendall(b"CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n" % ((sys.argv[2].encode(),) * 2))
+head = b""
+while b"\r\n\r\n" not in head:
+    b = c.recv(1)
+    if not b:
+        sys.exit("no reply of the proxy")
+    head += b
+if head.split()[1] != b"200":
+    sys.exit("proxy: " + head.decode().splitlines()[0])
+c.sendall(b"GET / HTTP/1.0\r\n\r\n")
+data = b""
+while True:
+    b = c.recv(4096)
+    if not b:
+        break
+    data += b
+sys.stdout.write(data.split(b"\r\n\r\n", 1)[1].decode() + "\n")
+EOF
     cat >"$1/socks.py" <<'EOF'
 import socket, sys
 c = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -247,8 +354,20 @@ fi
 
 abs() { (cd "$(dirname "$1")" && printf '%s/%s\n' "$(pwd)" "$(basename "$1")"); }
 podlab=$(abs "$1")
+if test -d "$podlab"; then
+    # A directory of scripts/get-podlab.sh: the asset of this machine,
+    # checked against the SHA256SUMS of the release.
+    asset="podlab-$(uname -m)-unknown-linux-musl"
+    if ! (cd "$podlab" && grep " $asset\$" SHA256SUMS | sha256sum -c --status -); then
+        echo "lab-lane: $podlab/$asset does not match $podlab/SHA256SUMS" >&2
+        exit 1
+    fi
+    podlab="$podlab/$asset"
+    test -x "$podlab" || { echo "lab-lane: $podlab is not executable" >&2; exit 1; }
+fi
 podnet=$(abs "$2")
 self=$(abs "$0")
+root=$(cd "$(dirname "$self")/.." && pwd)
 shift 2
 work=${LANE_DIR:-$PWD/.work/lab-lane}
 rm -rf "$work"
@@ -258,15 +377,47 @@ case $work in
 /tmp | /tmp/*) echo "lab-lane: LANE_DIR $work is in /tmp; a lab hides it" >&2; exit 64 ;;
 esac
 write_helpers "$work"
+cp "$root/tests/consumers/python-http/client.py" "$work/http-client.py" || exit 1
+cp "$root/tests/consumers/connect-proxy.py" "$root/tests/consumers/servers.py" "$work/" || exit 1
 python3 -I "$work/echo.py" "$work/echo.sock" &
-echo_server=$!
-trap 'kill $echo_server 2>/dev/null' EXIT
+pids=$!
+# $pids is a list of numbers: split it.
+# shellcheck disable=SC2086
+trap 'kill $pids 2>/dev/null' EXIT
 i=0
 while ! test -S "$work/echo.sock"; do
     i=$((i + 1))
     test $i -gt 100 && { echo "lab-lane: the echo server did not start" >&2; exit 1; }
     sleep 0.1
 done
+
+LANE_PROXY_PORT=${LANE_PROXY_PORT:-7120}
+LANE_UPSTREAM_PORT=$LANE_PROXY_PORT
+proxy_mode=
+case ${LANE_PLANT:-} in
+'') ;;
+refuse) proxy_mode=refuse ;;
+port) LANE_UPSTREAM_PORT=$((LANE_PROXY_PORT + 2)) ;;
+*) echo "lab-lane: LANE_PLANT is refuse or port" >&2; exit 64 ;;
+esac
+export LANE_PROXY_PORT LANE_UPSTREAM_PORT
+
+# The stand-in proxy and its server, outside the lab.
+start_proxy() {
+    tport=$((LANE_PROXY_PORT + 1))
+    python3 -I "$work/servers.py" http-tcp "$tport" podnet-proxy-only >"$work/target.out" 2>&1 &
+    pids="$pids $!"
+    : >"$work/proxy.txt"
+    python3 -I "$work/connect-proxy.py" "$LANE_PROXY_PORT" "$work/proxy.txt" \
+        "proxy.test:$tport=$tport" $proxy_mode >"$work/proxy.out" 2>&1 &
+    pids="$pids $!"
+    i=0
+    while ! grep -qx ready "$work/proxy.out" 2>/dev/null; do
+        i=$((i + 1))
+        test $i -gt 100 && { cat "$work/proxy.out"; return 1; }
+        sleep 0.1
+    done
+}
 
 if test $# -eq 0; then
     # Each profile name is one word with no space or glob character: the
@@ -276,18 +427,34 @@ if test $# -eq 0; then
 fi
 
 failed=0
-printf '%-22s %-16s %s\n' PROFILE COMMAND RESULT
+printf '%-22s %-17s %s\n' PROFILE COMMAND RESULT
 for profile in "$@"; do
-    "$podlab" run "$profile" -- /bin/true >"$work/$profile.lab.txt" 2>&1
+    # proxy-only: the lab bind-denied with a connect to the proxy port only.
+    lab=$profile
+    cases=$CASES
+    if test "$profile" = proxy-only; then
+        lab="--allow-connect $LANE_PROXY_PORT bind-denied"
+        cases=$PROXY_CASES
+    fi
+    # $lab is the profile, or options and the profile: split it.
+    # shellcheck disable=SC2086
+    "$podlab" run $lab -- /bin/true >"$work/$profile.lab.txt" 2>&1
     code=$?
     if test $code -ne 0; then
         why=$(grep -v '^ ' "$work/$profile.lab.txt" | grep -v '^holds' | head -n 1)
-        printf '%-22s %-16s n.a.: the lab does not hold (exit %s): %s\n' "$profile" '*' "$code" "$why"
+        printf '%-22s %-17s n.a.: the lab does not hold (exit %s): %s\n' "$profile" '*' "$code" "$why"
         continue
     fi
-    for c in $CASES; do
+    if test "$profile" = proxy-only && ! start_proxy; then
+        printf '%-22s %-17s fail: the stand-in proxy did not start\n' "$profile" '*'
+        failed=1
+        continue
+    fi
+    for c in $cases; do
         log="$work/$profile.$c.txt"
-        LANE_PROFILE=$profile "$podlab" run "$profile" -- /bin/sh "$self" --case "$c" "$podnet" "$work/$profile-$c" >"$log" 2>&1
+        : >"$work/proxy.txt"
+        # shellcheck disable=SC2086
+        LANE_PROFILE=$profile "$podlab" run $lab -- /bin/sh "$self" --case "$c" "$podnet" "$work/$profile-$c" >"$log" 2>&1
         code=$?
         case $code in
         0) result=pass ;;
@@ -297,7 +464,7 @@ for profile in "$@"; do
             failed=1
             ;;
         esac
-        printf '%-22s %-16s %s\n' "$profile" "$c" "$result"
+        printf '%-22s %-17s %s\n' "$profile" "$c" "$result"
     done
 done
 exit $failed
