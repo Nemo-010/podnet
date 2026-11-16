@@ -124,6 +124,69 @@ process). `CONSUMER_SHIM=PATH` takes another shim: the job `static` of
 `ci.yml` plants a shim with no match of the IPv4-mapped address (T-356
 removed), and the check must fail. CI runs the cases with no lab.
 
+## The consumer Python HTTP client
+
+`scripts/consumer-python.sh` runs a Python HTTP client under the vnet shim
+(T-358, step 3). The client is `tests/consumers/python-http/client.py`:
+`urllib.request` of the standard library, and `requests` when `python3`
+can import it (the script copies the package for uid 65534). The servers
+are `tests/consumers/servers.py`.
+
+1. Build the release binary of podnet (`docs/build.md`), and `podlab`
+   (above) for the lab.
+2. Run `sh scripts/consumer-python.sh PODNET [PODLAB [PROFILE]]`. The
+   default PROFILE is `bind-denied`. As root, the lab cases run as uid
+   65534.
+
+The script serves a broker and an HTTP proxy on unix sockets, and a decoy
+TCP server with another body on each port. The shim has the forwards
+`127.0.0.1:PORT` to the broker and `127.0.0.1:PORT+1` to the proxy. The
+cases, for each library:
+
+* `direct`: no lab, no shim. The client gets the body of the decoy.
+* `shim`: no lab, the shim. The client gets the body of the broker.
+* `proxy`: no lab, the shim and `HTTP_PROXY=http://127.0.0.1:PORT+1`. The
+  client gets the body of the proxy, and the proxy gets the request line
+  `GET http://consumer.test/`.
+* `lab-bare`: the lab, no shim. The connect fails with `Permission denied`.
+* `lab-shim` and `lab-proxy`: the lab and the shim, as `shim` and `proxy`.
+
+A shim case also checks the shim log (`connect -> forward`) and the peer
+of the AF_UNIX connection (`SO_PEERCRED`: the `python3` process). The job
+`static` of `ci.yml` runs the cases with no lab, and a planted shim with no
+match of a forward, which must fail with `Connection refused`.
+
+## The consumer pod: podnet pod around a dynamic program
+
+`scripts/consumer-pod.sh` runs `podnet pod` around a dynamic program in
+the labs of `pod-lab` (T-358, step 3). It is a local command: CI does not
+build `podlab`.
+
+1. Build the release binary of podnet and `podlab` (above).
+2. Run `sh scripts/consumer-pod.sh PODNET PODLAB [PROFILE...]`. With no
+   PROFILE, it runs in `bind-denied`, `no-net-admin`, `no-tun` and
+   `udp-denied`. As root, each lab case runs as uid 65534.
+
+Outside the lab, a SOCKS5 server on a unix socket is the upstream of the
+pod. It connects only `consumer.test:PORT`, to a server with the body
+`podnet-consumer-pod`. A decoy on `127.0.0.1:PORT` has another body. The
+programs are `python3` (`urllib`) and `curl` when it exists. Each one sends
+GET to `http://consumer.test:PORT/` and exits 42 when it got the body. The
+rows:
+
+* `control`: no lab, no pod. The program gets the decoy.
+* `bare`: the lab, no pod. In `bind-denied`, the connect must fail with
+  `Permission denied`. In another lab, the row only says what the lab does.
+* `auto`, `netns`, `seccomp` and `netns-kernel`: `podnet pod --backend
+  BACKEND -x socks5://unix:PATH -- PROGRAM` in the lab. A row passes when
+  the pod exits 42, the program got the body, and the upstream got the
+  CONNECT of `consumer.test:PORT`. A row is n.a. only when podnet exits 3
+  with a reason, in a lab that takes what the backend needs by design. A
+  failure with an entry of the record says `fail, known: T-NNN`.
+
+`CONSUMER_PLANT=decoy` makes the upstream send the name to the decoy: each
+pod row must fail.
+
 ## Rules for tests
 
 * **A test for each fix.** A fix of a defect comes with a test that fails

@@ -6912,6 +6912,31 @@ No defect of podnet. The four cases take about 3 s. The job `static` of `ci.yml`
 on its release binary, and its plant; CI does not build `podlab`. What remains of step 3: a Python `requests` client;
 `podnet pod` around a dynamic program; the relay and the tunnel as podssh and podrunner call them.
 
+2026-11-16, step 3, the second and the third consumer. Measured with the release musl podnet, `podlab` of podcrates
+`v0.56.0`, Python 3.13.18, requests 2.34.2 and curl, as uid 65534 in the labs.
+
+- `sh scripts/consumer-python.sh PODNET PODLAB` (`docs/development.md`, The consumer Python HTTP client): `urllib.request`
+  and `requests` send GET to `127.0.0.1:PORT` under the shim with `PODNET_VNET_FORWARD`, and through `HTTP_PROXY` forwarded
+  to a proxy on a unix socket (the egress path of PodUtils/podrunner#170, ask 4). Each of the 12 cases passes: `direct`
+  gets the decoy; `shim`, `proxy`, `lab-shim` and `lab-proxy` get the body of the unix server, the peer is `python3`
+  (uid 65534 in the lab), and the proxy gets `GET http://consumer.test/`; `lab-bare` in `bind-denied` fails with
+  `[Errno 13] Permission denied`. A planted shim with no match of a forward fails the 8 shim cases with `Connection
+  refused`. About 3 s; the job `static` of `ci.yml` runs the cases with no lab, and the plant.
+- `sh scripts/consumer-pod.sh PODNET PODLAB [PROFILE...]` (`docs/development.md`, The consumer pod): python3 and curl in
+  `podnet pod -x socks5://unix:PATH`, with `auto`, `netns`, `seccomp` and `netns-kernel`, in each lab of `podlab list`
+  (26 labs hold here; 9 do not). The pod gives the exit 42 of the program in each pass. With no pod, the program fails
+  in `bind-denied` with `Permission denied`. `CONSUMER_PLANT=decoy` (the upstream sends the name to the decoy) fails each
+  pod row. The result: 148 rows pass. n.a. with exit 3 and a reason: `netns` and `netns-kernel` where the lab has no user
+  namespace (`userns-off`, `nonroot-nocaps`, `seccomp-nonewprivs`); each backend in `no-proc` and `proc-masked`; `netns`
+  in `raw-denied` (no TUN for this user and no `AF_PACKET`); `netns` and `netns-kernel` in `bind-denied` (Landlock
+  refuses each TCP connect of the program in each namespace); `netns-kernel` in `listen-denied` and `udp-denied`.
+  Failures: `auto` and `netns` in `bind-denied` (T-382, fixed: `auto` takes seccomp, `--backend netns` exits 3);
+  `netns` in `udp-denied` (T-381, `pod-hold`); `auto` and `seccomp` in `udp-denied`, no name resolves with no UDP
+  socket (T-383, open); `netns-kernel` in `getsockname-denied` (T-384, open).
+
+What remains of step 3: the relay and the tunnel as podssh and podrunner call them; T-381, T-383 and T-384; the
+consumers in the network labs (part 2 of `pod-lab`), and in `gate.yml`.
+
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 
 **Source:** the owner, 2026-11-15: "it is time everyone shared a single crate for cli help/man".
