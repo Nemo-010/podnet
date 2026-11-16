@@ -133,7 +133,9 @@ with that command (T-358 step 4):
 
 `scripts/gate-scenarios.py` finds each call of the binary in the steps and
 in the scripts that the steps run. The cases of the lane have a map in the
-script (`LANE_MAP`). A command with no scenario is experimental: its help
+script (`LANE_MAP`), and so do the commands that a step runs through
+another program, such as a unit of systemd (`VIA`, with the text that the
+step must hold). A command with no scenario is experimental: its help
 starts with "Experimental:" (`src/cli/help.rs`). After a change of a
 workflow, of the lane or of the commands, write the file again:
 

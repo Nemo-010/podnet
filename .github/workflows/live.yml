@@ -386,6 +386,8 @@ jobs:
             i=$((i + 1)); [ "$i" -lt 30 ] || { echo "the URL of the unit does not answer"; exit 1; }; sleep 2
           done
           echo "systemd started the quick tunnel, and its URL answers"
+          # The unit runs podnet autostart run (T-398).
+          systemctl --user cat podnet-live | grep -q ' autostart run '
           systemctl --user is-active podnet-live
           if systemctl --user cat podnet-secret podnet-live | grep -E "$token|pw@"; then echo "a secret is in a unit"; exit 1; fi
           if ps auxww | grep -v grep | grep -E "$token|pw@"; then echo "a secret is in ps"; exit 1; fi

@@ -7955,8 +7955,10 @@ serve` (WireGuard keys for a client; a key in the repository would need an excep
 of RFC 7748 in Python: no key in the repository), runs `podnet wg serve` on UDP with `--egress socks5h+unix:` to a SOCKS5
 stub that echoes, and `podnet forward --network wg:CLIENT.conf -L unix:PATH=192.0.2.10:7`: a client of PATH gets
 `echo:ping`. The public keys agree with the module `cryptography`. As uid 65534: pass in `bind-denied` and `no-kvm`, n.a. in
-`udp-denied` and `no-loopback` (no UDP on the loopback). 4 commands stay experimental: `autostart run`, `net tailscale`,
-`ssh-relay` and `warp license`.
+`udp-denied` and `no-loopback` (no UDP on the loopback). The live step "Autostart with a systemd user unit" checks that
+the unit runs `podnet autostart run` (`VIA` of `scripts/gate-scenarios.py`: a command that a step runs through another
+program, with the text that the step must hold). 3 commands stay experimental: `net tailscale` (a `tailscaled` in a
+tailnet), `ssh-relay` (an SSH relay of another party) and `warp license` (a WARP+ key).
 
 # T-399: live: the WebSocket client of a --url origin dials a name that has no IPv4 answer yet
 

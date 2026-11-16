@@ -205,12 +205,28 @@ def lane_calls(paths):
     return {case: set(found) for case, found in LANE_MAP.items()}
 
 
+# The commands that a step runs through another program (a unit of
+# systemd): the step, the command, and the text that the step must hold.
+VIA = [
+    ("Autostart with a systemd user unit", "autostart run", "grep -q ' autostart run '"),
+]
+
+
 def derive(paths):
     """Each path and its scenarios."""
     table = {p: [] for p in paths}
-    for name, text in steps(LIVE):
-        for p in sorted(called(with_scripts(text), paths)):
+    live = steps(LIVE)
+    for name, text in live:
+        found = called(with_scripts(text), paths)
+        for step, p, proof in VIA:
+            if step == name and proof in text:
+                found.add(p)
+        for p in sorted(found):
             table[p].append(f"live:{name}")
+    names = [n for n, _ in live]
+    for step, p, proof in VIA:
+        if step not in names:
+            raise SystemExit(f"gate-scenarios: VIA names the step {step!r}, which live.yml does not have")
     for name, text in steps(CI, "static"):
         for p in sorted(called(with_scripts(text), paths)):
             table[p].append(f"ci:{name}")

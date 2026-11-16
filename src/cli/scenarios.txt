@@ -9,7 +9,7 @@ agent status | lane:local
 autostart add | live:Autostart with a systemd user unit
 autostart remove | live:Autostart with a systemd user unit
 autostart list | lane:local
-autostart run |
+autostart run | live:Autostart with a systemd user unit
 bench | lane:net-bench
 bug-report | lane:local
 completions | lane:local

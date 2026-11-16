@@ -46,8 +46,8 @@ None. The head is the commit of this handoff.
 * T-397: the two WARP steps of the quick tunnel in `live.yml` share one device file (HTTP 429 of live 43894127680).
 * T-358 step 4 is done: `src/cli/scenarios.txt` (written by `scripts/gate-scenarios.py`) gives the scenarios of each
   command; the help of a command with no scenario starts with "Experimental:", and `release.yml` lists them in the
-  notes. T-398 gives scenarios to the experimental commands: 4 stay (`autostart run`, `net tailscale`, `ssh-relay`,
-  `warp license`).
+  notes. T-398 gives scenarios to the experimental commands: 3 stay (`net tailscale`, `ssh-relay`, `warp
+  license`).
 
 ## Next steps
 
@@ -55,7 +55,7 @@ None. The head is the commit of this handoff.
    the case or of podnet).
 1. Cut `v0.4.0-beta.14` when `ci`, `live` and `gate` pass on one head (the steps of T-331 and `docs/maintenance.md`,
    the release steps: dry run, then `publish=vX`, then `release-proofs.yml`). The notes list the experimental commands.
-2. T-398: scenarios for the 4 commands left (see its Correction).
+2. T-398: scenarios for the 3 commands left (see its Correction).
 3. T-358, what remains: the lane rows with `podlab run --way-out PROFILE` and `--serve PORT`, WebSocket through the
    proxy, `ipv6-only` on a host with IPv6, the `icmp` rows; the relay and the tunnel as podssh and podrunner call them.
 4. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
