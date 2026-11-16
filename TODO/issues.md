@@ -285,7 +285,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #593 | [gh action] requested: ci and deny on the lane of podnet and the fix of unix listeners under Landlock (T-358, T-379) | closed: deny 43779619505 passed on 31f357a; ci 43779615497 failed at shellcheck (SC2046 in scripts/lab-lane.sh), fixed in b2faf08 | none |
 | #594 | [gh action] requested: ci and deny on the fix of shellcheck and the reason of pod doctor (T-358, T-381) | closed: ci 43782124302 and deny 43782129951 passed on 077a9d1 | none |
 | #595 | [gh action] requested: ci on the consumer .NET HttpClient under the shim (T-358 step 3) | closed: ci 43784289289 passed on aa8ee52 | none |
-| #596 | [gh action] requested: ci and deny on the consumer Python, the fix T-382 and the take of v0.58.0 (T-358, T-382, T-385) | open (ci 43788961230 and deny 43788964639 run on 2047070) | none |
+| #596 | [gh action] requested: ci and deny on the consumer Python, the fix T-382 and the take of v0.58.0 (T-358, T-382, T-385) | closed: ci 43788961230 and deny 43788964639 passed on 2047070 | none |
 | #597 | COORD-096: podnet took v0.58.0 (to podcrates) | open (a message to podcrates) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
