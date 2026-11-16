@@ -23,6 +23,10 @@
  * connect to a listed destination goes to the unix socket PATH. The
  * forwards come first, then the SOCKS routes, then the abstract name.
  *
+ * socket(AF_NETLINK, *, NETLINK_ROUTE), getifaddrs and if_nameindex give the
+ * interfaces of the virtual network: lo and vnet0 with the local address
+ * (T-392). PODNET_VNET_HOST_NETLINK=1 gives them to the host.
+ *
  * This file is compiled from the embedded copy in crates/podnet-vnet/src/shim.rs, so a
  * podnet binary can build it anywhere. It is deliberately C: interposition has
  * to happen at the libc symbol boundary, before any Rust constructor runs.
@@ -32,6 +36,11 @@
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <ifaddrs.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#include <net/if.h>
+#include <net/if_arp.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -72,6 +81,14 @@ static ssize_t (*r_recvmsg)(int, struct msghdr *, int);
 static int (*r_setsockopt)(int, int, int, const void *, socklen_t);
 static int (*r_getsockopt)(int, int, int, void *, socklen_t *);
 static int (*r_getaddrinfo)(const char *, const char *, const struct addrinfo *, struct addrinfo **);
+static ssize_t (*r_send)(int, const void *, size_t, int);
+static ssize_t (*r_recv)(int, void *, size_t, int);
+static int (*r_getifaddrs)(struct ifaddrs **);
+static void (*r_freeifaddrs)(struct ifaddrs *);
+static unsigned int (*r_if_nametoindex)(const char *);
+static char *(*r_if_indextoname)(unsigned int, char *);
+static struct if_nameindex *(*r_if_nameindex)(void);
+static void (*r_if_freenameindex)(struct if_nameindex *);
 
 /* ── configuration ────────────────────────────────────────────────────────── */
 
@@ -81,6 +98,7 @@ struct config {
     char socks[108];       /* PODNET_VNET_SOCKS: the front door, empty = none */
     int log;
     int map_loopback;      /* rewrite loopback endpoints to local_addr */
+    int host_netlink;      /* PODNET_VNET_HOST_NETLINK: the host answers netlink */
     struct in_addr local_v4;   /* PODNET_VNET_LOCAL_ADDR, default 10.66.0.2 */
     int max_fds;
     /* hosts table: name -> address, for getaddrinfo interception */
@@ -382,6 +400,7 @@ static void parse_config(void) {
     }
     cfg.log = (v = getenv("PODNET_VNET_LOG")) && *v && *v != '0';
     cfg.map_loopback = (v = getenv("PODNET_VNET_MAP_LOOPBACK")) && *v && *v != '0';
+    cfg.host_netlink = (v = getenv("PODNET_VNET_HOST_NETLINK")) && *v && *v != '0';
     if ((v = getenv("PODNET_VNET_LOCAL_ADDR")) && *v) {
         if (inet_pton(AF_INET, v, &cfg.local_v4) != 1) {
             logf_("PODNET_VNET_LOCAL_ADDR %s is not an IPv4 address\n", v);
@@ -437,6 +456,14 @@ static void resolve_real(void) {
     r_setsockopt = dlsym(RTLD_NEXT, "setsockopt");
     r_getsockopt = dlsym(RTLD_NEXT, "getsockopt");
     r_getaddrinfo = dlsym(RTLD_NEXT, "getaddrinfo");
+    r_send = dlsym(RTLD_NEXT, "send");
+    r_recv = dlsym(RTLD_NEXT, "recv");
+    r_getifaddrs = dlsym(RTLD_NEXT, "getifaddrs");
+    r_freeifaddrs = dlsym(RTLD_NEXT, "freeifaddrs");
+    r_if_nametoindex = dlsym(RTLD_NEXT, "if_nametoindex");
+    r_if_indextoname = dlsym(RTLD_NEXT, "if_indextoname");
+    r_if_nameindex = dlsym(RTLD_NEXT, "if_nameindex");
+    r_if_freenameindex = dlsym(RTLD_NEXT, "if_freenameindex");
 }
 
 static void ensure_init(void) {
@@ -496,6 +523,9 @@ struct virt_fd {
     int tcp_nodelay;        /* recorded IPPROTO_TCP option */
     int tcp_keepalive;
     int so_reuseaddr;
+    unsigned char is_netlink; /* a NETLINK_ROUTE socket that the shim answers */
+    int nl_peer;            /* its kernel end */
+    uint32_t nl_pid;        /* its port id */
 };
 
 static struct virt_fd *fd_table;
@@ -846,10 +876,522 @@ static void ctl_register(int op, int id, const struct sockaddr *sa) {
     }
 }
 
+/* ── netlink: the interfaces of the virtual network (T-392) ───────────────── */
+
+/* A program that enumerates its interfaces asks the kernel by NETLINK_ROUTE
+   (RTM_GETLINK, RTM_GETADDR), or calls getifaddrs or if_nameindex. Under the
+   shim the program has one address, so the shim gives the same view to each
+   of these: the interface lo (127.0.0.1/8 and ::1/128) and the interface
+   vnet0 (the local address, /24). The host's interfaces do not show.
+
+   socket(AF_NETLINK, *, NETLINK_ROUTE) is a socketpair(AF_UNIX, SOCK_DGRAM).
+   The program has one end. The shim keeps the other end, the "kernel end".
+   A request that the program sends with send, sendto or sendmsg goes to the
+   kernel end, and the shim answers it at once into the kernel end, so that
+   the answer waits on the end of the program. A request that the program
+   writes with write(2) gets its answer at the next recv, recvfrom or
+   recvmsg. Each answer carries the port id of the socket (nlmsg_pid), the
+   one that getsockname gives: a program that compares the two (libtorrent
+   does) drops each other answer.
+
+   PODNET_VNET_HOST_NETLINK=1 turns this off: the host's kernel answers. */
+
+
+#define NL_LO 1      /* the index of lo */
+#define NL_VNET 2    /* the index of vnet0 */
+#define NL_OPER_UNKNOWN 0
+#define NL_OPER_UP 6
+#ifndef IFF_LOWER_UP
+#define IFF_LOWER_UP 0x10000 /* linux/if.h; net/if.h of glibc leaves it out */
+#endif
+
+static int nl_host(void) {
+    return cfg.host_netlink;
+}
+
+static int fd_netlink_peer(int fd, uint32_t *pid) {
+    int peer = -1;
+    pthread_mutex_lock(&fd_lock);
+    if (fd >= 0 && (size_t)fd < fd_table_len && fd_table[fd].is_netlink) {
+        peer = fd_table[fd].nl_peer;
+        if (pid) *pid = fd_table[fd].nl_pid;
+    }
+    pthread_mutex_unlock(&fd_lock);
+    return peer;
+}
+
+/* The port id of a socket that is not bound: getpid() for the first one, as
+   the kernel gives, then a negative number for each next one. */
+static uint32_t nl_next_pid(void) {
+    static int32_t next;
+    static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_lock(&lock);
+    int32_t pid = next == 0 ? (int32_t)getpid() : next;
+    next = next == 0 ? -4096 : next - 1;
+    pthread_mutex_unlock(&lock);
+    return (uint32_t)pid;
+}
+
+static int nl_socket(int type) {
+    int sv[2];
+    int flags = type & (SOCK_NONBLOCK | SOCK_CLOEXEC);
+    if (r_socketpair(AF_UNIX, SOCK_DGRAM | flags, 0, sv) < 0) return -1;
+    /* The kernel end never blocks the program and stays out of a child of exec. */
+    int fl = r_fcntl(sv[1], F_GETFL);
+    if (fl >= 0) r_fcntl(sv[1], F_SETFL, fl | O_NONBLOCK);
+    r_fcntl(sv[1], F_SETFD, FD_CLOEXEC);
+    pthread_mutex_lock(&fd_lock);
+    if (table_ensure(sv[0]) < 0) {
+        pthread_mutex_unlock(&fd_lock);
+        r_close(sv[0]);
+        r_close(sv[1]);
+        errno = EMFILE;
+        return -1;
+    }
+    memset(&fd_table[sv[0]], 0, sizeof fd_table[sv[0]]);
+    fd_table[sv[0]].is_netlink = 1;
+    fd_table[sv[0]].nl_peer = sv[1];
+    fd_table[sv[0]].nl_pid = nl_next_pid();
+    pthread_mutex_unlock(&fd_lock);
+    logf_("socket(AF_NETLINK, NETLINK_ROUTE) -> fd=%d (answered in the process)\n", sv[0]);
+    return sv[0];
+}
+
+/* Close the kernel end when no other descriptor of the program holds it. */
+static void nl_release(int peer) {
+    int used = 0;
+    pthread_mutex_lock(&fd_lock);
+    for (size_t i = 0; i < fd_table_len && !used; i++) {
+        used = fd_table[i].is_netlink && fd_table[i].nl_peer == peer;
+    }
+    pthread_mutex_unlock(&fd_lock);
+    if (!used) r_close(peer);
+}
+
+/* An answer under construction: whole messages, in one datagram. */
+struct nl_out {
+    unsigned char buf[4096];
+    size_t len;
+};
+
+static struct nlmsghdr *nl_begin(struct nl_out *o, uint16_t type, uint16_t flags,
+                                 uint32_t seq, uint32_t pid, const void *body, size_t body_len) {
+    size_t need = NLMSG_SPACE(body_len);
+    if (o->len + need > sizeof o->buf) return NULL;
+    struct nlmsghdr *h = (struct nlmsghdr *)(o->buf + o->len);
+    memset(h, 0, need);
+    h->nlmsg_len = (uint32_t)NLMSG_LENGTH(body_len);
+    h->nlmsg_type = type;
+    h->nlmsg_flags = flags;
+    h->nlmsg_seq = seq;
+    h->nlmsg_pid = pid;
+    memcpy(NLMSG_DATA(h), body, body_len);
+    o->len += need;
+    return h;
+}
+
+static void nl_attr(struct nl_out *o, struct nlmsghdr *h, uint16_t type, const void *data, size_t len) {
+    size_t need = RTA_SPACE(len);
+    if (!h || o->len + need > sizeof o->buf) return;
+    struct rtattr *a = (struct rtattr *)(o->buf + o->len);
+    memset(a, 0, need);
+    a->rta_type = type;
+    a->rta_len = (unsigned short)RTA_LENGTH(len);
+    memcpy(RTA_DATA(a), data, len);
+    o->len += need;
+    h->nlmsg_len = (uint32_t)(NLMSG_ALIGN(h->nlmsg_len) + need);
+}
+
+static void nl_attr_u32(struct nl_out *o, struct nlmsghdr *h, uint16_t type, uint32_t v) {
+    nl_attr(o, h, type, &v, sizeof v);
+}
+
+/* The two links. */
+static void nl_link(struct nl_out *o, int index, uint16_t flags, uint32_t seq, uint32_t pid) {
+    struct ifinfomsg ifi;
+    memset(&ifi, 0, sizeof ifi);
+    ifi.ifi_family = AF_UNSPEC;
+    ifi.ifi_index = index;
+    unsigned char mac[6] = {0, 0, 0, 0, 0, 0};
+    unsigned char bcast[6] = {0, 0, 0, 0, 0, 0};
+    const char *name = "lo";
+    uint32_t mtu = 65536;
+    unsigned char oper = NL_OPER_UNKNOWN;
+    if (index == NL_LO) {
+        ifi.ifi_type = ARPHRD_LOOPBACK;
+        ifi.ifi_flags = IFF_UP | IFF_LOOPBACK | IFF_RUNNING | IFF_LOWER_UP;
+    } else {
+        ifi.ifi_type = ARPHRD_ETHER;
+        ifi.ifi_flags = IFF_UP | IFF_BROADCAST | IFF_RUNNING | IFF_MULTICAST | IFF_LOWER_UP;
+        /* A locally administered address that holds the local address. */
+        const unsigned char *a = (const unsigned char *)&cfg.local_v4.s_addr;
+        mac[0] = 0x02;
+        mac[1] = 0x00;
+        memcpy(mac + 2, a, 4);
+        memset(bcast, 0xff, sizeof bcast);
+        name = "vnet0";
+        mtu = 1500;
+        oper = NL_OPER_UP;
+    }
+    struct nlmsghdr *h = nl_begin(o, RTM_NEWLINK, flags, seq, pid, &ifi, sizeof ifi);
+    nl_attr(o, h, IFLA_IFNAME, name, strlen(name) + 1);
+    nl_attr_u32(o, h, IFLA_MTU, mtu);
+    nl_attr_u32(o, h, IFLA_TXQLEN, 1000);
+    nl_attr(o, h, IFLA_OPERSTATE, &oper, 1);
+    nl_attr(o, h, IFLA_ADDRESS, mac, sizeof mac);
+    nl_attr(o, h, IFLA_BROADCAST, bcast, sizeof bcast);
+}
+
+/* The three addresses, of FAMILY (AF_UNSPEC: each). */
+static void nl_addrs(struct nl_out *o, int family, uint32_t seq, uint32_t pid) {
+    struct ifaddrmsg ifa;
+    struct nlmsghdr *h;
+    if (family == AF_UNSPEC || family == AF_INET) {
+        struct in_addr lo4;
+        lo4.s_addr = htonl(INADDR_LOOPBACK);
+        memset(&ifa, 0, sizeof ifa);
+        ifa.ifa_family = AF_INET;
+        ifa.ifa_prefixlen = 8;
+        ifa.ifa_flags = IFA_F_PERMANENT;
+        ifa.ifa_scope = RT_SCOPE_HOST;
+        ifa.ifa_index = NL_LO;
+        h = nl_begin(o, RTM_NEWADDR, NLM_F_MULTI, seq, pid, &ifa, sizeof ifa);
+        nl_attr(o, h, IFA_ADDRESS, &lo4, sizeof lo4);
+        nl_attr(o, h, IFA_LOCAL, &lo4, sizeof lo4);
+        nl_attr(o, h, IFA_LABEL, "lo", 3);
+
+        struct in_addr local = cfg.local_v4;
+        struct in_addr bcast;
+        bcast.s_addr = local.s_addr | htonl(0xffu);
+        memset(&ifa, 0, sizeof ifa);
+        ifa.ifa_family = AF_INET;
+        ifa.ifa_prefixlen = 24;
+        ifa.ifa_flags = IFA_F_PERMANENT;
+        ifa.ifa_scope = RT_SCOPE_UNIVERSE;
+        ifa.ifa_index = NL_VNET;
+        h = nl_begin(o, RTM_NEWADDR, NLM_F_MULTI, seq, pid, &ifa, sizeof ifa);
+        nl_attr(o, h, IFA_ADDRESS, &local, sizeof local);
+        nl_attr(o, h, IFA_LOCAL, &local, sizeof local);
+        nl_attr(o, h, IFA_BROADCAST, &bcast, sizeof bcast);
+        nl_attr(o, h, IFA_LABEL, "vnet0", 6);
+    }
+    if (family == AF_UNSPEC || family == AF_INET6) {
+        struct in6_addr lo6 = IN6ADDR_LOOPBACK_INIT;
+        memset(&ifa, 0, sizeof ifa);
+        ifa.ifa_family = AF_INET6;
+        ifa.ifa_prefixlen = 128;
+        ifa.ifa_flags = IFA_F_PERMANENT;
+        ifa.ifa_scope = RT_SCOPE_HOST;
+        ifa.ifa_index = NL_LO;
+        h = nl_begin(o, RTM_NEWADDR, NLM_F_MULTI, seq, pid, &ifa, sizeof ifa);
+        nl_attr(o, h, IFA_ADDRESS, &lo6, sizeof lo6);
+    }
+}
+
+static void nl_send_out(int peer, struct nl_out *o) {
+    if (o->len == 0) return;
+    if (r_send(peer, o->buf, o->len, MSG_DONTWAIT | MSG_NOSIGNAL) < 0) {
+        logf_("netlink: the answer of %zu bytes was not queued: %s\n", o->len, strerror(errno));
+    }
+    o->len = 0;
+}
+
+static void nl_error(struct nl_out *o, const struct nlmsghdr *req, int error, uint32_t pid) {
+    struct nlmsgerr e;
+    memset(&e, 0, sizeof e);
+    e.error = error;
+    e.msg = *req;
+    nl_begin(o, NLMSG_ERROR, 0, req->nlmsg_seq, pid, &e, sizeof e);
+}
+
+static void nl_done(struct nl_out *o, const struct nlmsghdr *req, uint32_t pid) {
+    int32_t zero = 0;
+    nl_begin(o, NLMSG_DONE, NLM_F_MULTI, req->nlmsg_seq, pid, &zero, sizeof zero);
+}
+
+/* Answer one request. */
+static void nl_answer(int peer, const struct nlmsghdr *req, uint32_t pid) {
+    struct nl_out o;
+    o.len = 0;
+    size_t body = req->nlmsg_len >= NLMSG_HDRLEN ? req->nlmsg_len - NLMSG_HDRLEN : 0;
+    int family = body >= 1 ? ((const unsigned char *)NLMSG_DATA(req))[0] : AF_UNSPEC;
+    int dump = (req->nlmsg_flags & NLM_F_DUMP) == NLM_F_DUMP;
+    int type = req->nlmsg_type;
+    logf_("netlink: type=%d flags=0x%x family=%d\n", type, req->nlmsg_flags, family);
+    if (type == RTM_GETLINK && dump) {
+        if (family == AF_UNSPEC || family == AF_PACKET) {
+            nl_link(&o, NL_LO, NLM_F_MULTI, req->nlmsg_seq, pid);
+            nl_link(&o, NL_VNET, NLM_F_MULTI, req->nlmsg_seq, pid);
+        }
+        nl_send_out(peer, &o);
+        nl_done(&o, req, pid);
+    } else if (type == RTM_GETLINK) {
+        int index = 0;
+        if (body >= sizeof(struct ifinfomsg)) {
+            const struct ifinfomsg *ifi = NLMSG_DATA(req);
+            index = ifi->ifi_index;
+            /* By name: IFLA_IFNAME. */
+            const struct rtattr *a = (const struct rtattr *)((const char *)ifi + NLMSG_ALIGN(sizeof *ifi));
+            int left = (int)(body - NLMSG_ALIGN(sizeof *ifi));
+            for (; index == 0 && RTA_OK(a, left); a = RTA_NEXT(a, left)) {
+                if (a->rta_type != IFLA_IFNAME) continue;
+                const char *n = RTA_DATA(a);
+                if (strncmp(n, "lo", RTA_PAYLOAD(a)) == 0) index = NL_LO;
+                else if (strncmp(n, "vnet0", RTA_PAYLOAD(a)) == 0) index = NL_VNET;
+                else index = -1;
+            }
+        }
+        if (index == NL_LO || index == NL_VNET) {
+            nl_link(&o, index, 0, req->nlmsg_seq, pid);
+            if (req->nlmsg_flags & NLM_F_ACK) {
+                nl_send_out(peer, &o);
+                nl_error(&o, req, 0, pid);
+            }
+        } else {
+            nl_error(&o, req, -ENODEV, pid);
+        }
+    } else if (type == RTM_GETADDR && dump) {
+        nl_addrs(&o, family, req->nlmsg_seq, pid);
+        nl_send_out(peer, &o);
+        nl_done(&o, req, pid);
+    } else if (dump && (type & 3) == 2 && type >= RTM_BASE) {
+        /* Each other dump (routes, neighbours, rules): empty. */
+        nl_done(&o, req, pid);
+    } else if (type >= RTM_BASE && (type & 3) == 2) {
+        nl_error(&o, req, -EOPNOTSUPP, pid);
+    } else if (type >= RTM_BASE) {
+        /* A change (NEW, DEL, SET): the program may not change the network. */
+        nl_error(&o, req, -EPERM, pid);
+    } else if (req->nlmsg_flags & NLM_F_ACK) {
+        nl_error(&o, req, 0, pid);
+    }
+    nl_send_out(peer, &o);
+}
+
+/* Answer each request that waits on the kernel end. */
+static void nl_pump(int peer, uint32_t pid) {
+    for (;;) {
+        union {
+            unsigned char buf[8192];
+            struct nlmsghdr align;
+        } in;
+        int saved = errno;
+        ssize_t n = r_recv(peer, in.buf, sizeof in.buf, MSG_DONTWAIT);
+        errno = saved;
+        if (n <= 0) return;
+        int left = (int)n;
+        for (struct nlmsghdr *h = &in.align; NLMSG_OK(h, left); h = NLMSG_NEXT(h, left)) {
+            nl_answer(peer, h, pid);
+        }
+    }
+}
+
+/* The kernel's address: AF_NETLINK, port 0. */
+static void nl_kernel_name(void *sa, socklen_t *len) {
+    struct sockaddr_nl k;
+    memset(&k, 0, sizeof k);
+    k.nl_family = AF_NETLINK;
+    if (!sa || !len) return;
+    memcpy(sa, &k, *len < sizeof k ? *len : sizeof k);
+    *len = sizeof k;
+}
+
+static int nl_bind(int fd, const struct sockaddr *sa, socklen_t len) {
+    if (!sa || len < sizeof(struct sockaddr_nl) || sa->sa_family != AF_NETLINK) {
+        errno = EINVAL;
+        return -1;
+    }
+    const struct sockaddr_nl *nl = (const struct sockaddr_nl *)sa;
+    if (nl->nl_pid != 0) {
+        pthread_mutex_lock(&fd_lock);
+        if ((size_t)fd < fd_table_len) fd_table[fd].nl_pid = nl->nl_pid;
+        pthread_mutex_unlock(&fd_lock);
+    }
+    return 0;
+}
+
+static int nl_getsockname(int fd, struct sockaddr *sa, socklen_t *len) {
+    uint32_t pid = 0;
+    fd_netlink_peer(fd, &pid);
+    struct sockaddr_storage ss;
+    memset(&ss, 0, sizeof ss);
+    struct sockaddr_nl *nl = (struct sockaddr_nl *)&ss;
+    nl->nl_family = AF_NETLINK;
+    nl->nl_pid = pid;
+    return copy_sockaddr(sa, len, &ss, sizeof *nl);
+}
+
+static ssize_t nl_sendmsg(int fd, int peer, uint32_t pid, const struct msghdr *msg, int flags) {
+    struct msghdr copy = *msg;
+    copy.msg_name = NULL;
+    copy.msg_namelen = 0;
+    ssize_t rc = r_sendmsg(fd, &copy, flags | MSG_NOSIGNAL);
+    if (rc >= 0) nl_pump(peer, pid);
+    return rc;
+}
+
+static ssize_t nl_recvmsg(int fd, int peer, uint32_t pid, struct msghdr *msg, int flags) {
+    nl_pump(peer, pid);
+    void *name = msg->msg_name;
+    socklen_t name_len = msg->msg_namelen;
+    msg->msg_name = NULL;
+    msg->msg_namelen = 0;
+    ssize_t rc = r_recvmsg(fd, msg, flags);
+    msg->msg_name = name;
+    msg->msg_namelen = name_len;
+    if (rc >= 0 && name) nl_kernel_name(name, &msg->msg_namelen);
+    return rc;
+}
+
+/* getifaddrs, if_nameindex and their kin give the same two interfaces. The
+   shim allocates each list in one block, and frees only its own blocks: the
+   lists of the host's libc go to the host's free functions. */
+
+static void *own_blocks[64];
+static pthread_mutex_t own_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static void own_add(void *p) {
+    pthread_mutex_lock(&own_lock);
+    for (size_t i = 0; i < sizeof own_blocks / sizeof own_blocks[0]; i++) {
+        if (!own_blocks[i]) {
+            own_blocks[i] = p;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&own_lock);
+}
+
+/* True when P is a block of the shim; the block leaves the list. */
+static int own_take(void *p) {
+    int found = 0;
+    pthread_mutex_lock(&own_lock);
+    for (size_t i = 0; i < sizeof own_blocks / sizeof own_blocks[0] && !found; i++) {
+        if (p && own_blocks[i] == p) {
+            own_blocks[i] = NULL;
+            found = 1;
+        }
+    }
+    pthread_mutex_unlock(&own_lock);
+    return found;
+}
+
+struct own_ifa {
+    struct ifaddrs ifa;
+    struct sockaddr_storage addr, mask, extra;
+    char name[IF_NAMESIZE];
+};
+
+static void own_set4(struct sockaddr_storage *ss, uint32_t host_order) {
+    struct sockaddr_in *a = (struct sockaddr_in *)ss;
+    a->sin_family = AF_INET;
+    a->sin_addr.s_addr = htonl(host_order);
+}
+
+int getifaddrs(struct ifaddrs **out) {
+    ensure_init();
+    if (nl_host()) return r_getifaddrs(out);
+    if (!out) {
+        errno = EINVAL;
+        return -1;
+    }
+    struct own_ifa *n = calloc(3, sizeof *n);
+    if (!n) return -1;
+    uint32_t local = ntohl(cfg.local_v4.s_addr);
+    /* lo, 127.0.0.1/8 */
+    snprintf(n[0].name, IF_NAMESIZE, "lo");
+    n[0].ifa.ifa_flags = IFF_UP | IFF_LOOPBACK | IFF_RUNNING | IFF_LOWER_UP;
+    own_set4(&n[0].addr, INADDR_LOOPBACK);
+    own_set4(&n[0].mask, 0xff000000u);
+    /* vnet0, the local address /24 */
+    snprintf(n[1].name, IF_NAMESIZE, "vnet0");
+    n[1].ifa.ifa_flags = IFF_UP | IFF_BROADCAST | IFF_RUNNING | IFF_MULTICAST | IFF_LOWER_UP;
+    own_set4(&n[1].addr, local);
+    own_set4(&n[1].mask, 0xffffff00u);
+    own_set4(&n[1].extra, local | 0xffu);
+    n[1].ifa.ifa_broadaddr = (struct sockaddr *)&n[1].extra;
+    /* lo, ::1/128 */
+    snprintf(n[2].name, IF_NAMESIZE, "lo");
+    n[2].ifa.ifa_flags = n[0].ifa.ifa_flags;
+    struct sockaddr_in6 *a6 = (struct sockaddr_in6 *)&n[2].addr;
+    a6->sin6_family = AF_INET6;
+    a6->sin6_addr = in6addr_loopback;
+    struct sockaddr_in6 *m6 = (struct sockaddr_in6 *)&n[2].mask;
+    m6->sin6_family = AF_INET6;
+    memset(&m6->sin6_addr, 0xff, sizeof m6->sin6_addr);
+    for (int i = 0; i < 3; i++) {
+        n[i].ifa.ifa_name = n[i].name;
+        n[i].ifa.ifa_addr = (struct sockaddr *)&n[i].addr;
+        n[i].ifa.ifa_netmask = (struct sockaddr *)&n[i].mask;
+        n[i].ifa.ifa_next = i < 2 ? &n[i + 1].ifa : NULL;
+    }
+    own_add(n);
+    *out = &n[0].ifa;
+    return 0;
+}
+
+void freeifaddrs(struct ifaddrs *ifa) {
+    ensure_init();
+    if (own_take(ifa)) {
+        free(ifa);
+        return;
+    }
+    if (r_freeifaddrs) r_freeifaddrs(ifa);
+}
+
+unsigned int if_nametoindex(const char *name) {
+    ensure_init();
+    if (nl_host()) return r_if_nametoindex(name);
+    if (name && strcmp(name, "lo") == 0) return NL_LO;
+    if (name && strcmp(name, "vnet0") == 0) return NL_VNET;
+    errno = ENODEV;
+    return 0;
+}
+
+char *if_indextoname(unsigned int index, char name[IF_NAMESIZE]) {
+    ensure_init();
+    if (nl_host()) return r_if_indextoname(index, name);
+    if (index != NL_LO && index != NL_VNET) {
+        errno = ENXIO;
+        return NULL;
+    }
+    snprintf(name, IF_NAMESIZE, "%s", index == NL_LO ? "lo" : "vnet0");
+    return name;
+}
+
+struct own_index {
+    struct if_nameindex list[3];
+    char names[2][IF_NAMESIZE];
+};
+
+struct if_nameindex *if_nameindex(void) {
+    ensure_init();
+    if (nl_host()) return r_if_nameindex();
+    struct own_index *n = calloc(1, sizeof *n);
+    if (!n) return NULL;
+    snprintf(n->names[0], IF_NAMESIZE, "lo");
+    snprintf(n->names[1], IF_NAMESIZE, "vnet0");
+    n->list[0].if_index = NL_LO;
+    n->list[0].if_name = n->names[0];
+    n->list[1].if_index = NL_VNET;
+    n->list[1].if_name = n->names[1];
+    own_add(n);
+    return n->list;
+}
+
+void if_freenameindex(struct if_nameindex *list) {
+    ensure_init();
+    if (own_take(list)) {
+        free(list);
+        return;
+    }
+    if (r_if_freenameindex) r_if_freenameindex(list);
+}
+
 /* ── interposed API ───────────────────────────────────────────────────────── */
 
 int socket(int domain, int type, int protocol) {
     ensure_init();
+    if (domain == AF_NETLINK && protocol == NETLINK_ROUTE && !nl_host()) return nl_socket(type);
     if (domain == AF_INET || domain == AF_INET6) {
         if (type == SOCK_RAW) {
             errno = EAFNOSUPPORT;
@@ -948,6 +1490,7 @@ static int bind_one(int fd, const struct sockaddr *sa, socklen_t len) {
 
 int bind(int fd, const struct sockaddr *sa, socklen_t len) {
     ensure_init();
+    if (fd_netlink_peer(fd, NULL) >= 0) return nl_bind(fd, sa, len);
     if (!fd_is_virtual(fd)) return r_bind(fd, sa, len);
     if (sa == NULL || sa_port(sa, len) != 0) return bind_one(fd, sa, len);
     /* Port 0: the kernel would pick a free port. Pick one from the
@@ -1180,6 +1723,7 @@ static int connect_forward(int fd, const struct sockaddr *sa, socklen_t len,
 
 int connect(int fd, const struct sockaddr *sa, socklen_t len) {
     ensure_init();
+    if (fd_netlink_peer(fd, NULL) >= 0) return 0; /* the kernel is the one peer */
     if (!fd_is_virtual(fd)) return r_connect(fd, sa, len);
     const struct forward *f = forward_match(sa, len);
     if (f) {
@@ -1323,6 +1867,12 @@ static socklen_t wildcard_addr(int family, struct sockaddr_storage *out) {
 
 int getpeername(int fd, struct sockaddr *sa, socklen_t *len) {
     ensure_init();
+    if (fd_netlink_peer(fd, NULL) >= 0) {
+        struct sockaddr_storage k;
+        socklen_t k_len = sizeof k;
+        nl_kernel_name(&k, &k_len);
+        return copy_sockaddr(sa, len, &k, k_len);
+    }
     if (!fd_is_virtual(fd)) return r_getpeername(fd, sa, len);
     pthread_mutex_lock(&fd_lock);
     struct sockaddr_storage peer;
@@ -1341,6 +1891,7 @@ int getpeername(int fd, struct sockaddr *sa, socklen_t *len) {
 
 int getsockname(int fd, struct sockaddr *sa, socklen_t *len) {
     ensure_init();
+    if (fd_netlink_peer(fd, NULL) >= 0) return nl_getsockname(fd, sa, len);
     if (!fd_is_virtual(fd)) return r_getsockname(fd, sa, len);
     pthread_mutex_lock(&fd_lock);
     struct sockaddr_storage local;
@@ -1362,8 +1913,10 @@ int getsockname(int fd, struct sockaddr *sa, socklen_t *len) {
 
 int close(int fd) {
     ensure_init();
+    int peer = fd_netlink_peer(fd, NULL);
     int rc = r_close(fd);
     if (rc == 0) fd_clear(fd);
+    if (rc == 0 && peer >= 0) nl_release(peer);
     return rc;
 }
 
@@ -1480,6 +2033,13 @@ int fcntl(int fd, int cmd, ...) {
 ssize_t sendto(int fd, const void *buf, size_t n, int flags,
                const struct sockaddr *sa, socklen_t len) {
     ensure_init();
+    uint32_t pid = 0;
+    int peer = fd_netlink_peer(fd, &pid);
+    if (peer >= 0) {
+        ssize_t rc = r_sendto(fd, buf, n, flags | MSG_NOSIGNAL, NULL, 0);
+        if (rc >= 0) nl_pump(peer, pid);
+        return rc;
+    }
     if (!fd_is_virtual(fd) || !sa) {
         return r_sendto(fd, buf, n, flags, sa, len);
     }
@@ -1536,6 +2096,14 @@ static void drop_other_users(int fd, int flags) {
 ssize_t recvfrom(int fd, void *buf, size_t n, int flags,
                  struct sockaddr *sa, socklen_t *len) {
     ensure_init();
+    uint32_t pid = 0;
+    int peer = fd_netlink_peer(fd, &pid);
+    if (peer >= 0) {
+        nl_pump(peer, pid);
+        ssize_t rc = r_recvfrom(fd, buf, n, flags, NULL, NULL);
+        if (rc >= 0 && sa && len) nl_kernel_name(sa, len);
+        return rc;
+    }
     drop_other_users(fd, flags);
     if (!fd_is_virtual(fd) || !sa || !len) {
         return r_recvfrom(fd, buf, n, flags, sa, len);
@@ -1572,6 +2140,9 @@ ssize_t recvfrom(int fd, void *buf, size_t n, int flags,
 
 ssize_t sendmsg(int fd, const struct msghdr *msg, int flags) {
     ensure_init();
+    uint32_t pid = 0;
+    int peer = fd_netlink_peer(fd, &pid);
+    if (peer >= 0 && msg) return nl_sendmsg(fd, peer, pid, msg, flags);
     if (!fd_is_virtual(fd) || !msg || !msg->msg_name) {
         return r_sendmsg(fd, msg, flags);
     }
@@ -1587,6 +2158,9 @@ ssize_t sendmsg(int fd, const struct msghdr *msg, int flags) {
 
 ssize_t recvmsg(int fd, struct msghdr *msg, int flags) {
     ensure_init();
+    uint32_t pid = 0;
+    int peer = fd_netlink_peer(fd, &pid);
+    if (peer >= 0 && msg) return nl_recvmsg(fd, peer, pid, msg, flags);
     drop_other_users(fd, flags);
     if (!fd_is_virtual(fd) || !msg || !msg->msg_name) {
         return r_recvmsg(fd, msg, flags);
@@ -1611,8 +2185,27 @@ ssize_t recvmsg(int fd, struct msghdr *msg, int flags) {
     return rc;
 }
 
+ssize_t send(int fd, const void *buf, size_t n, int flags) {
+    ensure_init();
+    uint32_t pid = 0;
+    int peer = fd_netlink_peer(fd, &pid);
+    if (peer < 0) return r_send(fd, buf, n, flags);
+    ssize_t rc = r_send(fd, buf, n, flags | MSG_NOSIGNAL);
+    if (rc >= 0) nl_pump(peer, pid);
+    return rc;
+}
+
+ssize_t recv(int fd, void *buf, size_t n, int flags) {
+    ensure_init();
+    uint32_t pid = 0;
+    int peer = fd_netlink_peer(fd, &pid);
+    if (peer >= 0) nl_pump(peer, pid);
+    return r_recv(fd, buf, n, flags);
+}
+
 int setsockopt(int fd, int level, int optname, const void *optval, socklen_t optlen) {
     ensure_init();
+    if (level == SOL_NETLINK && fd_netlink_peer(fd, NULL) >= 0) return 0;
     if (!fd_is_virtual(fd)) {
         return r_setsockopt(fd, level, optname, optval, optlen);
     }
@@ -1641,6 +2234,15 @@ int setsockopt(int fd, int level, int optname, const void *optval, socklen_t opt
 
 int getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen) {
     ensure_init();
+    if (level == SOL_NETLINK && fd_netlink_peer(fd, NULL) >= 0) {
+        if (!optval || !optlen || *optlen < sizeof(int)) {
+            errno = EINVAL;
+            return -1;
+        }
+        *(int *)optval = 0;
+        *optlen = sizeof(int);
+        return 0;
+    }
     if (fd_is_virtual(fd) && (level == IPPROTO_TCP || level == IPPROTO_IP || level == IPPROTO_IPV6)) {
         if (!optval || !optlen || *optlen < sizeof(int)) {
             errno = EINVAL;

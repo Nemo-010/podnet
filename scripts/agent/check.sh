@@ -29,6 +29,8 @@ python3 -I scripts/check-layers.py > "$log/layers.log" 2>&1; l=$?
 echo "layers $l"; [ "$l" -eq 0 ] || { rc=1; grep -v "^check-layers:" "$log/layers.log" | head -20; }
 python3 -I scripts/doc-commands.py --check > "$log/doccmd.log" 2>&1; k=$?
 echo "doc-commands $k"; [ "$k" -eq 0 ] || { rc=1; head -20 "$log/doccmd.log"; }
+python3 -I scripts/gate-scenarios.py --check > "$log/scenarios.log" 2>&1; g=$?
+echo "scenarios $g"; [ "$g" -eq 0 ] || { rc=1; head -20 "$log/scenarios.log"; }
 # The man page, as the job "test" of CI renders it: groff with each warning
 # (-ww) and mandoc lint. When groff or mandoc is not on this host, the step
 # says "skipped": CI still runs it.

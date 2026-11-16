@@ -40,7 +40,7 @@
 
 set -u
 
-CASES="version man doctor shim-forward link-unix pod-seccomp pod-netns net-proxy-unix"
+CASES="version man local doctor shim-forward link-unix pod-seccomp pod-netns net-proxy-unix"
 NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni-allowlist no-proxy-no-dns ipv6-only"
 NET_CASES="version doctor net-curl net-pod-auto net-pod-seccomp net-pod-netns"
 PROXY_CASES="proxy-direct proxy-port proxy-pod-auto proxy-pod-seccomp proxy-pod-env proxy-doctor"
@@ -65,6 +65,47 @@ case_main() {
         "$podnet" man --no-pager >"$dir/man.txt" || exit 1
         grep -q '^EXIT STATUS' "$dir/man.txt" || { echo "no EXIT STATUS section"; exit 1; }
         wc -l <"$dir/man.txt"
+        ;;
+    local)
+        # The commands that need no network and no other process: each
+        # exits 0 with its output (T-358 step 4).
+        # The output of the command is in local.txt; it exited CODE. An
+        # empty pattern checks the exit code only.
+        local_check() {
+            echo "exit $code"
+            test $code -eq 0 || { cat "$dir/local.err"; return 1; }
+            test -z "$1" || grep -q -- "$1" "$dir/local.txt" || { echo "no line with: $1"; head -5 "$dir/local.txt"; return 1; }
+        }
+        timeout 60 "$podnet" completions bash >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check '^_podnet()' || exit 1
+        timeout 60 "$podnet" components --json >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check '"components":' || exit 1
+        timeout 60 "$podnet" status --json >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check '"instances":' || exit 1
+        timeout 60 "$podnet" ports >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check '' || exit 1
+        timeout 60 "$podnet" qr https://lab.test/ >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check '█' || exit 1
+        timeout 60 "$podnet" bug-report >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check '^podnet bug-report' || exit 1
+        timeout 60 "$podnet" net addresses >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check 'gateway' || exit 1
+        timeout 60 "$podnet" link carriers >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check '^unix: ' || exit 1
+        timeout 60 "$podnet" autostart list >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check '' || exit 1
+        timeout 60 "$podnet" agent status >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check 'proxy:' || exit 1
         ;;
     doctor)
         timeout 120 "$podnet" doctor >"$dir/doctor.txt" 2>&1

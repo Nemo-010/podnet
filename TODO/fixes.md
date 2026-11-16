@@ -2472,7 +2472,7 @@ cargo test -p podnet-netns tailscale
 
 ## Problem
 
-`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs`, before this entry) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:136-137` say `host:port`. The dial is a bare `TcpStream::connect` (same file): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`crates/podnet-vnet/src/proxy.rs:210`). Measured by the issue: a dead `--proxy` changed nothing.
+`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs`, before this entry) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:163-164` say `host:port`. The dial is a bare `TcpStream::connect` (same file): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`crates/podnet-vnet/src/proxy.rs:210`). Measured by the issue: a dead `--proxy` changed nothing.
 
 ## Premise
 
@@ -2688,7 +2688,7 @@ cargo test -p podnet --test cli
 
 ## Problem
 
-`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:29-45`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:289-294` and `net addresses` advertise the resolver.
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:29-45`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:316-321` and `net addresses` advertise the resolver.
 
 ## Premise
 
@@ -2700,7 +2700,7 @@ cargo test -p podnet --test cli
 1. Build one `Resolver` from `--map`. Pass it as `StackConfig.dns` (switch path) and to the door through `hosts_pairs()`.
 2. `net shim --map NAME=ADDR` (repeatable) fills `ShimOptions::hosts`.
 3. `--map-file PATH` with `Resolver::from_lines`. Validate each address against the subnet at parse time.
-4. Update the help and `docs/virtual-network.md:289-294`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
+4. Update the help and `docs/virtual-network.md:316-321`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
 
 ## Prove
 
@@ -7008,6 +7008,21 @@ passing scenario is marked experimental in its help and in the notes.
 What remains of step 1: a row that uses WebSocket through the proxy (`ws-upgrade-refused`: the relay and the tunnel);
 `ipv6-only` on a host with IPv6; the `icmp` rows.
 
+2026-11-16, step 4, the experimental commands. `src/cli/scenarios.txt` has one line for each command with no
+subcommand, and its scenarios: a step of `live.yml`, a step of the job `static` of `ci.yml`, or a case of the lane
+(`docs/development.md`, The scenarios of each command). `scripts/gate-scenarios.py` finds each call of the binary in the
+steps and in the scripts that they run; the cases of the lane have a map (`LANE_MAP`), checked against the calls of
+`scripts/lab-lane.sh`. `--check` runs in `check.sh` and in the job `workflows` of `ci.yml`. The help of a command with no
+scenario starts with "Experimental:" (`src/cli/help.rs`; `src/cli/help_tests.rs` checks that each command has a line and
+the mark). `release.yml` adds the section "The scenarios of each command" (`--notes LANE.TXT`) after the section of the
+gate; a lane scenario counts only when a row of its case passed. A new lane case `local` runs ten commands that need no
+network (`completions`, `components`, `status`, `ports`, `qr`, `bug-report`, `net addresses`, `link carriers`, `autostart
+list`, `agent status`); as uid 65534 it passed in each lab of `podlab` v0.63.0 that holds here, except `noexec-home`
+(the binary was in HOME, the known fault of the setup). The count: 81 commands, 59 with a scenario, 22 experimental
+(T-398 gives them scenarios). Step 4 is done.
+
+What remains: step 1 (above), step 3 (the relay and the tunnel as podssh and podrunner call them), T-384, T-398.
+
 
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 
@@ -7724,7 +7739,7 @@ client that dials `10.66.0.2`, and a server bound to `0.0.0.0` answers a client 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -7739,7 +7754,7 @@ getpid()`, and libtorrent passes that value as the expected `nlmsg_pid`, discard
 
 ## Premise
 
-- Read on 2026-11-16 at 5fbb2e3: `socket()` of `crates/podnet-vnet/shim/podnet-vnet.c` (`:851`) gives each other domain
+- Read on 2026-11-16 at 5fbb2e3: `socket()` of `crates/podnet-vnet/shim/podnet-vnet.c` (`:1392`) gives each other domain
   to the host. Not measured here with libtorrent.
 - `getifaddrs` of glibc reads netlink too: the answer also changes what `getifaddrs` gives a program.
 - A program that needs the host's netlink (for example `ip`) under the shim: decide whether a variable turns the answer
@@ -7757,6 +7772,25 @@ getpid()`, and libtorrent passes that value as the expected `nlmsg_pid`, discard
 ```sh
 cargo test -p podnet-vnet
 ```
+
+## Done
+
+2026-11-16, the commit of this entry. `crates/podnet-vnet/shim/podnet-vnet.c`: `socket(AF_NETLINK, *, NETLINK_ROUTE)`
+is a `socketpair(AF_UNIX, SOCK_DGRAM)`; the shim answers each request at `send`, `sendto` and `sendmsg` (and a request of
+`write` at the next receive) with `lo` and `vnet0`, the port id of `getsockname` in `nlmsg_pid`, `NLM_F_MULTI` and
+`NLMSG_DONE`; `bind`, `connect`, `getpeername`, `recvfrom`, `recvmsg` and `SOL_NETLINK` options are answered for the
+socket. `getifaddrs`, `if_nameindex`, `if_nametoindex` and `if_indextoname` give the same view (glibc's own `getifaddrs`
+asks the kernel by internal calls, which a preload does not reach, so the shim interposes it). `PODNET_VNET_HOST_NETLINK=1`
+gives the host's view again. `docs/virtual-network.md` 3.4.
+
+`tests/shim_netlink.rs`: a dump in the way of libtorrent (`send`, `recvfrom`, the port id and the sequence checked) gives
+exactly `lo` and `vnet0` with `10.66.0.7/24`, an empty route dump, and the same by `getifaddrs`, `if_nameindex` and
+`if_nametoindex`; the control with `PODNET_VNET_HOST_NETLINK=1` (the host's kernel answers, as the stock shim does) fails
+the check. iproute2 6.x under the shim: `ip -br addr` gives `lo` and `vnet0` only, `ip link set lo down` fails with
+"Operation not permitted". `cargo test --test shim_netlink --test shim_daemon --test shim_direct`: 15 pass.
+
+Not proven: libtorrent and qBittorrent were not run here; a program that reads a netlink socket with `read(2)` after
+`write(2)` gets no answer (neither is interposed).
 
 # T-395: live: the check of agent up fails when the resolver of the runner caches NXDOMAIN for the new name
 
@@ -7836,3 +7870,41 @@ python3 scripts/check-workflows.py
 
 2026-11-16, the commit of this entry. The two steps share one device file, and the last step deletes the device. The
 next push runs live.
+
+# T-398: The release gate: a scenario for each experimental command
+
+**Source:** T-358 step 4 (2026-11-16): 22 commands have no scenario of the release binary.
+**Category:** chore
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+The help of a command with no scenario says "Experimental:" (`src/cli/scenarios.txt`). On 2026-11-16 these commands
+have none: `autostart run`, `bench`, `exit`, `expose`, `forward`, `link connect`, `link mesh`, `link close`, `link
+reconnect`, `link rotate`, `net demo`, `net switch`, `net tailscale`, `net socksify`, `net passwd-shim`, `net
+ts-shims`, `ssh-relay`, `wait`, `warp license`, `warp rotate`, `warp shell` and `wg serve`.
+
+## Premise
+
+- `python3 -I scripts/gate-scenarios.py --check` gives the list. Each command has tests with stand-ins in `cargo test`;
+  no step runs its release binary as a user does.
+
+## Approach
+
+1. A lane case for each command that runs in a lab with no network service of another party: `link` over the unix
+   carrier (`connect`, `close`, `reconnect`, `rotate`, `mesh`), `net switch` and `net socksify` with a local server,
+   `forward` and `exit` with a local SOCKS5 peer, `bench` against a local server, `wait`, `net demo`, `net passwd-shim`
+   and `net ts-shims`.
+2. A step of `live.yml` for the commands that need a live service: `expose`, `ssh-relay`, `warp license`, `warp
+   rotate`, `warp shell`, `wg serve`, `autostart run`.
+3. Write `src/cli/scenarios.txt` again; the mark leaves the help of each command that gets a scenario.
+
+## Prove
+
+```sh
+python3 -I scripts/gate-scenarios.py --check
+grep -c ' |$' src/cli/scenarios.txt   # 0 when each command has a scenario
+```

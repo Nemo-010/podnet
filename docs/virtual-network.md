@@ -80,6 +80,8 @@ address, not the wildcard.
 | `getsockname`, `getpeername` | Return the logical address. Truncate to `*len` as Linux does. A null address gives the length. A stream client with no `bind` gets a local address at `connect` (the shim address and a port of 49152-65535), and the server sees it as the peer. |
 | `setsockopt`, `getsockopt` | Record `IPPROTO_TCP` options (`TCP_NODELAY`, `TCP_KEEPIDLE`) and answer them. |
 | `close`, `dup`, `dup2`, `dup3`, `fcntl(F_DUPFD*)` | Clear or copy the virtual state. |
+| `socket(AF_NETLINK, *, NETLINK_ROUTE)` | A `socketpair(AF_UNIX, SOCK_DGRAM)`. The shim answers each request that the program sends with `send`, `sendto` or `sendmsg`; a request of `write` gets its answer at the next `recv`, `recvfrom` or `recvmsg`. See 3.4. |
+| `getifaddrs`, `if_nameindex`, `if_nametoindex`, `if_indextoname` | Give the interfaces of 3.4. |
 | `fcntl` (each other command) | Forward with the third argument in its type: none, an `int`, or a pointer (`F_GETLK`, `F_SETLK`, `F_SETLKW`, the `F_OFD_*` locks, `F_GETOWN_EX`, `F_SETOWN_EX`, the pipe, seal and hint commands, T-390). |
 
 `read`, `write`, `poll`, `epoll` and `shutdown` are not interposed. They work
@@ -90,8 +92,9 @@ on the real `AF_UNIX` descriptor.
 * The shim cannot reach a static binary. Use `podnet pod` or `podnet net proxy`
   for such programs.
 * `recvmmsg` and `io_uring` are not interposed.
-* `/proc/net/tcp`, `getifaddrs` and `/sys/class/net` do not show the virtual
-  addresses.
+* `/proc/net/tcp`, `/sys/class/net` and an `ioctl` of `SIOCGIFCONF` do not
+  show the virtual addresses. The internal calls of libc (for example the
+  `AI_ADDRCONFIG` check of `getaddrinfo`) ask the host's kernel.
 * An abstract name is global on the host (in one network namespace). Two
   programs that bind the same virtual address and port get `EADDRINUSE`.
 * An abstract name has no file permissions. Each user of the host can bind
@@ -100,8 +103,32 @@ on the real `AF_UNIX` descriptor.
   `connect` to a listener of another user fails with `ECONNREFUSED`. A
   datagram socket of the shim has `SO_PASSCRED`: before `recvfrom` and
   `recvmsg`, the shim drops each datagram of another user, with one line on
-  stderr (T-075). `recv` and `read` are not interposed: a program that
-  reads a datagram socket with them gets each datagram.
+  stderr (T-075). `recv` and `read` do not drop: a program that reads a
+  datagram socket with them gets each datagram.
+
+### 3.4 Interfaces
+
+Under the shim the program has one address. The shim gives the same two
+interfaces to `NETLINK_ROUTE`, `getifaddrs` and `if_nameindex` (T-392):
+
+| Index | Name | Addresses | Flags |
+| --- | --- | --- | --- |
+| 1 | `lo` | `127.0.0.1/8`, `::1/128` | `UP`, `LOOPBACK`, `RUNNING`, `LOWER_UP` |
+| 2 | `vnet0` | the local address `/24` (`PODNET_VNET_LOCAL_ADDR`) | `UP`, `BROADCAST`, `RUNNING`, `MULTICAST`, `LOWER_UP` |
+
+* `RTM_GETLINK` and `RTM_GETADDR` dumps give these rows, with
+  `NLM_F_MULTI`, then `NLMSG_DONE`. Each other dump (routes, neighbours,
+  rules) gives `NLMSG_DONE` only. A get of one link by index or name gives
+  that link, or `ENODEV`. A change (`RTM_NEW*`, `RTM_DEL*`, `RTM_SET*`)
+  gives `EPERM`.
+* Each answer has the port id of the socket in `nlmsg_pid`: the port id of
+  `bind`, else `getpid()` for the first socket. `getsockname` gives the
+  same port id, and `recvfrom` and `recvmsg` give the address of the kernel
+  (port 0). libtorrent drops each answer with another port id.
+* A program that enumerates the interfaces (libtorrent, `ip addr`) thus
+  listens on and advertises the virtual address, not an address of the host.
+* `PODNET_VNET_HOST_NETLINK=1` gives these calls to the host again, for a
+  program that must see the host (for example `ip` of the host).
 
 ## 4. Stack
 

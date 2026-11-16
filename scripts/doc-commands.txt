@@ -120,3 +120,4 @@ docs/virtual-network.md bc9442650d run  builds the shim with two unix forwards
 
 docs/warp.md a6d65372d0 live WARP of Cloudflare; <KEY>, HOST:PORT and ... are placeholders
 docs/warp.md 9f6cad43c6 live a WARP proxy in the foreground; ~/.config/podnet/rules of the user
+docs/development.md fe6648d10b skip a step of the maintainer: it writes src/cli/scenarios.txt in the repository

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**396 entries: 13 open, 10 partial, 36 blocked, 337 done.**
+**397 entries: 13 open, 10 partial, 36 blocked, 338 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 38 | 42 |
-| P2 | 6 | 4 | 10 | 177 | 197 |
+| P2 | 6 | 4 | 10 | 178 | 198 |
 | P3 | 7 | 4 | 24 | 121 | 156 |
-| **All** | 13 | 10 | 36 | 337 | 396 |
+| **All** | 13 | 10 | 36 | 338 | 397 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -436,9 +436,10 @@ M8 Overlays, M9 Later.
 | [T-389](crates.md) | P2 | S | M5 | chore | done | The installer core of podcrates v0.61.0: the cosign check of the core |
 | [T-390](fixes.md) | P1 | S | M5 | defect | done | vnet shim: fcntl reads the struct flock pointer of the lock commands as an int |
 | [T-391](fixes.md) | P1 | S | M5 | defect | done | vnet shim: a bind to the wildcard address gets a name that no peer dials |
-| [T-392](fixes.md) | P2 | M | M5 | defect | open | vnet shim: answer netlink route dumps with the virtual interfaces |
+| [T-392](fixes.md) | P2 | M | M5 | defect | done | vnet shim: answer netlink route dumps with the virtual interfaces |
 | [T-393](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.62.0 (the servers of the command in a network lab, the resume line of pod-session) |
 | [T-394](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.63.0 and its installer core (one signature check for the copy of the tree) |
 | [T-395](fixes.md) | P2 | S | M5 | defect | done | live: the check of agent up fails when the resolver of the runner caches NXDOMAIN for the new name |
 | [T-396](link.md) | P3 | S | M9 | chore | done | link: remove the entry 305 and the empty feature `portable` (GitHub #475) |
 | [T-397](fixes.md) | P2 | S | M5 | defect | done | live: two quick tunnels over WARP within a minute register two devices, and WARP answers HTTP 429 |
+| [T-398](fixes.md) | P2 | M | M5 | chore | open | The release gate: a scenario for each experimental command |

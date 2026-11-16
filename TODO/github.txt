@@ -297,4 +297,4 @@
 596 issue closed
 597 issue open
 598 issue closed
-599 issue open
+599 issue closed

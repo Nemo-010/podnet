@@ -121,6 +121,35 @@ the section "The release gate" of the notes of a release (the counts, and
 each row in a block that opens on a click); the job `publish` adds it to
 the body, and stops when a row fails.
 
+### The scenarios of each command
+
+`src/cli/scenarios.txt` has one line for each command with no subcommand:
+the path of the command, then each scenario that runs the release binary
+with that command (T-358 step 4):
+
+* `live:STEP`: a step of `live.yml` (live services, each push to `main`),
+* `ci:STEP`: a step of the job `static` of `ci.yml` (the consumers),
+* `lane:CASE`: a case of `scripts/lab-lane.sh` (the gate of each release).
+
+`scripts/gate-scenarios.py` finds each call of the binary in the steps and
+in the scripts that the steps run. The cases of the lane have a map in the
+script (`LANE_MAP`). A command with no scenario is experimental: its help
+starts with "Experimental:" (`src/cli/help.rs`). After a change of a
+workflow, of the lane or of the commands, write the file again:
+
+```sh
+python3 -I scripts/gate-scenarios.py --write
+```
+
+`--check` fails when the file does not agree (`check.sh` and the job
+`workflows` of `ci.yml` run it). A new command needs a new line `PATH |`
+first; a test of `src/cli/help_tests.rs` checks that each command has a
+line. `--notes LANE.TXT` writes the section "The scenarios of each command"
+of the notes of a release: the experimental commands, and each other
+command with its scenarios. A lane scenario counts only when a row of its
+case passed in LANE.TXT. The job `publish` of `release.yml` adds it after
+the section of the gate.
+
 ### The network labs
 
 From podcrates `v0.60.0`, `podlab` has network labs. Each lab is a

@@ -134,6 +134,43 @@ pub(crate) fn example_path(cmd: &clap::Command, line: &str) -> String {
     path
 }
 
+/// The scenarios of each command with no subcommand (T-358 step 4):
+/// `PATH | SCENARIO; ...`. `scripts/gate-scenarios.py --write` writes the
+/// file from the workflows and the lane, and `--check` checks it.
+pub(crate) const SCENARIOS: &str = include_str!("scenarios.txt");
+
+/// The line in the help of a command with no scenario.
+pub(crate) const EXPERIMENTAL: &str = "Experimental: no scenario of the release binary runs this command (a step of \
+live.yml, of the job static of ci.yml, or a row of the release gate). Only the tests with stand-ins check it.";
+
+/// Each command path of [`SCENARIOS`] (`warp scan`), with its scenarios.
+pub(crate) fn scenarios() -> Vec<(&'static str, Vec<&'static str>)> {
+    SCENARIOS
+        .lines()
+        .filter(|l| !l.starts_with('#') && !l.trim().is_empty())
+        .filter_map(|l| l.split_once('|'))
+        .map(|(path, rest)| {
+            let list = rest.split(';').map(str::trim).filter(|s| !s.is_empty());
+            (path.trim(), list.collect())
+        })
+        .collect()
+}
+
+/// The command at `path` (`podnet warp scan`), with [`EXPERIMENTAL`] before
+/// its help when no scenario runs it.
+fn with_mark(cmd: clap::Command, path: &str) -> clap::Command {
+    let Some(words) = path.strip_prefix("podnet ") else {
+        return cmd;
+    };
+    if scenarios()
+        .iter()
+        .any(|(p, list)| *p == words && list.is_empty())
+    {
+        return cmd.before_help(EXPERIMENTAL);
+    }
+    cmd
+}
+
 /// E7: the examples of `podnet man examples` in the help of their command
 /// (`podnet tunnel --help`), from the one table of the manual.
 fn with_examples(cmd: clap::Command, path: &str, root: &clap::Command) -> clap::Command {
@@ -150,6 +187,7 @@ fn with_examples(cmd: clap::Command, path: &str, root: &clap::Command) -> clap::
         let sub_path = format!("{path} {name}");
         cmd = cmd.mut_subcommand(&name, |sub| with_examples(sub, &sub_path, root));
     }
+    let cmd = with_mark(cmd, path);
     if examples.is_empty() {
         return cmd;
     }

@@ -437,6 +437,9 @@ jobs:
             # fails when a row of the lane fails.
             sh scripts/gate-notes.sh "$RUNNER_TEMP/gate/lane.txt" \
               "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            printf '\n'
+            # The experimental commands: no scenario runs them.
+            python3 -I scripts/gate-scenarios.py --notes "$RUNNER_TEMP/gate/lane.txt"
             printf '\n## The commits of this release\n\n'
           } > "$RUNNER_TEMP/body.md"
           budget=$((120000 - $(wc -c < "$RUNNER_TEMP/body.md")))

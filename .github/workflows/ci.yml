@@ -428,6 +428,10 @@ jobs:
       # T-358, step 2: each sh block of the documents has a class.
       - name: The class of each documented command
         run: python3 -I scripts/doc-commands.py --check
+      # T-358, step 4: the scenarios of each command agree with the
+      # workflows and the lane.
+      - name: The scenarios of each command
+        run: python3 -I scripts/gate-scenarios.py --check
       # #246: the shell scripts have no shellcheck warning.
       - name: shellcheck
         run: |

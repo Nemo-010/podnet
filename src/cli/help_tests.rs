@@ -1,5 +1,6 @@
 use crate::cli::help::{
-    example_path, first_sentence, top_command, usage_hints, word_hint, HELP_GROUPS,
+    example_path, first_sentence, scenarios, top_command, usage_hints, word_hint, EXPERIMENTAL,
+    HELP_GROUPS,
 };
 use crate::cli::Cli;
 use clap::{CommandFactory as _, Parser as _};
@@ -224,4 +225,57 @@ fn the_manual_names_each_command_and_flag() {
         text.contains("podnet-netns"),
         "the pod section has the podnet-netns usage"
     );
+}
+
+/// T-358 step 4: `src/cli/scenarios.txt` has one line for each command with
+/// no subcommand (not hidden), and no other line.
+#[test]
+fn the_table_of_scenarios_has_each_command() {
+    fn leaves(cmd: &clap::Command, path: &str, out: &mut Vec<String>) {
+        let subs: Vec<&clap::Command> = cmd
+            .get_subcommands()
+            .filter(|c| c.get_name() != "help" && !c.is_hide_set())
+            .collect();
+        if subs.is_empty() && !path.is_empty() {
+            out.push(path.to_string());
+        }
+        for sub in subs {
+            let next = format!("{path} {}", sub.get_name());
+            leaves(sub, next.trim(), out);
+        }
+    }
+    let mut want = Vec::new();
+    leaves(&Cli::command(), "", &mut want);
+    want.sort();
+    let mut have: Vec<String> = scenarios().iter().map(|(p, _)| p.to_string()).collect();
+    have.sort();
+    assert_eq!(
+        have, want,
+        "run: python3 scripts/gate-scenarios.py --write, after a new line for a new command"
+    );
+}
+
+/// T-358 step 4: a command with no scenario says that it is experimental in
+/// its help; a command with a scenario does not.
+#[test]
+fn a_command_with_no_scenario_is_experimental_in_its_help() {
+    let help = |path: &str| -> String {
+        let mut cmd = top_command();
+        for name in path.split_whitespace() {
+            cmd = cmd.find_subcommand(name).unwrap().clone();
+        }
+        cmd.render_long_help().to_string()
+    };
+    let list = scenarios();
+    let (bare, _) = list
+        .iter()
+        .find(|(_, s)| s.is_empty())
+        .expect("an experimental command");
+    let (tested, _) = list
+        .iter()
+        .find(|(_, s)| !s.is_empty())
+        .expect("a command with a scenario");
+    assert!(help(bare).contains("Experimental: "), "{}", help(bare));
+    assert!(!help(tested).contains("Experimental: "), "{}", help(tested));
+    assert!(EXPERIMENTAL.starts_with("Experimental: "));
 }
