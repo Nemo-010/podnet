@@ -8171,3 +8171,43 @@ socket"), for the 150 s of the step. The SSH client of the operator reached the 
 ## Blocker
 
 The relay server and `pod-relay` of PodUtils/podcrates.
+
+# T-407: podnet connect resets a local connection when one WebSocket dial fails
+
+**Source:** live 43912914825 on ce9456d, attempt 2 (2026-11-16): the step "Throughput of the HTTP path and of a --forward
+WebSocket" failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+"latency quic+direct connect: 1 of 20 requests FAILED": one `curl` through `podnet connect` got `(56) Recv failure:
+Connection reset by peer`. The step printed the log of the tunnel only, not the log of `podnet connect`.
+
+## Premise
+
+- `ws::connect_bridge` (`src/ws.rs`) dials the WebSocket of the forward once for each local connection; a failed dial
+  drops the local stream (a reset at the client). No byte of the local stream went out before the dial, so a new dial
+  loses nothing.
+
+## Approach
+
+1. Dial again after a failure that can pass (a reset, a time limit, HTTP 5xx), 3 tries with a backoff of 250 ms and 500 ms.
+   A URL fault and HTTP 4xx are final.
+2. `scripts/live-throughput.sh` prints the log of `podnet connect` with the log of the tunnel at a failure.
+
+## Prove
+
+```sh
+cargo test --lib ws::tests
+# live passes the step on the next push
+```
+
+## Done
+
+2026-11-16, the commit of this entry. `dial_again` of `src/ws.rs`, with one warning line for each new try. The test
+`a_refused_upgrade_is_tried_again`: a server that answers the first upgrade with HTTP 503 and accepts the second gives a
+session; a server that answers HTTP 403 gets one connection and the error names 403.

@@ -207,8 +207,40 @@ fn failed(url: &str, err: ConnectError) -> anyhow::Error {
 
 /// Connect a local socket to a remote WebSocket endpoint.
 pub async fn connect_bridge(url: &str, io: BoxedIo, authorization: Option<&str>) -> Result<()> {
-    let session = dial(url, DIAL_TIMEOUT, authorization).await?;
+    let session = dial_again(url, authorization).await?;
     bridge_session(session, io, &Metrics::new()).await
+}
+
+/// The tries of a dial of [`connect_bridge`] (T-407).
+const DIAL_TRIES: u32 = 3;
+
+/// [`dial`], tried again after a failure that can pass (a reset, a
+/// refusal of the edge with HTTP 5xx, a time limit): no byte of the local
+/// stream went out yet, so a new dial loses nothing. HTTP 4xx is final.
+async fn dial_again(url: &str, authorization: Option<&str>) -> Result<Session> {
+    let mut tries = 0;
+    loop {
+        tries += 1;
+        let err = match pod_ws::bridge::dial(
+            url,
+            &way(),
+            &pod_tls::Trust::Default,
+            DIAL_TIMEOUT,
+            authorization,
+        )
+        .await
+        {
+            Ok(session) => return Ok(session),
+            Err(err) => err,
+        };
+        let final_error = matches!(err, ConnectError::Config(_))
+            || matches!(err, ConnectError::Refused { status, .. } if (400..500).contains(&status));
+        if final_error || tries >= DIAL_TRIES {
+            return Err(failed(url, err));
+        }
+        tracing::warn!(attempt = tries, error = %failed(url, err), "the WebSocket dial failed; podnet dials again");
+        tokio::time::sleep(std::time::Duration::from_millis(250 * u64::from(tries))).await;
+    }
 }
 
 /// Pump bytes both ways between a WebSocket of [`dial`] and a raw stream.
@@ -400,6 +432,70 @@ mod tests {
         assert!(
             !meta.iter().any(|(k, _)| k.contains("Sec-WebSocket-Accept")),
             "{meta:?}"
+        );
+    }
+
+    /// T-407: a dial that the far end refuses once with HTTP 503 is tried
+    /// again; HTTP 403 is final.
+    #[tokio::test]
+    async fn a_refused_upgrade_is_tried_again() {
+        use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+        crate::test_host::need_loopback!();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let first_status = std::sync::Arc::new(std::sync::Mutex::new("503 Service Unavailable"));
+        let status = first_status.clone();
+        tokio::spawn(async move {
+            // The first connection gets the status; each next one an upgrade.
+            let (mut c, _) = listener.accept().await.unwrap();
+            let mut buf = [0u8; 4096];
+            let _ = c.read(&mut buf).await;
+            let line = *status.lock().unwrap();
+            let _ = c
+                .write_all(format!("HTTP/1.1 {line}\r\ncontent-length: 0\r\n\r\n").as_bytes())
+                .await;
+            drop(c);
+            loop {
+                let (c, _) = listener.accept().await.unwrap();
+                tokio::spawn(async move {
+                    if let Ok(mut ws) = tokio_tungstenite::accept_async(c).await {
+                        use futures::{SinkExt as _, StreamExt as _};
+                        while let Some(Ok(m)) = ws.next().await {
+                            if ws.send(m).await.is_err() {
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+        });
+        let url = format!("ws://{addr}/");
+        assert!(dial_again(&url, None).await.is_ok(), "a 503 is tried again");
+        *first_status.lock().unwrap() = "403 Forbidden";
+        // A new server for the 403 case.
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let accepted = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let count = accepted.clone();
+        tokio::spawn(async move {
+            loop {
+                let (mut c, _) = listener.accept().await.unwrap();
+                count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                let mut buf = [0u8; 4096];
+                let _ = c.read(&mut buf).await;
+                let _ = c
+                    .write_all(b"HTTP/1.1 403 Forbidden\r\ncontent-length: 0\r\n\r\n")
+                    .await;
+            }
+        });
+        let err = dial_again(&format!("ws://{addr}/"), None)
+            .await
+            .unwrap_err();
+        assert!(format!("{err:#}").contains("403"), "{err:#}");
+        assert_eq!(
+            accepted.load(std::sync::atomic::Ordering::SeqCst),
+            1,
+            "a 403 is final"
         );
     }
 

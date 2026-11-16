@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**405 entries: 15 open, 11 partial, 37 blocked, 342 done.**
+**406 entries: 15 open, 11 partial, 37 blocked, 343 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 38 | 42 |
-| P2 | 6 | 5 | 11 | 181 | 203 |
+| P2 | 6 | 5 | 11 | 182 | 204 |
 | P3 | 9 | 4 | 24 | 122 | 159 |
-| **All** | 15 | 11 | 37 | 342 | 405 |
+| **All** | 15 | 11 | 37 | 343 | 406 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -451,3 +451,4 @@ M8 Overlays, M9 Later.
 | [T-404](later.md) | P3 | M | M9 | feature | open | forward: a name table (`--name NAME=HOST:PORT`, `--alias-port`) with an address of 127.0.0.0/8 for each name and the DNS door (GitHub #601) |
 | [T-405](later.md) | P3 | L | M9 | feature | open | route: a rate, a quota, a period and `on_exhaust` for each door, with the usage kept across a restart (GitHub #602) |
 | [T-406](fixes.md) | P2 | S | M5 | defect | blocked | live: the relay keeps a lost socket of a node for minutes after a reset (409), and SSH through it hangs |
+| [T-407](fixes.md) | P2 | S | M5 | defect | done | podnet connect resets a local connection when one WebSocket dial fails |

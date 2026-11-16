@@ -60,6 +60,10 @@ done
 
 log() {
     sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g' "$dir/tunnel.err" | tail -25
+    if [ -s "$dir/connect.err" ]; then
+        echo "== podnet connect"
+        sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g' "$dir/connect.err" | tail -25
+    fi
 }
 
 rate() {
