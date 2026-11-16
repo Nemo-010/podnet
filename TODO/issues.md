@@ -286,7 +286,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #594 | [gh action] requested: ci and deny on the fix of shellcheck and the reason of pod doctor (T-358, T-381) | closed: ci 43782124302 and deny 43782129951 passed on 077a9d1 | none |
 | #595 | [gh action] requested: ci on the consumer .NET HttpClient under the shim (T-358 step 3) | closed: ci 43784289289 passed on aa8ee52 | none |
 | #596 | [gh action] requested: ci and deny on the consumer Python, the fix T-382 and the take of v0.58.0 (T-358, T-382, T-385) | closed: ci 43788961230 and deny 43788964639 passed on 2047070 | none |
-| #597 | COORD-096: podnet took v0.58.0 to v0.61.0 (to podcrates) | open (a message to podcrates) | none |
+| #597 | COORD-096: podnet took v0.58.0 to v0.62.0 (to podcrates) | open (a message to podcrates) | none |
 | #598 | [gh action] requested: ci, deny and a dry run of release on the installer core, the row proxy-only and the take of v0.59.0 (T-360, T-358, T-386) | closed: deny 43796829153 and release 43796832964 passed on 1852fcc; ci 43796824990 failed there on two install-test cases (T-360, fixed in c24e0cf); ci 43820922609, deny 43820922608, secrets 43820922620 and live 43820922672 passed on 01487d8 | none |
 | #599 | vnet: let a stock client bind a wildcard, lock a file and enumerate interfaces | open (outside the team: verified, labelled `confirmed`): T-390 and T-391 are done; T-392 is open | T-390, T-391, T-392 |
 

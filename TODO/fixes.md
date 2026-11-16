@@ -7000,7 +7000,9 @@ passed, then `publish` ran (a dry run: no tag, no proofs).
 writes the section "The release gate" (the counts, and each row in a `<details>` block), and the job `publish` of
 `release.yml` adds it to the body of the release. It exits 1 on a file with no row and on a failed row. Measured on the
 lane of this container (`/var/tmp/lane/full.txt`, 245 rows): with the 8 rows of `noexec-home` of the HOME fault it exits
-1; with them removed it gives 215 pass, 0 fail, 22 n.a. and 237 table rows. What remains of step 4: a feature with no
+1; with them removed it gives 215 pass, 0 fail, 22 n.a. and 237 table rows. The dry run of `release.yml` on 81d2e73
+(run 43849173659): `gate / lane` passed, and the step "the body of the release" of `publish` passed with the section; the
+artifact `gate` of that run gives 226 pass, 0 fail, 24 n.a. (250 rows). What remains of step 4: a feature with no
 passing scenario is marked experimental in its help and in the notes.
 
 What remains of step 1: a row that uses WebSocket through the proxy (`ws-upgrade-refused`: the relay and the tunnel);
