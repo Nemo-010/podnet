@@ -1,13 +1,13 @@
 # Progress
 
-`TODO/INDEX.md` holds 386 entries: 12 open, 10 partial, 37 blocked, 327 done.
+`TODO/INDEX.md` holds 387 entries: 12 open, 10 partial, 37 blocked, 328 done.
 
 ## State
 
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
-- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.59.0`: `pod-todo`, `pod-core`, `pod-tls`,
+- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.60.0`: `pod-todo`, `pod-core`, `pod-tls`,
   `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
   `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp`, `pod-wormhole`
   (the transfer), `pod-extract` and `pod-testkit`. Next

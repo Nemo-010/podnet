@@ -352,6 +352,10 @@ podnet tunnel
 
     Give only one of --quiet, --verbose.
 
+    --auth-user needs --auth-password-file.
+
+    --auth-password-file needs --auth-user.
+
   Examples:
     A quick tunnel in the background: one JSON document with the URL, then exit
     0.
@@ -626,6 +630,16 @@ podnet serve
 
     Give only one of --quiet, --verbose.
 
+    --auth-user needs --auth-password-file.
+
+    --auth-password-file needs --auth-user.
+
+    --max-upload needs --upload.
+
+    --at needs --at-listen.
+
+    --at-listen needs --at.
+
   Examples:
     Serve a directory.
         $ podnet serve --dir ./public
@@ -820,6 +834,10 @@ podnet share
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
+
+    --auth-user needs --auth-password-file.
+
+    --auth-password-file needs --auth-user.
 
   Examples:
     Receive files, with a PIN.
@@ -1082,6 +1100,14 @@ podnet git serve
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
+
+    --auth-user needs --auth-password-file.
+
+    --auth-password-file needs --auth-user.
+
+    --push-user needs --push-password-file.
+
+    --push-password-file needs --push-user.
 
   Examples:
     Serve the repositories through a quick tunnel: anyone can clone, the user
@@ -1549,6 +1575,10 @@ podnet connect
 
     Give only one of --quiet, --verbose.
 
+    --auth-user needs --auth-password-file.
+
+    --auth-password-file needs --auth-user.
+
   Examples:
     The client side of --forward.
         $ podnet connect wss://NAME.trycloudflare.com/__podnet/ws -L tcp://127.0.0.1:8080
@@ -1894,6 +1924,28 @@ podnet route
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
+
+    --metrics needs --status.
+
+    --select needs --control.
+
+    --rotate needs --control.
+
+    --reconnect needs --control.
+
+    --interval needs --control.
+
+    --add-door needs --control.
+
+    --remove-door needs --control.
+
+    --add-network needs --control.
+
+    --remove-network needs --control.
+
+    --to needs --check.
+
+    --door needs --to.
 
 podnet ssh-relay
   Publish a unix socket through an SSH relay (a remote forward on port 443),
@@ -2706,6 +2758,10 @@ podnet demo
 
     Give only one of --quiet, --verbose.
 
+    --auth-user needs --auth-password-file.
+
+    --auth-password-file needs --auth-user.
+
   Examples:
     Make a quick tunnel to the built-in origin, and fetch its public URL.
         $ podnet demo --exit-on-verify
@@ -2977,6 +3033,8 @@ podnet net shim
 
     Give only one of --quiet, --verbose.
 
+    --socks-socket needs --socks-route.
+
 podnet net addresses
   Print the default virtual address plan.
 
@@ -3155,6 +3213,16 @@ podnet net proxy
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
+
+    --switch-token-file needs --switch.
+
+    --drop needs --switch.
+
+    --duplicate needs --switch.
+
+    --reorder needs --switch.
+
+    --seed needs --switch.
 
   Examples:
     A virtual address for a real service.
@@ -5309,6 +5377,12 @@ podnet warp proxy
 
     Give only one of --quiet, --verbose.
 
+    --proxy-user needs --proxy-password-file.
+
+    --proxy-password-file needs --proxy-user.
+
+    --l4-sni needs --l4.
+
   Examples:
     A SOCKS5 and HTTP CONNECT proxy through WARP.
         $ podnet warp proxy --listen tcp://127.0.0.1:40000
@@ -5483,6 +5557,10 @@ podnet warp up
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
+
+    --proxy-user needs --proxy-password-file.
+
+    --proxy-password-file needs --proxy-user.
 
 podnet warp down
   Stop what podnet warp up started, and remove its env file and its block in
@@ -7071,6 +7149,10 @@ podnet relay node
 
     Give only one of --quiet, --verbose.
 
+    --seal needs --allow.
+
+    --allow needs --seal.
+
   Examples:
     Give the SSH server of this host to the operators of the pair, through the
     relay.
@@ -7189,6 +7271,12 @@ podnet relay connect
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
+
+    --seal needs --resume.
+
+    --peer needs --seal.
+
+    --allow needs --seal.
 
 podnet relay stop
   Stop a node and its sessions at the relay (POST /v1/stop), and remove the
@@ -7600,6 +7688,12 @@ podnet link listen
 
     Give only one of --quiet, --verbose.
 
+    --up-carrier needs --down-carrier.
+
+    --down-carrier needs --up-carrier.
+
+    --announce-weight needs --announce.
+
   Examples:
     A link listener on a unix socket (mode 0600). A peer must prove its key and
     be in peers.txt.
@@ -7803,6 +7897,20 @@ podnet link dial
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
+
+    --up-carrier needs --down-carrier.
+
+    --down-carrier needs --up-carrier.
+
+    --resolve-at needs --listen.
+
+    --announce-weight needs --announce.
+
+    --node needs --announce.
+
+    --hops needs --node.
+
+    --json needs --check.
 
   Examples:
     Connect to a link listener, check its key, and print its fingerprint.
@@ -8049,6 +8157,12 @@ podnet link connect
 
     Give only one of --quiet, --verbose.
 
+    --up-carrier needs --down-carrier.
+
+    --down-carrier needs --up-carrier.
+
+    --announce-weight needs --announce.
+
   Examples:
     Hold a link to a listener and run a control socket for it.
         $ podnet link connect /run/user/1000/app.sock --peer FINGERPRINT --control /run/user/1000/link.ctl --detach --name peer1
@@ -8125,6 +8239,8 @@ podnet link status
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
+
+    --token-file needs --control.
 
 podnet link mesh
   Show the local view of a mesh: the nodes (fingerprint, name, last seq, hops,
@@ -8523,6 +8639,10 @@ podnet link carriers
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
+
+    --up-carrier needs --down-carrier.
+
+    --down-carrier needs --up-carrier.
 
 podnet pod
   Run a program with all its traffic sent through a proxy (podnet-netns).
@@ -8953,6 +9073,12 @@ podnet doctor
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
+
+    --ssh-relay needs --ssh-user.
+
+    --ssh-user needs --ssh-relay.
+
+    --connect-proxy needs --ssh-relay and --ssh-user.
 
   Examples:
     Test the path from this host to the edge; the last line names the step to

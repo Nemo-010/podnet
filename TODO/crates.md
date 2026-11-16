@@ -1499,3 +1499,48 @@ resolution only (T-383, Correction).
 
 `sh scripts/agent/check.sh` exits 0; `cargo clippy --locked --workspace --all-targets --features full -- -D warnings`
 exits 0; `cargo check --workspace --target i686-unknown-linux-musl` exits 0.
+
+# T-387: Take podcrates v0.60.0 (the network labs of pod-lab, clap's requires in pod-manual)
+
+**Source:** PodUtils/podcrates#206 (COORD-119 of podcrates, 2026-11-16).
+**Category:** chore
+**Milestone:** M3
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podcrates v0.60.0 is at the commit `725b7297`. Its notes give the network labs of `pod-lab` (`proxy-only`,
+`proxy-tls-reterminate`, `proxy-per-name`, `sni-allowlist`, `no-proxy-no-dns`, `ws-upgrade-refused`, `ipv6-only`),
+20 new rows of `pod-hostprobe`, and clap's `requires` as `Rule::Needs` in `pod-manual`. Breaking:
+`pod_hostprobe::probes::Kind::Here`, the removed `LabFact` variants of `pod_lab`, and the field `value` of
+`pod_manual::Rule::Needs`.
+
+## Premise
+
+- Read at the tag: `PodUtils/podcrates:docs/releases/v0.60.0.md` (through COORD-119) and `adoption/podnet/` (only the
+  old hand-off of `pod-warp`, the same blobs as at v0.59.0).
+- podnet does not use `pod_hostprobe`, `pod_lab` or `pod_manual::Rule`.
+- `src/cli/opts.rs` has two `requires` rules: they now come into the manual.
+
+## Approach
+
+1. Move each podcrates tag of the `Cargo.toml` files to `v0.60.0`; update `Cargo.lock` and `fuzz/Cargo.lock`.
+2. Move `uses:` and `podcrates_ref` of `.github/workflows/issue-sync.yml` to the commit of the tag.
+3. Run the check. The network labs go into the lane under T-358.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-16, the commit of this entry. Each podcrates tag is `v0.60.0`; `Cargo.lock` and `fuzz/Cargo.lock` change only
+the crates of podcrates. `issue-sync.yml` calls the workflow of podcrates at `725b7297aa9218c098527970897118abbcf5ff3d`
+with `podcrates_ref: v0.60.0`. No code change: podnet does not use the changed APIs. The manual now gives the
+`requires` rules of `tunnel`, `serve` and `share` (`--auth-user` needs `--auth-password-file`, and the reverse;
+`--max-upload` needs `--upload`; `--at` and `--at-listen` need each other); `llms-full.txt` is written again.
+`sh scripts/agent/check.sh`: each step passes (the record after this section).
