@@ -7878,7 +7878,7 @@ next push runs live.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -7908,3 +7908,15 @@ ts-shims`, `ssh-relay`, `wait`, `warp license`, `warp rotate`, `warp shell` and 
 python3 -I scripts/gate-scenarios.py --check
 grep -c ' |$' src/cli/scenarios.txt   # 0 when each command has a scenario
 ```
+
+## Correction
+
+2026-11-16, the first part. The lane case `local` also runs `net demo` (the line `PROOF:`), `net passwd-shim` (then
+`whoami` under the preload gives the user `labuser`), `net ts-shims` (its `getent passwd labuser`) and `net socksify`
+(the shim is built). A new case `link-control` runs `link listen --detach`, `wait`, `link connect --detach`, `link
+status`, `forward -L unix:PATH=peer:FP/raw` (a client gets `echo:ping` from the echo server behind the listener),
+`link reconnect` (link 1 to 2), `link rotate` (2 to 3) and `link close` of both instances. As uid 65534 in
+`podlab` v0.63.0: both cases pass in `bind-denied`, `no-kvm` and `noexec-tmp`, `local` in `no-passwd-entry` and
+`proc-masked`; `link-control` is n.a. in `listen-denied` (the lab refuses `listen(2)` of AF_UNIX). 12 commands stay
+experimental: `autostart run`, `bench`, `exit`, `expose`, `link mesh`, `net switch`, `net tailscale`,
+`ssh-relay`, `warp license`, `warp rotate`, `warp shell` and `wg serve`.

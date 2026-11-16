@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**397 entries: 13 open, 10 partial, 36 blocked, 338 done.**
+**397 entries: 12 open, 11 partial, 36 blocked, 338 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 38 | 42 |
-| P2 | 6 | 4 | 10 | 178 | 198 |
+| P2 | 5 | 5 | 10 | 178 | 198 |
 | P3 | 7 | 4 | 24 | 121 | 156 |
-| **All** | 13 | 10 | 36 | 338 | 397 |
+| **All** | 12 | 11 | 36 | 338 | 397 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -442,4 +442,4 @@ M8 Overlays, M9 Later.
 | [T-395](fixes.md) | P2 | S | M5 | defect | done | live: the check of agent up fails when the resolver of the runner caches NXDOMAIN for the new name |
 | [T-396](link.md) | P3 | S | M9 | chore | done | link: remove the entry 305 and the empty feature `portable` (GitHub #475) |
 | [T-397](fixes.md) | P2 | S | M5 | defect | done | live: two quick tunnels over WARP within a minute register two devices, and WARP answers HTTP 429 |
-| [T-398](fixes.md) | P2 | M | M5 | chore | open | The release gate: a scenario for each experimental command |
+| [T-398](fixes.md) | P2 | M | M5 | chore | partial | The release gate: a scenario for each experimental command |

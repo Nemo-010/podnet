@@ -40,7 +40,7 @@
 
 set -u
 
-CASES="version man local doctor shim-forward link-unix pod-seccomp pod-netns net-proxy-unix"
+CASES="version man local doctor shim-forward link-unix link-control pod-seccomp pod-netns net-proxy-unix"
 NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni-allowlist no-proxy-no-dns ipv6-only"
 NET_CASES="version doctor net-curl net-pod-auto net-pod-seccomp net-pod-netns"
 PROXY_CASES="proxy-direct proxy-port proxy-pod-auto proxy-pod-seccomp proxy-pod-env proxy-doctor"
@@ -106,6 +106,27 @@ case_main() {
         timeout 60 "$podnet" agent status >"$dir/local.txt" 2>"$dir/local.err"
         code=$?
         local_check 'proxy:' || exit 1
+        timeout 60 "$podnet" net demo >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check '^PROOF: ' || exit 1
+        # The passwd shim: a program under the preload finds the user.
+        timeout 60 "$podnet" net passwd-shim --out "$dir/pw" --user labuser >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check 'fakepwd' || exit 1
+        LD_PRELOAD="$dir/pw/fakepwd.so" SANDHOME_PASSWD="$dir/pw/passwd" whoami >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check '^labuser$' || exit 1
+        timeout 60 "$podnet" net ts-shims --out "$dir/ts" --user labuser >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check '' || exit 1
+        "$dir/ts/getent" passwd labuser >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check '^labuser:' || exit 1
+        # The socks shim is built, with its environment.
+        timeout 60 "$podnet" net socksify --out "$dir/socks" >"$dir/local.txt" 2>"$dir/local.err"
+        code=$?
+        local_check '^export LD_PRELOAD=' || exit 1
+        test -s "$dir/socks/libpodnet-socks.so" || { echo "no libpodnet-socks.so"; exit 1; }
         ;;
     doctor)
         timeout 120 "$podnet" doctor >"$dir/doctor.txt" 2>&1
@@ -181,6 +202,52 @@ case_main() {
             exit 77
         fi
         exit 1
+        ;;
+    link-control)
+        # A listener and a dialer in the background, and the control
+        # commands of the dialer (T-398).
+        fp=$("$podnet" link status --create --json | python3 -I -c \
+            'import json,sys; print(json.load(sys.stdin)["identity"]["fingerprint"])') || exit 1
+        printf '%s\n' "$fp" >"$dir/allow"
+        chmod 600 "$dir/allow"
+        if ! "$podnet" link listen "$dir/link.sock" --allow "$dir/allow" --to "unix:$dir/../echo.sock" \
+            --detach --name lane-l >"$dir/listen.txt" 2>&1; then
+            cat "$dir/listen.txt"
+            listen_refused "$dir"
+            exit $?
+        fi
+        bad=0
+        timeout 30 "$podnet" wait lane-l >"$dir/wait.txt" 2>&1 || bad=1
+        grep -q '"command":"link listen"' "$dir/wait.txt" || bad=1
+        if test $bad -eq 0; then
+            "$podnet" link connect "$dir/link.sock" --peer "$fp" --detach --name lane-c >"$dir/connect.txt" 2>&1 || bad=1
+        fi
+        if test $bad -eq 0; then
+            "$podnet" link status lane-c >"$dir/status.txt" 2>&1 || bad=1
+            grep -q ' up ' "$dir/status.txt" || bad=1
+            # A unix listener of forward to the service raw of the peer.
+            "$podnet" forward -L "unix:$dir/f.sock=peer:$fp/raw" >"$dir/forward.txt" 2>&1 &
+            fwd=$!
+            if wait_path "$dir/f.sock"; then
+                got=$(timeout 30 python3 -I "$dir/../unix-client.py" "$dir/f.sock")
+                echo "forward: $got"
+                test "$got" = "echo:ping" || bad=1
+            else
+                bad=1
+            fi
+            kill $fwd 2>/dev/null
+            timeout 30 "$podnet" link reconnect lane-c >"$dir/reconnect.txt" 2>&1 || bad=1
+            grep -q '^reconnect link 1 -> 2 ' "$dir/reconnect.txt" || bad=1
+            timeout 30 "$podnet" link rotate lane-c >"$dir/rotate.txt" 2>&1 || bad=1
+            grep -q '^rotate link 2 -> 3 ' "$dir/rotate.txt" || bad=1
+            timeout 30 "$podnet" link close lane-c >"$dir/close.txt" 2>&1 || bad=1
+            grep -q '^closed link 3 ' "$dir/close.txt" || bad=1
+        fi
+        "$podnet" link close lane-l >"$dir/closel.txt" 2>&1 || bad=1
+        cat "$dir/listen.txt" "$dir"/wait.txt "$dir"/connect.txt "$dir"/status.txt "$dir"/forward.txt "$dir"/reconnect.txt \
+            "$dir"/rotate.txt "$dir"/close.txt "$dir"/closel.txt 2>/dev/null
+        echo "bad $bad"
+        exit $bad
         ;;
     net-proxy-unix)
         "$podnet" net proxy --listen "unix:$dir/proxy.sock" >"$dir/proxy.txt" 2>&1 &
@@ -386,6 +453,20 @@ wait_path() {
 }
 
 write_helpers() {
+    cat >"$1/unix-client.py" <<'EOF'
+import socket, sys
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.connect(sys.argv[1])
+s.sendall(b"ping")
+s.shutdown(socket.SHUT_WR)
+data = b""
+while True:
+    b = s.recv(4096)
+    if not b:
+        break
+    data += b
+print(data.decode())
+EOF
     cat >"$1/echo.py" <<'EOF'
 import os, socket, sys
 path = sys.argv[1]

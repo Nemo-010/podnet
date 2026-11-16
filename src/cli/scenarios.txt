@@ -19,31 +19,31 @@ demo | live:Quick tunnel, QUIC (UDP 7844); live:Quick tunnel, HTTP/2 (TCP 7844);
 doctor | live:podnet doctor; live:Quick tunnel with UDP and TCP 7844 dropped (staggered legs); live:warp up, env, exec, --persist and down; live:An IPv6-only host; live:The test box; live:The test box fails with a binary that exits 3; lane:doctor; lane:proxy-doctor
 exit |
 expose |
-forward |
+forward | lane:link-control
 git serve | live:Git over HTTPS through a quick tunnel; live:Git over SSH through the reverse relay
 git init | live:Git over HTTPS through a quick tunnel; live:Git over SSH through the reverse relay
 git urls | live:Git over HTTPS through a quick tunnel; live:Git over SSH through the reverse relay
-link listen | lane:link-unix
+link listen | lane:link-unix; lane:link-control
 link dial | lane:link-unix
-link connect |
-link status | lane:link-unix
+link connect | lane:link-control
+link status | lane:link-unix; lane:link-control
 link mesh |
-link close |
-link reconnect |
-link rotate |
+link close | lane:link-control
+link reconnect | lane:link-control
+link rotate | lane:link-control
 link carriers | lane:local
 logs | live:warp tun --default-route (root), then everything as before; live:Router with WARP, the relay and a failover
 man | lane:man
-net demo |
+net demo | lane:local
 net doctor | live:UDP probe, answered and refused
 net shim | ci:The consumer .NET HttpClient under the shim; ci:The consumer check fails on its plant; ci:The consumer Python HTTP client under the shim; ci:The consumer Python check fails on its plant; lane:shim-forward
 net addresses | lane:local
 net proxy | lane:net-proxy-unix
 net switch |
 net tailscale |
-net socksify |
-net passwd-shim |
-net ts-shims |
+net socksify | lane:local
+net passwd-shim | lane:local
+net ts-shims | lane:local
 pod | lane:pod-seccomp; lane:pod-netns; lane:net-pod-auto; lane:net-pod-seccomp; lane:net-pod-netns; lane:proxy-pod-auto; lane:proxy-pod-seccomp; lane:proxy-pod-env
 ports | lane:local
 ps | live:SSH through the reverse relay; live:agent up and down; live:An IPv6-only host
@@ -62,7 +62,7 @@ status | lane:local
 stop | live:File server through a quick tunnel; live:Git over HTTPS through a quick tunnel; live:File server through the reverse relay; live:200 MiB each way through the reverse relay with --resume; live:Git over SSH through the reverse relay; live:warp tun --default-route (root), then everything as before; live:warp tun --default-route with no default route (proxy only); live:An IPv6-only host; live:Router with WARP, the relay and a failover
 tunnel | live:SIGTERM between the ready line and the verify; live:Throughput of the HTTP path and of a --forward WebSocket; live:WebSocket through a --url origin; live:Throughput through WARP, 1 to 16 MiB; live:The test box; live:The test box fails with a binary that exits 3
 update | live:podnet update to v0.4.0-beta.1
-wait |
+wait | lane:link-control
 warp register | live:WARP account and probe; live:WARP API through its second host; live:Router with WARP, the relay and a failover
 warp status | live:WARP account and probe; live:WARP API through its second host
 warp license |
