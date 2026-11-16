@@ -878,7 +878,10 @@ jobs:
           jq -e '.mode == "warp"' agent.json
           jq -e '.works["git (SSH)"] | index("warp") != null' agent.json
           url=$(jq -r '.exposed[0].url' agent.json)
-          curl -fsS --max-time 30 "$url" | grep -q 'served by agent up'
+          # podnet verified the URL through public DNS; the resolver of the
+          # runner can still cache NXDOMAIN for the new name some seconds
+          # (T-395): retry for 60 s, also when the name does not resolve.
+          curl -fsS --max-time 30 --retry 20 --retry-all-errors --retry-delay 3 "$url" | grep -q 'served by agent up'
           target/release/podnet agent down
           target/release/podnet ps --json | jq -e '.instances | length == 0'
       # Issue 79: the raw IP pod. The runner limits unprivileged user

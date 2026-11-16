@@ -7757,3 +7757,42 @@ getpid()`, and libtorrent passes that value as the expected `nlmsg_pid`, discard
 ```sh
 cargo test -p podnet-vnet
 ```
+
+# T-395: live: the check of agent up fails when the resolver of the runner caches NXDOMAIN for the new name
+
+**Source:** live 43881448907 on 7954152 (2026-11-16), failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The step "agent up and down" of `.github/workflows/live.yml` failed with `curl: (6) Could not resolve host`. podnet had
+verified the URL of the quick tunnel through public DNS ("verified public URL ... dns="doh"") and said: "the system
+resolver of this host does not resolve the new name yet; public DNS does. A visitor whose resolver cached NXDOMAIN gets
+an error for some seconds more". The step then ran one `curl` through the resolver of the runner.
+
+## Premise
+
+- live passed on the same code three times on 2026-11-16 (b6c4ef7 twice, 62816a8). The fault is a race of the check,
+  not of podnet: podnet names the case in its own output.
+- The step of line 156 of `live.yml` already retries its curl (`--retry 5 --retry-all-errors`).
+
+## Approach
+
+1. The curl of the step retries for 60 s, also on a name that does not resolve (`--retry 20 --retry-all-errors
+   --retry-delay 3`).
+
+## Prove
+
+```sh
+python3 scripts/check-workflows.py
+# live passes on the next push
+```
+
+## Done
+
+2026-11-16, the commit of this entry. The curl of "agent up and down" retries for 60 s with `--retry-all-errors` (exit 6,
+the name does not resolve, is retried). The next push runs live.
