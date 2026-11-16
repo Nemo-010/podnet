@@ -7,7 +7,8 @@ name: ci
 # * no-loopback: the tests in a network namespace with the loopback down.
 # * msrv: the workspace builds with the rust-version of Cargo.toml.
 # * static: static musl binaries for x86_64 and aarch64, with their sizes; on
-#   x86_64, the consumer .NET HttpClient under the shim (T-358 step 3).
+#   x86_64, the consumer .NET HttpClient and the consumer Python HTTP
+#   client under the shim (T-358 step 3).
 # * workflows: the rules of scripts/check-workflows.py, and the size of the
 #   Rust files (scripts/check-size.py).
 # * record: the tests of the checker of the work record (crates/podnet-todo),
@@ -359,6 +360,34 @@ jobs:
           cc -shared -fPIC -O2 -o "$w/libpodnet-vnet.so" "$w/libpodnet-vnet.c" -ldl -lpthread
           if CONSUMER_SHIM="$w/libpodnet-vnet.so" sh scripts/consumer-dotnet.sh \
             target/${{ matrix.target }}/release/podnet > "$w/plant.log" 2>&1; then
+            cat "$w/plant.log"
+            echo "the planted shim passed"
+            exit 1
+          fi
+          grep -m1 'Connection refused' "$w/plant.log" || { cat "$w/plant.log"; echo "the plant failed for another cause"; exit 1; }
+      # T-358 step 3: the consumer Python HTTP client (urllib, and requests
+      # when the image has it) under the shim, direct and through
+      # HTTP_PROXY forwarded to a proxy on a unix socket. About 3 s.
+      - name: The consumer Python HTTP client under the shim
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sh scripts/consumer-python.sh target/${{ matrix.target }}/release/podnet
+      # The plant: a shim with no match of a forward must fail the check.
+      - name: The consumer Python check fails on its plant
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          set -u
+          w="$RUNNER_TEMP/plant-python"
+          mkdir -p "$w"
+          python3 - .work/consumer-python/shim/libpodnet-vnet.c "$w/libpodnet-vnet.c" <<'EOF'
+          import sys
+          s = open(sys.argv[1]).read()
+          old = "    if (!forwards_len || !sa) return NULL;\n"
+          assert s.count(old) == 1, "the plant does not apply"
+          open(sys.argv[2], "w").write(s.replace(old, "    (void)sa;\n    return NULL;\n"))
+          EOF
+          cc -shared -fPIC -O2 -o "$w/libpodnet-vnet.so" "$w/libpodnet-vnet.c" -ldl -lpthread
+          if CONSUMER_DIR="$PWD/.work/consumer-python-plant" CONSUMER_SHIM="$w/libpodnet-vnet.so" \
+            sh scripts/consumer-python.sh target/${{ matrix.target }}/release/podnet > "$w/plant.log" 2>&1; then
             cat "$w/plant.log"
             echo "the planted shim passed"
             exit 1
