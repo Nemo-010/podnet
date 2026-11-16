@@ -42,7 +42,7 @@ set -u
 
 CASES="version man local doctor shim-forward link-unix link-control pod-seccomp pod-netns net-proxy-unix"
 NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni-allowlist no-proxy-no-dns ipv6-only"
-NET_CASES="version doctor net-curl net-pod-auto net-pod-seccomp net-pod-netns"
+NET_CASES="version doctor net-curl net-bench net-exit net-pod-auto net-pod-seccomp net-pod-netns"
 PROXY_CASES="proxy-direct proxy-port proxy-pod-auto proxy-pod-seccomp proxy-pod-env proxy-doctor"
 
 # The cases. Each one runs inside the lab and exits 0 (pass), 1 (fail) or
@@ -211,7 +211,7 @@ case_main() {
         printf '%s\n' "$fp" >"$dir/allow"
         chmod 600 "$dir/allow"
         if ! "$podnet" link listen "$dir/link.sock" --allow "$dir/allow" --to "unix:$dir/../echo.sock" \
-            --detach --name lane-l >"$dir/listen.txt" 2>&1; then
+            --announce --detach --name lane-l >"$dir/listen.txt" 2>&1; then
             cat "$dir/listen.txt"
             listen_refused "$dir"
             exit $?
@@ -220,7 +220,8 @@ case_main() {
         timeout 30 "$podnet" wait lane-l >"$dir/wait.txt" 2>&1 || bad=1
         grep -q '"command":"link listen"' "$dir/wait.txt" || bad=1
         if test $bad -eq 0; then
-            "$podnet" link connect "$dir/link.sock" --peer "$fp" --detach --name lane-c >"$dir/connect.txt" 2>&1 || bad=1
+            "$podnet" link connect "$dir/link.sock" --peer "$fp" --announce --detach --name lane-c \
+                >"$dir/connect.txt" 2>&1 || bad=1
         fi
         if test $bad -eq 0; then
             "$podnet" link status lane-c >"$dir/status.txt" 2>&1 || bad=1
@@ -236,6 +237,10 @@ case_main() {
                 bad=1
             fi
             kill $fwd 2>/dev/null
+            # The mesh view of the dialer: itself, and the edge to the peer.
+            ctl=$(sed -n 's/.*"control":"\([^"]*\)".*/\1/p' "$dir/connect.txt" | head -n 1)
+            timeout 30 "$podnet" link mesh --control "unix:$ctl" >"$dir/mesh.txt" 2>&1 || bad=1
+            grep -q '^  edge ' "$dir/mesh.txt" || bad=1
             timeout 30 "$podnet" link reconnect lane-c >"$dir/reconnect.txt" 2>&1 || bad=1
             grep -q '^reconnect link 1 -> 2 ' "$dir/reconnect.txt" || bad=1
             timeout 30 "$podnet" link rotate lane-c >"$dir/rotate.txt" 2>&1 || bad=1
@@ -244,7 +249,8 @@ case_main() {
             grep -q '^closed link 3 ' "$dir/close.txt" || bad=1
         fi
         "$podnet" link close lane-l >"$dir/closel.txt" 2>&1 || bad=1
-        cat "$dir/listen.txt" "$dir"/wait.txt "$dir"/connect.txt "$dir"/status.txt "$dir"/forward.txt "$dir"/reconnect.txt \
+        cat "$dir/listen.txt" "$dir"/wait.txt "$dir"/connect.txt "$dir"/status.txt "$dir"/forward.txt "$dir"/mesh.txt \
+            "$dir"/reconnect.txt \
             "$dir"/rotate.txt "$dir"/close.txt "$dir"/closel.txt 2>/dev/null
         echo "bad $bad"
         exit $bad
@@ -355,7 +361,11 @@ net_case() {
     url=https://lab.test/
     if test -z "${HTTPS_PROXY:-}"; then
         # No proxy: podnet pod has no egress, and must say so.
-        test "$name" = net-curl && { echo "the lab has no proxy"; return 77; }
+        case $name in net-curl | net-bench | net-exit)
+            echo "the lab has no proxy"
+            return 77
+            ;;
+        esac
         timeout 60 "$podnet" pod -- /bin/true >"$dir/out.txt" 2>&1
         code=$?
         cat "$dir/out.txt"
@@ -365,6 +375,29 @@ net_case() {
         return 77
     fi
     case $name in
+    net-bench)
+        # podnet bench through the proxy of the lab, with its roots
+        # (SSL_CERT_FILE): each request gets an answer (T-398).
+        timeout 60 "$podnet" bench "$url" --duration 2 --connections 2 --json >"$dir/out.txt" 2>"$dir/err.txt"
+        code=$?
+        cat "$dir/out.txt" "$dir/err.txt"
+        echo "bench exit $code"
+        test $code -eq 0 || return 1
+        python3 -I -c 'import json, sys
+d = json.load(open(sys.argv[1]))
+print("bench:", {k: d.get(k) for k in ("requests", "errors", "status")})
+sys.exit(0 if d.get("requests", 0) > 0 and not d.get("errors") else 1)' "$dir/out.txt"
+        return $?
+        ;;
+    net-exit)
+        # podnet exit --stdio: a SOCKS5 session on a pipe, out through the
+        # proxy of the lab; the client runs TLS and GET over it (T-398).
+        timeout 60 python3 -I "$dir/../exit-client.py" lab.test "$podnet" exit --stdio >"$dir/out.txt" 2>&1
+        code=$?
+        cat "$dir/out.txt"
+        test $code -eq 0 && grep -q '^HTTP/1.1 200' "$dir/out.txt"
+        return $?
+        ;;
     net-curl)
         # The control of the lab: curl reaches the stand-in through the proxy.
         curl -sS -m 20 -o /dev/null -w '%{http_code}\n' "$url" >"$dir/out.txt" 2>&1
@@ -453,6 +486,69 @@ wait_path() {
 }
 
 write_helpers() {
+    cat >"$1/exit-client.py" <<'EOF'
+import os, ssl, subprocess, sys
+# COMMAND (podnet exit --stdio): one SOCKS5 session on a pipe. CONNECT HOST:443, then
+# TLS over the pipe with the roots of SSL_CERT_FILE, then GET /.
+# Usage: exit-client.py HOST COMMAND...
+host, command = sys.argv[1], sys.argv[2:]
+p = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+w, r = p.stdin, p.stdout
+def read(n):
+    data = b""
+    while len(data) < n:
+        b = r.read(n - len(data))
+        if not b:
+            raise SystemExit("exit: the stream ended")
+        data += b
+    return data
+w.write(b"\x05\x01\x00"); w.flush()
+if read(2) != b"\x05\x00":
+    raise SystemExit("exit: no method")
+name = host.encode()
+w.write(b"\x05\x01\x00\x03" + bytes([len(name)]) + name + (443).to_bytes(2, "big")); w.flush()
+head = read(4)
+if head[1] != 0:
+    raise SystemExit("exit: CONNECT reply %d" % head[1])
+if head[3] == 1:
+    read(4)
+elif head[3] == 4:
+    read(16)
+else:
+    read(read(1)[0])
+read(2)
+ctx = ssl.create_default_context(cafile=os.environ.get("SSL_CERT_FILE"))
+# The stand-in certificate of the lab has no Authority Key Identifier:
+# check the chain and the name, not the strict profile of Python 3.13.
+ctx.verify_flags &= ~getattr(ssl, "VERIFY_X509_STRICT", 0)
+inc, out = ssl.MemoryBIO(), ssl.MemoryBIO()
+t = ctx.wrap_bio(inc, out, server_hostname=host)
+def pump():
+    data = out.read()
+    if data:
+        w.write(data); w.flush()
+while True:
+    try:
+        t.do_handshake()
+        break
+    except ssl.SSLWantReadError:
+        pump()
+        inc.write(r.read1(65536))
+pump()
+t.write(b"GET / HTTP/1.1\r\nHost: " + name + b"\r\nConnection: close\r\n\r\n")
+pump()
+reply = b""
+while b"\r\n" not in reply:
+    try:
+        reply += t.read(65536)
+    except ssl.SSLWantReadError:
+        chunk = r.read1(65536)
+        if not chunk:
+            break
+        inc.write(chunk)
+print(reply.split(b"\r\n")[0].decode())
+w.close(); p.wait(timeout=10)
+EOF
     cat >"$1/unix-client.py" <<'EOF'
 import socket, sys
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)

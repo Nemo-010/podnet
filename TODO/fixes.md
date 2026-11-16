@@ -7931,3 +7931,11 @@ status`, `forward -L unix:PATH=peer:FP/raw` (a client gets `echo:ping` from the 
 `proc-masked`; `link-control` is n.a. in `listen-denied` (the lab refuses `listen(2)` of AF_UNIX). 12 commands stay
 experimental: `autostart run`, `bench`, `exit`, `expose`, `link mesh`, `net switch`, `net tailscale`,
 `ssh-relay`, `warp license`, `warp rotate`, `warp shell` and `wg serve`.
+
+2026-11-16, the second part. `link-control` also runs `link mesh` on the control socket of the dialer (both ends with
+`--announce`; the view has the edge to the peer). The network labs run two new cases: `net-bench` (`podnet bench
+https://lab.test/ --duration 2 --json` through the proxy of the lab: about 1000 requests, 0 errors) and `net-exit` (a
+client runs SOCKS5 CONNECT `lab.test:443`, then TLS and `GET /` over the pipe of `podnet exit --stdio`: `HTTP/1.1 200
+OK`). As uid 65534 with `podlab` v0.63.0, both pass in `proxy-only`, `proxy-tls-reterminate`, `proxy-per-name` and
+`ws-upgrade-refused`, and are n.a. in the labs with no proxy. 9 commands stay experimental: `autostart run`, `expose`,
+`net switch`, `net tailscale`, `ssh-relay`, `warp license`, `warp rotate`, `warp shell` and `wg serve`.
