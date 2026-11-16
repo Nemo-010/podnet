@@ -703,8 +703,16 @@ jobs:
           tail -3 second-reg.err
           test "$rc" = 0
           rc=0; timeout 60 target/release/podnet warp --identity "$ident" status > second-status.out 2>&1 || rc=$?
+          # T-398: a new MASQUE key for this device; a DNS query through
+          # WARP then works with the new key.
+          rc3=0; timeout 60 target/release/podnet warp --identity "$ident" rotate 2> second-rotate.err || rc3=$?
+          tail -2 second-rotate.err
+          python3 -c "import sys; sys.stdout.buffer.write(bytes.fromhex('abcd01000001000000000000') + b'\x07example\x03com\x00\x00\x01\x00\x01')" |
+            timeout 60 target/release/podnet warp --identity "$ident" nc -u 1.1.1.1 53 | head -c 2 | od -An -tx1 | tee nc-rotate.txt || true
           rc2=0; timeout 60 target/release/podnet warp --identity "$ident" delete 2> second-del.err || rc2=$?
-          echo "status: exit $rc; delete: exit $rc2"
+          echo "status: exit $rc; rotate: exit $rc3; delete: exit $rc2"
+          test "$rc3" = 0
+          grep -q 'ab cd' nc-rotate.txt
           grep -E '^(type|account)' second-status.out || true
           test "$rc" = 0
           test "$rc2" = 0
@@ -799,6 +807,12 @@ jobs:
           HOME="$home" sh -c '. "$HOME/.profile"; test "$HTTPS_PROXY" = http://127.0.0.1:40100'
           # warp exec: the program has no proxy variables, the pod carries it.
           target/release/podnet warp exec -- sh -c 'test -z "${HTTPS_PROXY:-}" && curl -fsS --max-time 30 https://www.cloudflare.com/cdn-cgi/trace' | grep -q '^warp=on'
+          # T-398: warp shell runs $SHELL in the same pod; the shell reads
+          # its commands from stdin.
+          echo 'curl -fsS --max-time 30 https://www.cloudflare.com/cdn-cgi/trace' |
+            SHELL=/bin/sh target/release/podnet warp shell 2> shell.err | grep -q '^warp=on'
+          cat shell.err
+          ! grep -q 'with no pod' shell.err
           # Issue 85: SSH to github.com with TCP 22 dropped on the host,
           # through warp nc (WARP) and through warp nc --via-relay. The
           # server answers at the key step: the SSH handshake went through.

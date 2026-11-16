@@ -66,7 +66,7 @@ wait | lane:link-control
 warp register | live:WARP account and probe; live:WARP API through its second host; live:Router with WARP, the relay and a failover
 warp status | live:WARP account and probe; live:WARP API through its second host
 warp license |
-warp rotate |
+warp rotate | live:WARP API through its second host
 warp delete | live:WARP API through its second host; live:The commands of the second batch; live:Router with WARP, the relay and a failover; live:Remove the WARP device
 warp probe | live:WARP account and probe; live:WARP probe through the WebSocket relay (MASQUE TCP dropped); live:The commands of the second batch
 warp exit | live:The commands of the second batch
@@ -78,8 +78,8 @@ warp up | live:Exit 69 for an unavailable path; live:warp up with its TCP listen
 warp down | live:warp up with its TCP listener refused; live:warp up, env, exec, --persist and down
 warp env | live:warp up with its TCP listener refused; live:warp up, env, exec, --persist and down
 warp exec | live:warp up with its TCP listener refused; live:warp up, env, exec, --persist and down
-warp shell |
-warp nc | live:WARP account and probe; live:warp up, env, exec, --persist and down
+warp shell | live:warp up, env, exec, --persist and down
+warp nc | live:WARP account and probe; live:WARP API through its second host; live:warp up, env, exec, --persist and down
 warp ssh-config | live:warp up, env, exec, --persist and down
 warp tun | live:Exit 69 for an unavailable path; live:warp tun --default-route (root), then everything as before; live:warp tun --default-route with no default route (proxy only); live:An IPv6-only host
 warp run | live:WARP run with the netns-raw backend (TCP, UDP, IPv6, no root); live:WARP run
