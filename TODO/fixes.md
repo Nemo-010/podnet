@@ -6993,7 +6993,9 @@ open.
 
 2026-11-16, step 4, the first part. `release.yml` calls `gate.yml` as its job `gate` (in the dry run and on the tag), and
 the job `publish` needs it: a release is not published with no passing gate. `gate.yml` passed on 89a6e1e with podlab
-v0.61.0 (run 43831896685). What remains of step 4: the notes of a beta list each scenario and its result.
+v0.61.0 (run 43831896685). The dry run of `release.yml` on 5fbb2e3 (run 43839899756) passed: its job `gate / lane`
+passed, then `publish` ran (a dry run: no tag, no proofs). What remains of step 4: the notes of a beta list each
+scenario and its result.
 
 What remains of step 1: a row that uses WebSocket through the proxy (`ws-upgrade-refused`: the relay and the tunnel);
 `ipv6-only` on a host with IPv6; the `icmp` rows.

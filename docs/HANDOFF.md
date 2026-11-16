@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-16 08:45 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-16 10:30 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -16,7 +16,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 * podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.61.0` (T-388), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.13` (T-355, 0a0f3e5).
-* The record is `TODO/`. `cargo todo check` agrees: 389 entries, 12 open, 10 partial, 37 blocked, 330 done.
+* The record is `TODO/`. `cargo todo check` agrees: 392 entries, 13 open, 10 partial, 37 blocked, 332 done.
 
 ## Unfinished work (not on `main`)
 
@@ -32,6 +32,9 @@ None. No subagent runs.
   43820928202 (the first run of `gate.yml`). GitHub #598 is closed in the record.
 * Each workflow passed on `89a6e1e` (podcrates v0.61.0 and its installer core): ci 43831877376, deny 43831877606,
   secrets 43831877485, live 43831877467, gate 43831896685.
+* The dry run of `release.yml` on `5fbb2e3` passed with its new job `gate / lane` before `publish` (run 43839899756).
+* GitHub #599 (Nemo-010, outside the team): verified and labelled `confirmed`. T-390 and T-391 are done (`c3616be`,
+  `tests/shim_daemon.rs`); T-392 (the netlink answer of the vnet shim, P2) is open.
 * Read each run when the watcher reports its end (`CLAUDE.md` step 1). Do not wait for a comment.
 
 ## The work of 2026-11-16, second session (all on `main`)
