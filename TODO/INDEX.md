@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**385 entries: 13 open, 10 partial, 39 blocked, 323 done.**
+**386 entries: 14 open, 10 partial, 39 blocked, 323 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 3 | 35 | 40 |
-| P2 | 6 | 4 | 11 | 167 | 188 |
+| P2 | 7 | 4 | 11 | 167 | 189 |
 | P3 | 7 | 4 | 25 | 120 | 156 |
-| **All** | 13 | 10 | 39 | 323 | 385 |
+| **All** | 14 | 10 | 39 | 323 | 386 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -431,3 +431,4 @@ M8 Overlays, M9 Later.
 | [T-383](fixes.md) | P2 | M | M5 | defect | open | podnet pod: no name resolves when the program cannot make a UDP socket (udp-denied) |
 | [T-384](fixes.md) | P3 | S | M5 | defect | open | podnet pod --backend netns-kernel reads the ports of its listeners with getsockname (getsockname-denied) |
 | [T-385](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.58.0 and remove the glue of the gaps of pod-manual |
+| [T-386](crates.md) | P2 | S | M3 | chore | open | Take podcrates v0.59.0 (the fixes of pod-link and pod-hold for T-380 and T-381) |

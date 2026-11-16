@@ -12,7 +12,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 ## Where the code is
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.58.0` (T-137), with `pod-warp`: `src/warp/` is glue
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.59.0` (T-137), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.13` (T-355, 0a0f3e5).
 * The record is `TODO/`. `cargo todo check` agrees: 378 entries, 12 open, 11 partial, 37 blocked, 318 done.
@@ -60,7 +60,8 @@ comment of the request.
 
    The first run (2026-11-16, T-358): 25 labs hold as uid 65534; the open failures are T-380 (`link-unix` in the
    Landlock labs) and T-381 (`pod-netns` in `udp-denied`), both fixes of podcrates. The lead writes the COORD issues
-   `(to podcrates)` for them. `docs/lab-profiles/` is the hand-off of the six network profiles to podcrates.
+   `(to podcrates)` for them. podcrates v0.59.0 fixes both (T-386): the lane of 2026-11-16 with `podlab` v0.59.0
+   gives 187 rows pass and no failure. `docs/lab-profiles/` is the hand-off of the six network profiles to podcrates.
 
    Step 3, the first consumer (2026-11-16): `sh scripts/consumer-dotnet.sh PODNET [PODLAB [PROFILE]]` runs a .NET 8
    `HttpClient` (`tests/consumers/dotnet-http`) under the shim with `--forward 127.0.0.1:PORT=unix:PATH`. It passes

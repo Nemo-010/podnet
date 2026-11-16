@@ -972,6 +972,10 @@ Done so far:
 - v0.58.0 (PodUtils/podcrates#200; podnet did not take v0.57.0, and this line covers it): each `pod-*` dependency names
   `tag = "v0.58.0"` and `version = "0.58.0"`. `pod-manual` closes the gaps of T-359, and podnet removes its glue (T-385).
   podnet does not take `pod-lab`, so `Options::allow_connect` needs no change. No new hand-off for podnet.
+- v0.59.0 (PodUtils/podcrates#204): each `pod-*` dependency names `tag = "v0.59.0"` and `version = "0.59.0"`. `pod-link`
+  listens over the unix carrier under Landlock with no `REFER` (T-380), and `pod-hold` opens a stream socket for the
+  interface ioctls, with a datagram socket as the fallback (T-381). The probe of `pod doctor` opens the same sockets
+  (T-386). podnet does not take `pod-enter`, so `Plan::volumes` needs no change. No new hand-off for podnet.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
@@ -1438,3 +1442,44 @@ also the plant (exit 0). `sh scripts/agent/check.sh` exits 0; `cargo clippy --lo
 --features full -- -D warnings` exits 0; `cargo check --workspace --target i686-unknown-linux-musl` exits 0.
 
 Not done: `--help` from the model (`Command::groups`, `Command::lead`). The help of clap (`src/cli/help.rs`) stays.
+
+# T-386: Take podcrates v0.59.0 (the fixes of pod-link and pod-hold for T-380 and T-381)
+
+**Source:** PodUtils/podcrates#204 (COORD-118 of podcrates, 2026-11-16); PodUtils/podnet#592.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+podcrates v0.59.0 is at the commit `0e782114`. Its notes say: "podnet: drop the waits on your T-380 and T-381."
+`pod-link` (the entry 742 of podcrates): "The unix carrier listens under Landlock with no `REFER`: on `EXDEV` it binds at the
+path". `pod-hold` (the entry 743 of podcrates): "the interface ioctls use a TCP socket, with a datagram socket as the
+fallback". Breaking: "`pod_enter::Plan` has the field `volumes`: a plan built with a struct literal names it".
+
+## Premise
+
+- Read at the tag: `PodUtils/podcrates:docs/releases/v0.59.0.md`, `adoption/podnet/` (only the old hand-off of
+  `pod-warp`, the same blobs as at v0.58.0) and `PodUtils/podcrates:crates/pod-hold/src/netns/tun.rs` (`control`:
+  `socket(AF_INET, SOCK_STREAM)`, else `socket(AF_INET, SOCK_DGRAM)`).
+- podnet does not use `pod_enter`.
+- The probe of `pod doctor` (`crates/podnet-netns/src/doctor/child.rs`, `ioctl_socket_opens`) opens only the datagram
+  socket (T-381, Correction).
+
+## Approach
+
+1. Move each podcrates tag of the `Cargo.toml` files to `v0.59.0`; update `Cargo.lock` and `fuzz/Cargo.lock`.
+2. The probe opens the stream socket, else the datagram socket, as `control` of `pod-hold`. It fails only when the host
+   refuses the two types.
+3. Move `uses:` and `podcrates_ref` of `.github/workflows/issue-sync.yml` to the commit of the tag.
+4. Run the lane and the consumer pod in `udp-denied` with the release musl binary as uid 65534.
+
+## Prove
+
+```sh
+sh scripts/lab-lane.sh .work/podlab-v0.59.0 PODNET
+sh scripts/consumer-pod.sh PODNET PODLAB udp-denied
+sh scripts/agent/check.sh
+```

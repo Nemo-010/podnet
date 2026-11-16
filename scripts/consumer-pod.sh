@@ -148,9 +148,8 @@ refusal_expected() {
 # The failures that have an entry in the record. It sets entry.
 known() {
     case $1:$2 in
-    netns:udp-denied) entry="T-381, pod-hold: the backend needs an AF_INET datagram socket" ;;
     netns-kernel:getsockname-denied) entry="T-384: the backend reads the ports of its listeners with getsockname" ;;
-    auto:udp-denied | seccomp:udp-denied) entry="T-383: no name resolves when the program has no UDP socket" ;;
+    auto:udp-denied | seccomp:udp-denied | netns:udp-denied) entry="T-383: no name resolves when the program has no UDP socket" ;;
     *) return 1 ;;
     esac
 }

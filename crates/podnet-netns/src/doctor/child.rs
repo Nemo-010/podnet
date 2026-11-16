@@ -53,9 +53,9 @@ impl ChildProbe {
         // TUN device.
         if !ioctl_socket_opens() {
             // T-381: the backend sets up the interfaces with ioctls on an
-            // AF_INET datagram socket. A seccomp filter that refuses UDP
-            // sockets (the lab udp-denied) refuses that socket: say so, not
-            // "no capability".
+            // AF_INET socket (stream, else datagram). A filter that refuses
+            // the two types refuses that socket: say so, not "no
+            // capability".
             PROBE_NO_IOCTL_SOCKET
         } else if bringup_loopback().is_err() {
             PROBE_NO_LOOPBACK
@@ -108,13 +108,19 @@ extern "C" fn probe_child_start() {
 }
 
 /// Can this process open the socket that the backend uses for the ioctls of
-/// the interfaces (`socket(AF_INET, SOCK_DGRAM)`)?
+/// the interfaces? pod-hold (`netns::tun::control`) opens `socket(AF_INET,
+/// SOCK_STREAM)`, else `socket(AF_INET, SOCK_DGRAM)` (T-381). The probe
+/// fails only when the host refuses the two types.
 fn ioctl_socket_opens() -> bool {
-    // SAFETY: socket(2) and close(2) on a descriptor of this function.
-    let fd = unsafe { libc::socket(libc::AF_INET, libc::SOCK_DGRAM | libc::SOCK_CLOEXEC, 0) };
-    if fd < 0 {
-        return false;
-    }
-    unsafe { libc::close(fd) };
-    true
+    [libc::SOCK_STREAM, libc::SOCK_DGRAM]
+        .into_iter()
+        .any(|kind| {
+            // SAFETY: socket(2) and close(2) on a descriptor of this function.
+            let fd = unsafe { libc::socket(libc::AF_INET, kind | libc::SOCK_CLOEXEC, 0) };
+            if fd < 0 {
+                return false;
+            }
+            unsafe { libc::close(fd) };
+            true
+        })
 }
