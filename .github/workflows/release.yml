@@ -325,6 +325,11 @@ jobs:
         with:
           name: notes
           path: ${{ runner.temp }}/notes
+      # The rows of the release gate (the job gate, gate.yml).
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: gate
+          path: ${{ runner.temp }}/gate
       - name: the third-party license notices
         run: |
           set -eu
@@ -427,7 +432,11 @@ jobs:
           if ! grep -qx '## Breaking' "$notes"; then echo "$notes has no heading: ## Breaking"; exit 1; fi
           {
             cat "$notes"
-            printf '\nThe licenses of the crates in the binaries, with their texts: THIRD-PARTY-LICENSES.md.\n'
+            printf '\nThe licenses of the crates in the binaries, with their texts: THIRD-PARTY-LICENSES.md.\n\n'
+            # Each scenario of the gate and its result (T-358 step 4). It
+            # fails when a row of the lane fails.
+            sh scripts/gate-notes.sh "$RUNNER_TEMP/gate/lane.txt" \
+              "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             printf '\n## The commits of this release\n\n'
           } > "$RUNNER_TEMP/body.md"
           budget=$((120000 - $(wc -c < "$RUNNER_TEMP/body.md")))

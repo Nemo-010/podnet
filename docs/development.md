@@ -115,7 +115,11 @@ plant `LANE_PLANT=net` in `proxy-only`. It turns off
 namespace. Start it by hand: `gh workflow run gate.yml -R PodUtils/podnet
 --ref main`. `release.yml` calls it as its job `gate`, in the dry run and
 on the tag: the job `publish` needs it, so no release is published
-without a passing gate.
+without a passing gate. `gate.yml` keeps the rows of the lane as the
+artifact `gate`. `scripts/gate-notes.sh LANE.TXT [RUN-URL]` writes them as
+the section "The release gate" of the notes of a release (the counts, and
+each row in a block that opens on a click); the job `publish` adds it to
+the body, and stops when a row fails.
 
 ### The network labs
 
