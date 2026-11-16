@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-16 12:45 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-16 14:15 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -36,6 +36,7 @@ None. No subagent runs.
   On `81d2e73` (run 43849173659) the body of the release has the section "The release gate" (226 pass, 0 fail, 24 n.a.).
 * Each workflow passed on `b6c4ef7` (podcrates v0.62.0): ci 43854114725, deny 43854114730, secrets 43854114663, live
   43854114684 and the daily live 43863047917.
+* Each workflow passed on `62816a8` (v0.63.0): ci 43867293485, live 43867293410, deny 43867293283, secrets 43867293551.
 * T-394 (podcrates v0.63.0): the installer core checks the signature for the copy of the tree too; podnet's own
   `verify_signature` is removed (one cosign check for each run).
 * GitHub #599 (Nemo-010, outside the team): verified and labelled `confirmed`. T-390 and T-391 are done (`c3616be`,
@@ -97,5 +98,8 @@ None. No subagent runs.
 
 * Q2 in `docs/decisions.md`: remove T-305 by ruling, so that #475 stays closed.
 * The ~76 issues of Nemo-010 (author_association NONE): add the label `confirmed`, or add the author to the team.
+  `issue-sync` does not change them. On 2026-11-16 the session labelled `confirmed` #467, #468, #470 and #473 (each
+  entry done; the record closes them) because `record-issues` failed on them. `record-issues` still fails on #475 until
+  Q2 is ruled: GitHub has it closed, and the record keeps it open for T-305.
 * The relay-tls-proxy bundle of the owner's local agent was not reviewed: the review stopped at a safety block of the
   model. The owner can ask a narrower question.
