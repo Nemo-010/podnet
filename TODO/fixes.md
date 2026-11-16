@@ -6968,6 +6968,23 @@ uid 65534: 181 rows pass; the failures are the known ones (`link-unix` in the 5 
 direct egress is refused by the network and not by Landlock (`proxy-only` of `pod-lab` part 2), and `tunnel --quick`,
 `warp proxy`, `relay`, `send` and `receive` against a stand-in that carries their protocols.
 
+2026-11-16, step 1, the network labs. `podlab` of podcrates `v0.60.0` (`sh scripts/get-podlab.sh v0.60.0
+.work/podlab-v0.60.0`: SHA-256 OK) has the network labs of their entry 716. `scripts/lab-lane.sh` runs the rows
+`version`, `doctor`, `net-curl`, `net-pod-auto`, `net-pod-seccomp` and `net-pod-netns` in `proxy-only`,
+`proxy-tls-reterminate`, `proxy-per-name`, `ws-upgrade-refused`, `sni-allowlist`, `no-proxy-no-dns` and `ipv6-only`
+(`docs/development.md`, The network labs). The old row `proxy-only` of the lane (`podlab run --allow-connect`) is now
+the row `allow-connect`: the name `proxy-only` is the real lab. Measured as uid 65534 with the release musl podnet of
+ad8abd4: 24 rows pass; each `podnet pod` backend gets HTTP 200 from `https://lab.test/` through the proxy of the lab
+(with its credential in `proxy-only`, with TLS terminated again in `proxy-tls-reterminate`); the doctor names the proxy
+and its credential, and the HTTP 403 of `proxy-only` on port 7844. 8 rows are n.a. in the two labs with no proxy
+(`podnet pod` refuses with `no proxy: give -x PROXY`). `ipv6-only` does not hold here (no IPv6 in this kernel). The 6
+rows of `allow-connect` pass. The plant `LANE_PLANT=net` (a proxy that does not listen) fails each `net-pod` row. No
+defect of podnet.
+
+What remains of step 1: a row that uses WebSocket through the proxy (`ws-upgrade-refused`: the relay and the tunnel);
+`ipv6-only` on a host with IPv6; the `icmp` rows; a `gate.yml` job that runs the lane as a user that is not root.
+
+
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 
 **Source:** the owner, 2026-11-15: "it is time everyone shared a single crate for cli help/man".

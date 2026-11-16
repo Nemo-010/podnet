@@ -71,9 +71,9 @@ takes the binary `podlab` and the podnet binary to test, and runs each
 command in a lab of each profile with `podlab run PROFILE -- ...`.
 
 1. Get `podlab`. From podcrates `v0.58.0`, the release has the static
-   binary: `sh scripts/get-podlab.sh v0.58.0` downloads
+   binary: `sh scripts/get-podlab.sh v0.60.0` downloads
    `podlab-ARCH-unknown-linux-musl` and `SHA256SUMS` into the new directory
-   `.work/podlab-v0.58.0` and checks the SHA-256. The release has no
+   `.work/podlab-v0.60.0` and checks the SHA-256. The release has no
    signature of its assets (their entry 717 of podcrates), so the check stops at
    `SHA256SUMS`. Give the directory as PODLAB: the lane checks the asset
    against `SHA256SUMS` again before each run. Or build `podlab` in a clone
@@ -82,7 +82,10 @@ command in a lab of each profile with `podlab run PROFILE -- ...`.
    `CC_x86_64_unknown_linux_musl=clang`), and give the binary as PODLAB.
 2. Build the release binary of podnet (`docs/build.md`).
 3. Run `sh scripts/lab-lane.sh PODLAB PODNET [PROFILE...]` as a user that
-   is not root. With no PROFILE, it runs each profile of `podlab list`.
+   is not root. With no PROFILE, it runs each profile of `podlab list`
+   and the row `allow-connect`. Use a clean environment (`env -i
+   PATH=/usr/bin:/bin HOME=DIR`): a proxy variable of the host must not
+   go into a lab.
    As root, the profile `nonroot-nocaps` does not hold, and each other lab
    runs as root. As root, run it as uid 65534: `setpriv --reuid 65534
    --regid 65534 --clear-groups env LANE_DIR=DIR sh scripts/lab-lane.sh
@@ -103,10 +106,34 @@ failure. The logs are in `LANE_DIR` (default `.work/lab-lane`), which must
 not be in `/tmp` or in `HOME`. It needs `python3`, `cc` (for the shim) and
 `timeout`.
 
-### The row proxy-only
+### The network labs
 
-The profile `proxy-only` of `pod-lab` has no lab of its own. The lane runs
-its row in `podlab run --allow-connect PORT bind-denied` (podlab
+From podcrates `v0.60.0`, `podlab` has network labs. Each lab is a
+network namespace with no route out, with its own stand-in proxy on
+`127.0.0.1:3128` (or no proxy), a TLS stand-in server that answers each
+name, and `SSL_CERT_FILE`. The lane runs these commands in the labs
+`proxy-only`, `proxy-tls-reterminate`, `proxy-per-name`,
+`ws-upgrade-refused`, `sni-allowlist`, `no-proxy-no-dns` and `ipv6-only`:
+
+* `version` and `doctor`. The doctor must name the proxy of the lab:
+  `proxy  http://127.0.0.1:3128 (credentials: present)` in `proxy-only`,
+  `(credentials: none)` in the other proxy labs, and `proxy  none: each
+  connection is direct` in a lab with no proxy.
+* `net-curl`: no podnet. `curl https://lab.test/` gets HTTP 200 through
+  the proxy of the lab (the control of the lab).
+* `net-pod-auto`, `net-pod-seccomp` and `net-pod-netns`: `podnet pod
+  --backend BACKEND -- curl https://lab.test/` with the proxy of the lab
+  from the environment. The program must get HTTP 200.
+
+In a lab with no proxy, `net-curl` is n.a., and a `net-pod` command is
+n.a. when `podnet pod` refuses with `no proxy: give -x PROXY`. The plant
+`LANE_PLANT=net` gives podnet a proxy that does not listen: each `net-pod`
+command must fail. `ipv6-only` does not hold on a kernel with no IPv6.
+
+### The row allow-connect
+
+The row `allow-connect` is not a profile of `pod-lab`. The lane runs
+it in `podlab run --allow-connect PORT bind-denied` (podlab
 `v0.58.0` or later): Landlock refuses each TCP connect, except a connect to
 PORT. Outside the lab, a stand-in HTTP CONNECT proxy
 (`tests/consumers/connect-proxy.py`) listens on `127.0.0.1:PORT`. It writes
@@ -114,7 +141,7 @@ each request line to `LANE_DIR/proxy.txt`, and connects only
 `proxy.test:PORT+1`, to a server on `127.0.0.1:PORT+1` with the body
 `podnet-proxy-only`. It refuses each other target with HTTP 403. PORT is
 `LANE_PROXY_PORT` (default 7120). Run the row alone with
-`sh scripts/lab-lane.sh PODLAB PODNET proxy-only`.
+`sh scripts/lab-lane.sh PODLAB PODNET allow-connect`.
 
 The commands:
 

@@ -7,11 +7,13 @@
 # cli), or a directory from scripts/get-podlab.sh: the lane then checks the
 # asset podlab-ARCH-unknown-linux-musl against the SHA256SUMS of the
 # directory and runs it. PODNET is the podnet binary to test. With no
-# PROFILE, the lane runs in each profile of `podlab list`. Each command
+# PROFILE, the lane runs in each profile of `podlab list`, and in the row
+# allow-connect. Each command
 # runs in a lab of the profile: `podlab run PROFILE -- sh lab-lane.sh
 # --case NAME ...`.
 #
-# The profile proxy-only runs the rows of PROXY_CASES in the lab
+# The row allow-connect is not a profile of podlab. It runs the rows of
+# PROXY_CASES in the lab
 # `podlab run --allow-connect PORT bind-denied` (podlab 0.58.0 or later):
 # each TCP connect is refused, except to PORT. A stand-in HTTP CONNECT
 # proxy (tests/consumers/connect-proxy.py) listens on 127.0.0.1:PORT
@@ -19,6 +21,12 @@
 # 127.0.0.1:PORT+1. LANE_PROXY_PORT gives PORT (default 7120). LANE_PLANT
 # plants a defect: refuse (the proxy refuses each CONNECT) or port (podnet
 # gets the port PORT+2, which the lab refuses). Each pod row must then fail.
+#
+# The network labs of NET_LABS (podlab 0.60.0 or later) run the rows of
+# NET_CASES. A lab gives its own proxy (HTTPS_PROXY, maybe with a
+# credential), a TLS stand-in server for each name, and SSL_CERT_FILE.
+# The plant LANE_PLANT=net gives podnet a proxy that does not listen; each
+# net-pod row must then fail.
 #
 # The script prints one row for each profile and command: pass, fail or
 # n.a. with the reason. It exits 1 when a command fails, else 0. The logs
@@ -33,6 +41,8 @@
 set -u
 
 CASES="version man doctor shim-forward link-unix pod-seccomp pod-netns net-proxy-unix"
+NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni-allowlist no-proxy-no-dns ipv6-only"
+NET_CASES="version doctor net-curl net-pod-auto net-pod-seccomp net-pod-netns"
 PROXY_CASES="proxy-direct proxy-port proxy-pod-auto proxy-pod-seccomp proxy-pod-env proxy-doctor"
 
 # The cases. Each one runs inside the lab and exits 0 (pass), 1 (fail) or
@@ -65,6 +75,16 @@ case_main() {
         case $code in 0 | 1) ;; *) exit 1 ;; esac
         if grep -q 'panicked' "$dir/doctor.txt"; then exit 1; fi
         test -s "$dir/doctor.txt" || exit 1
+        # In a network lab, the doctor names the proxy of the lab, and its
+        # credential where the lab gives one.
+        if in_list "$LANE_PROFILE" "$NET_LABS"; then
+            want="proxy  none: each connection is direct"
+            if test -n "${HTTPS_PROXY:-}"; then
+                want="proxy  http://127.0.0.1:3128 (credentials: none)"
+                case $HTTPS_PROXY in *@*) want="proxy  http://127.0.0.1:3128 (credentials: present)" ;; esac
+            fi
+            grep -qxF "$want" "$dir/doctor.txt" || { echo "no line: $want"; exit 1; }
+        fi
         ;;
     shim-forward)
         # The echo server runs outside the lab (the broker of a consumer).
@@ -142,6 +162,10 @@ case_main() {
         proxy_case "$name" "$podnet" "$dir"
         exit $?
         ;;
+    net-*)
+        net_case "$name" "$podnet" "$dir"
+        exit $?
+        ;;
     *)
         echo "unknown case $name"
         exit 2
@@ -149,7 +173,7 @@ case_main() {
     esac
 }
 
-# The rows of proxy-only, in the lab with --allow-connect of the proxy
+# The rows of allow-connect, in the lab with --allow-connect of the proxy
 # port. The proxy log is $dir/../proxy.txt; the outer script empties it
 # before each row.
 proxy_case() {
@@ -212,6 +236,61 @@ proxy_case() {
     cat "$dir/out.txt" "$log"
     echo "pod exit $code"
     test $code -eq 0 && grep -qx "$body" "$dir/out.txt" && grep -q "^request CONNECT proxy.test:$tport " "$log"
+}
+
+# The rows of the network labs. The lab sets HTTPS_PROXY (or no proxy)
+# and SSL_CERT_FILE; its TLS stand-in answers each name.
+net_case() {
+    name=$1
+    podnet=$2
+    dir=$3
+    url=https://lab.test/
+    if test -z "${HTTPS_PROXY:-}"; then
+        # No proxy: podnet pod has no egress, and must say so.
+        test "$name" = net-curl && { echo "the lab has no proxy"; return 77; }
+        timeout 60 "$podnet" pod -- /bin/true >"$dir/out.txt" 2>&1
+        code=$?
+        cat "$dir/out.txt"
+        echo "pod exit $code"
+        test $code -ne 0 && grep -q 'no proxy: give -x PROXY' "$dir/out.txt" || return 1
+        echo "the lab has no proxy; podnet pod refused with the reason"
+        return 77
+    fi
+    case $name in
+    net-curl)
+        # The control of the lab: curl reaches the stand-in through the proxy.
+        curl -sS -m 20 -o /dev/null -w '%{http_code}\n' "$url" >"$dir/out.txt" 2>&1
+        code=$?
+        cat "$dir/out.txt"
+        test $code -eq 0 && grep -qx 200 "$dir/out.txt"
+        return $?
+        ;;
+    esac
+    backend=${name#net-pod-}
+    if test "${LANE_PLANT:-}" = net; then
+        # The plant: a proxy that does not listen.
+        HTTPS_PROXY=http://127.0.0.1:1 https_proxy=http://127.0.0.1:1
+        HTTP_PROXY=http://127.0.0.1:1 http_proxy=http://127.0.0.1:1
+        export HTTPS_PROXY https_proxy HTTP_PROXY http_proxy
+    fi
+    timeout 60 "$podnet" pod --backend "$backend" -- \
+        curl -sS -m 20 -o /dev/null -w '%{http_code}\n' "$url" >"$dir/out.txt" 2>&1
+    code=$?
+    cat "$dir/out.txt"
+    echo "pod exit $code"
+    test $code -eq 0 && grep -qx 200 "$dir/out.txt" && return 0
+    if test $code -eq 3 && refusal_expected "pod-$backend" "$LANE_PROFILE"; then
+        echo "podnet refused with exit 3 and a reason: $why"
+        return 77
+    fi
+    return 1
+}
+
+in_list() {
+    for i in $2; do
+        test "$i" = "$1" && return 0
+    done
+    return 1
 }
 
 # The profiles that take what a pod backend needs, by design. It sets why.
@@ -398,7 +477,8 @@ case ${LANE_PLANT:-} in
 '') ;;
 refuse) proxy_mode=refuse ;;
 port) LANE_UPSTREAM_PORT=$((LANE_PROXY_PORT + 2)) ;;
-*) echo "lab-lane: LANE_PLANT is refuse or port" >&2; exit 64 ;;
+net) ;;
+*) echo "lab-lane: LANE_PLANT is refuse, port or net" >&2; exit 64 ;;
 esac
 export LANE_PROXY_PORT LANE_UPSTREAM_PORT
 
@@ -423,18 +503,21 @@ if test $# -eq 0; then
     # Each profile name is one word with no space or glob character: the
     # split of the list into the arguments is the intent.
     # shellcheck disable=SC2046
-    set -- $("$podlab" list | awk '/^[^ ]/ { print $1 }')
+    set -- $("$podlab" list | awk '/^[^ ]/ { print $1 }') allow-connect
 fi
 
 failed=0
 printf '%-22s %-17s %s\n' PROFILE COMMAND RESULT
 for profile in "$@"; do
-    # proxy-only: the lab bind-denied with a connect to the proxy port only.
+    # allow-connect: the lab bind-denied with a connect to the proxy port
+    # only. A network lab runs the rows of NET_CASES.
     lab=$profile
     cases=$CASES
-    if test "$profile" = proxy-only; then
+    if test "$profile" = allow-connect; then
         lab="--allow-connect $LANE_PROXY_PORT bind-denied"
         cases=$PROXY_CASES
+    elif in_list "$profile" "$NET_LABS"; then
+        cases=$NET_CASES
     fi
     # $lab is the profile, or options and the profile: split it.
     # shellcheck disable=SC2086
@@ -445,7 +528,7 @@ for profile in "$@"; do
         printf '%-22s %-17s n.a.: the lab does not hold (exit %s): %s\n' "$profile" '*' "$code" "$why"
         continue
     fi
-    if test "$profile" = proxy-only && ! start_proxy; then
+    if test "$profile" = allow-connect && ! start_proxy; then
         printf '%-22s %-17s fail: the stand-in proxy did not start\n' "$profile" '*'
         failed=1
         continue
