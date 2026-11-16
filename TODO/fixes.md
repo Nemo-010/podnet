@@ -7310,3 +7310,12 @@ sh scripts/lab-lane.sh PODLAB PODNET udp-denied
 
 podcrates must change `pod-hold` (a COORD issue `(to podcrates)` of the lead session). A tag of podcrates with the fix
 ends the block.
+
+## Correction
+
+2026-11-16: podnet's part is done: the probe of `pod doctor` (`crates/podnet-netns/src/doctor/child.rs`) opens the
+`AF_INET` datagram socket of the interface ioctls first, and a refused socket gives its own reason (`doctor.rs`,
+`PROBE_NO_IOCTL_SOCKET`): "unshare ok, but the socket for the interface ioctls is refused: a filter refuses an AF_INET
+datagram socket", not "no capability". Measured with the release binary as uid 65534: `podlab run udp-denied -- podnet
+pod doctor` gives that reason for `unshare(NEWUSER|NEWNET)` and the veth wire; `podlab run no-kvm` still gives the netns
+backend `ok`. The backend itself still needs the socket: the fix is in `pod-hold` (COORD-095, GitHub #592).

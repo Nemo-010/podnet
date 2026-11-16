@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use crate::prelude::*;
 
-use super::{PROBE_NO_LOOPBACK, PROBE_NO_TUN, PROBE_VETH};
+use super::{PROBE_NO_IOCTL_SOCKET, PROBE_NO_LOOPBACK, PROBE_NO_TUN, PROBE_VETH};
 
 /// The variable that makes a started podnet process run one namespace probe
 /// and exit (see [`probe_child_start`]). Its value is a [`ChildProbe`] name.
@@ -51,7 +51,13 @@ impl ChildProbe {
         // can remove the capabilities in the new user namespace. Thus the
         // probe also does what the backend does: bring up `lo` and make a
         // TUN device.
-        if bringup_loopback().is_err() {
+        if !ioctl_socket_opens() {
+            // T-381: the backend sets up the interfaces with ioctls on an
+            // AF_INET datagram socket. A seccomp filter that refuses UDP
+            // sockets (the lab udp-denied) refuses that socket: say so, not
+            // "no capability".
+            PROBE_NO_IOCTL_SOCKET
+        } else if bringup_loopback().is_err() {
             PROBE_NO_LOOPBACK
         } else if matches!(self, Self::Veth) {
             match create_veth("pnprobe0", "pnwire0") {
@@ -99,4 +105,16 @@ extern "C" fn probe_child_start() {
         // SAFETY: _exit(2) ends the process at once, with no destructors.
         unsafe { libc::_exit(code) };
     }
+}
+
+/// Can this process open the socket that the backend uses for the ioctls of
+/// the interfaces (`socket(AF_INET, SOCK_DGRAM)`)?
+fn ioctl_socket_opens() -> bool {
+    // SAFETY: socket(2) and close(2) on a descriptor of this function.
+    let fd = unsafe { libc::socket(libc::AF_INET, libc::SOCK_DGRAM | libc::SOCK_CLOEXEC, 0) };
+    if fd < 0 {
+        return false;
+    }
+    unsafe { libc::close(fd) };
+    true
 }

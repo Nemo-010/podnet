@@ -36,6 +36,7 @@ pub(crate) fn probe_unshare(flags: libc::c_int) -> Probe {
     } else {
         let detail = match code {
             PROBE_NO_LOOPBACK => "unshare ok, but lo cannot be set up (no capability)".to_string(),
+            PROBE_NO_IOCTL_SOCKET => "unshare ok, but the socket for the interface ioctls is refused: a filter refuses an AF_INET datagram socket".to_string(),
             PROBE_NO_TUN => {
                 "unshare ok, but no TUN device and no veth pair in the namespace".to_string()
             }
@@ -55,6 +56,8 @@ const PROBE_NO_LOOPBACK: i32 = 200;
 const PROBE_NO_TUN: i32 = 201;
 /// No TUN, but a veth pair works (T-174).
 const PROBE_VETH: i32 = 202;
+/// The AF_INET datagram socket of the interface ioctls is refused (T-381).
+const PROBE_NO_IOCTL_SOCKET: i32 = 203;
 
 /// In a probe child (a `fork` with no `exec`): close each descriptor above stderr. A child of a
 /// process with threads (a test, a daemon) holds the sockets of the other
@@ -80,6 +83,7 @@ pub(crate) fn probe_veth() -> Probe {
     let detail = match code {
         0 => "a veth pair and a packet socket in the namespace".to_string(),
         PROBE_NO_LOOPBACK => "unshare ok, but lo cannot be set up (no capability)".to_string(),
+        PROBE_NO_IOCTL_SOCKET => "unshare ok, but the socket for the interface ioctls is refused: a filter refuses an AF_INET datagram socket".to_string(),
         PROBE_NO_TUN => "unshare ok, but no veth pair or no packet socket".to_string(),
         -1 => "the probe process was killed".to_string(),
         code => format!("unshare: {}", std::io::Error::from_raw_os_error(code)),
