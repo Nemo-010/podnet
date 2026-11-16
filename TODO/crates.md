@@ -1673,3 +1673,54 @@ sh scripts/agent/check.sh
 2026-11-16, the commit of this entry. Each podcrates tag is `v0.62.0`; `Cargo.lock` and `fuzz/Cargo.lock` change only
 the crates of podcrates. `issue-sync.yml` calls the workflow of podcrates at `b6b1f479bd3978359f1dbe7dc3ed3b79c9949740`
 with `podcrates_ref: v0.62.0`. No code change. `sh scripts/agent/check.sh` passed.
+
+# T-394: Take podcrates v0.63.0 and its installer core (one signature check for the copy of the tree)
+
+**Source:** PodUtils/podcrates#211 (COORD-123 of podcrates, 2026-11-16), the answer to podnet's finding in GitHub #597.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podcrates v0.63.0 is at the commit `d21fd638`. Its notes: "A copy whose block of pins is empty, and that sets its pins
+at run time (podnet's copy of its tree does so from the signed `SHA256SUMS`), is not compared with `NAME-install.sh` of
+`SHA256SUMS`; one line says so. [...] podnet: the replacement of `inst_signature` in your copy of the tree is no longer
+necessary." Also: `pod_manual::Rule::Needs` has the field `one` (a `requires` of a group), and `Plan::userns_ids` for a
+foreground run of podvm.
+
+## Premise
+
+- podnet's copy of the tree checked the signature itself (`verify_signature`), then turned off the check of the core
+  (T-389). With the core of v0.63.0 the check of the core runs for the copy of the tree with no compare of the file.
+- The check of the core is as strong: it gets `SHA256SUMS` and its signature before a download, and each pin (which
+  podnet takes from the same `SHA256SUMS`) must agree with the signed lines.
+- podnet builds no `pod_manual::Rule`.
+
+## Approach
+
+1. Move each podcrates tag to `v0.63.0`; update `Cargo.lock`, `fuzz/Cargo.lock` and `issue-sync.yml`.
+2. Take `core.sh` and `core-net.sh` of the tag (`pins.py` is the same); write the SHA-256 in `scripts/install/SOURCES`.
+3. Remove `verify_signature` and the replacement of `inst_signature` from `scripts/install.sh`.
+4. `scripts/install-test.sh`: the first run of the copy of the tree shows the check of the core and the line of no compare.
+
+## Prove
+
+```sh
+sh scripts/install-test.sh dash
+cargo test --test install_script
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-16, the commit of this entry. Each podcrates tag is `v0.63.0`; the lock files change only the crates of
+podcrates; `issue-sync.yml` names `d21fd638d8aa82465643eb33b80537a1d1ddd00f`. `scripts/install/` holds `core.sh` and
+`core-net.sh` of the tag, unchanged (`check-install.py` passes). `scripts/install.sh` has no `verify_signature` and does
+not replace `inst_signature`: one cosign check for each run. `scripts/install-test.sh`: 12 cases pass in `dash` and `bash
+--posix` (case 1 shows "the signature of SHA256SUMS: ok (cosign, https://github.com/PodUtils/podnet/.github/workflows/release.yml@refs/tags/v9.9.9)"
+and "this installer holds no pins of its own"; cases 5 and 12 still stop on a bad signature and skip with
+`PODNET_COSIGN=none`). `cargo test --test install_script`: 33 passed. `docs/decisions.md`, 2026-11-16, The installer core
+v0.63.0.

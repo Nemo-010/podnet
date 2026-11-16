@@ -107,7 +107,10 @@ run "$tree" PODNET_INSTALL_DIR="$d" || fail "first run: exit $?"
 expect "installed $d/podnet" "first run"
 expect "podnet $version" "first run"
 expect "release: v$version" "first run"
-expect "the cosign signature of SHA256SUMS: ok" "first run"
+# The core checks the signature for the copy of the tree too, and does not
+# compare this file with podnet-install.sh of the release.
+expect "the signature of SHA256SUMS: ok (cosign, https://github.com/PodUtils/podnet/.github/workflows/release.yml@refs/tags/v$version)" "first run"
+expect "this installer holds no pins of its own" "first run"
 [ "$(sum "$d/podnet")" = "$(sum "$rel/$asset")" ] || fail "first run: the binary is not the file of the release"
 leftover "$d" "first run"
 ok "the first run installs the binary"

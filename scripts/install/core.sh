@@ -12,6 +12,13 @@
 # prefix, its SHA-256 must agree with its pin, it must run, and then an
 # atomic move puts it in place. A second run downloads no file that agrees.
 
+# A stamped installer holds its version in the block of pins, which comes
+# before the core. A copy that takes its pins at run time (a copy of the
+# tree of a project, from the signed SHA256SUMS) holds none, and is no
+# asset of a release.
+# shellcheck disable=SC2034 # core-net.sh reads it.
+inst_stamped=${INST_VERSION:+1}
+
 inst_tag() { printf '%s-install' "$INST_NAME"; }
 inst_say() { printf '%s: %s\n' "$(inst_tag)" "$*"; }
 inst_warn() { printf '%s: warning: %s\n' "$(inst_tag)" "$*" >&2; }
@@ -28,6 +35,7 @@ inst_size() { eval "printf '%s' \"\${INST_SIZE_$(inst_key "$1"):-0}\""; }
 # The hooks. inst_files TARGET EXE: one line "NAME ASSET" for each file.
 inst_files() { printf '%s %s\n' "$INST_NAME$2" "$INST_NAME-$1$2"; }
 # The first line of FILE --version must be "INST_NAME VERSION".
+# shellcheck disable=SC2317 # a project redefines each hook; the core calls it by name.
 inst_version_ok() { case $1 in "$INST_NAME $INST_VERSION" | "$INST_NAME $INST_VERSION "*) return 0 ;; *) return 1 ;; esac; }
 # The last step: a check of the installed program, with no network.
 # shellcheck disable=SC2317 # a project redefines each hook; the core calls it by name.

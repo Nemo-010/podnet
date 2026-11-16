@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-16 11:15 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-16 12:45 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -13,10 +13,10 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`; add
   `rustfmt`, `clippy` and the target `x86_64-unknown-linux-musl` in a new container).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.62.0` (T-393), with `pod-warp`: `src/warp/` is glue
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.63.0` (T-394), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.13` (T-355, 0a0f3e5).
-* The record is `TODO/`. `cargo todo check` agrees: 393 entries, 13 open, 10 partial, 37 blocked, 333 done.
+* The record is `TODO/`. `cargo todo check` agrees: 394 entries, 13 open, 10 partial, 37 blocked, 334 done.
 
 ## Unfinished work (not on `main`)
 
@@ -34,6 +34,10 @@ None. No subagent runs.
   secrets 43831877485, live 43831877467, gate 43831896685.
 * The dry run of `release.yml` on `5fbb2e3` passed with its new job `gate / lane` before `publish` (run 43839899756).
   On `81d2e73` (run 43849173659) the body of the release has the section "The release gate" (226 pass, 0 fail, 24 n.a.).
+* Each workflow passed on `b6c4ef7` (podcrates v0.62.0): ci 43854114725, deny 43854114730, secrets 43854114663, live
+  43854114684 and the daily live 43863047917.
+* T-394 (podcrates v0.63.0): the installer core checks the signature for the copy of the tree too; podnet's own
+  `verify_signature` is removed (one cosign check for each run).
 * GitHub #599 (Nemo-010, outside the team): verified and labelled `confirmed`. T-390 and T-391 are done (`c3616be`,
   `tests/shim_daemon.rs`); T-392 (the netlink answer of the vnet shim, P2) is open.
 * Read each run when the watcher reports its end (`CLAUDE.md` step 1). Do not wait for a comment.

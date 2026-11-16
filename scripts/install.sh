@@ -14,9 +14,10 @@
 # after it. Each release publishes podnet-install.sh: this file with the
 # pins of the release (scripts/install/pins.py stamp). This copy of the
 # tree has no pins: it finds the release (PODNET_VERSION, else the newest,
-# also a prerelease), checks the cosign signature of SHA256SUMS when cosign
-# is installed, and takes the pin of the binary from SHA256SUMS. Then the
-# core does the install: a file in place that agrees with its pin stays,
+# also a prerelease) and takes the pin of the binary from SHA256SUMS. Then
+# the core checks the cosign signature of SHA256SUMS when cosign is
+# installed (each pin must agree with the signed lines), and does the
+# install: a file in place that agrees with its pin stays,
 # and a new file goes to a temporary name in the directory, must agree
 # with its pin, must run and print "podnet VERSION", and only then does a
 # rename put it in place.
@@ -64,6 +65,13 @@ INST_TARGETS=""
 # prefix, its SHA-256 must agree with its pin, it must run, and then an
 # atomic move puts it in place. A second run downloads no file that agrees.
 
+# A stamped installer holds its version in the block of pins, which comes
+# before the core. A copy that takes its pins at run time (a copy of the
+# tree of a project, from the signed SHA256SUMS) holds none, and is no
+# asset of a release.
+# shellcheck disable=SC2034 # core-net.sh reads it.
+inst_stamped=${INST_VERSION:+1}
+
 inst_tag() { printf '%s-install' "$INST_NAME"; }
 inst_say() { printf '%s: %s\n' "$(inst_tag)" "$*"; }
 inst_warn() { printf '%s: warning: %s\n' "$(inst_tag)" "$*" >&2; }
@@ -80,6 +88,7 @@ inst_size() { eval "printf '%s' \"\${INST_SIZE_$(inst_key "$1"):-0}\""; }
 # The hooks. inst_files TARGET EXE: one line "NAME ASSET" for each file.
 inst_files() { printf '%s %s\n' "$INST_NAME$2" "$INST_NAME-$1$2"; }
 # The first line of FILE --version must be "INST_NAME VERSION".
+# shellcheck disable=SC2317 # a project redefines each hook; the core calls it by name.
 inst_version_ok() { case $1 in "$INST_NAME $INST_VERSION" | "$INST_NAME $INST_VERSION "*) return 0 ;; *) return 1 ;; esac; }
 # The last step: a check of the installed program, with no network.
 # shellcheck disable=SC2317 # a project redefines each hook; the core calls it by name.
@@ -637,7 +646,9 @@ EOF
     # This installer itself, when it runs from a file (not from a pipe).
     inst_v=$(inst_sumline "$(inst_tag).sh" "$inst_tmp.SHA256SUMS")
     case $0 in *.sh) [ -f "$0" ] || inst_v='-' ;; *) inst_v='-' ;; esac
-    if [ -z "$inst_v" ]; then
+    if [ -z "$inst_stamped" ]; then
+        inst_say "this installer holds no pins of its own: it is not compared with $(inst_tag).sh of SHA256SUMS"
+    elif [ -z "$inst_v" ]; then
         inst_say "SHA256SUMS has no line for $(inst_tag).sh: this installer itself is not compared"
     elif [ "$inst_v" != - ] && [ "$(inst_sha256 "$0")" != "$inst_v" ]; then
         inst_die "$0 is not $(inst_tag).sh of the signed SHA256SUMS: take the installer of the release again; no file was changed"
@@ -752,11 +763,6 @@ podnet_main() {
         podnet_pins
         podnet_bridge
         podnet_nosha
-        # podnet_pins checked the signature of SHA256SUMS. The check of the
-        # core would compare this file with podnet-install.sh of the
-        # release; this copy of the tree is not that file.
-        # shellcheck disable=SC2317 # the core calls it by name.
-        inst_signature() { return 0; }
         rm -rf "$tmp"
         tmp=''
     fi
@@ -856,8 +862,10 @@ podnet_pins() {
     fi
     base=${base:-https://github.com/$repo/releases/download/$tag}
     base=${base%/}
+    # This file is not under the signature: the core checks the signature
+    # of SHA256SUMS before a download, and each pin against the signed
+    # lines (inst_signature).
     get "$base/SHA256SUMS" "$tmp/SHA256SUMS" SHA256SUMS
-    verify_signature "$base" "$tmp"
     # Exactly one line names the file. It has two fields, and the hash has
     # 64 hex digits.
     found=$(awk -v f="$asset" 'NF == 2 && ($2 == f || $2 == "*" f) { n++ } END { print n + 0 }' "$tmp/SHA256SUMS")
@@ -1105,26 +1113,6 @@ highest() {
         if (pre != "") { split(pre, p, "."); word = p[1]; num = p[2] + 0 }
         printf "%09d.%09d.%09d %d %s %09d %s\n", c[1], c[2], c[3], (pre == "") ? 1 : 0, (word == "") ? "~" : word, num, tag
     }' | sort | tail -n 1 | awk '{ print $NF }'
-}
-
-# The cosign signature of SHA256SUMS, when cosign is there (PODNET_COSIGN
-# gives the command, or none): the certificate must name release.yml of the
-# repository at the tag.
-verify_signature() {
-    inst_detect_cosign
-    if [ -z "$inst_cosign" ]; then
-        inst_say "$inst_cosign_why: the signature of SHA256SUMS is not checked (podnet update checks it)" >&2
-        return 0
-    fi
-    get "$1/SHA256SUMS.sigstore.json" "$2/SHA256SUMS.sigstore.json" SHA256SUMS.sigstore.json
-    if ! TUF_ROOT="${TUF_ROOT:-$2/tuf}" "$inst_cosign" verify-blob --bundle "$2/SHA256SUMS.sigstore.json" \
-        --certificate-identity "https://github.com/$repo/.github/workflows/release.yml@refs/tags/$tag" \
-        --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-        "$2/SHA256SUMS" > "$2/cosign.log" 2>&1; then
-        tail -n 5 "$2/cosign.log" >&2
-        inst_die "the cosign signature of SHA256SUMS is not valid (the lines above are the output of cosign)"
-    fi
-    inst_say "the cosign signature of SHA256SUMS: ok" >&2
 }
 
 podnet_main "$@"

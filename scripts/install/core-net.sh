@@ -163,7 +163,9 @@ EOF
     # This installer itself, when it runs from a file (not from a pipe).
     inst_v=$(inst_sumline "$(inst_tag).sh" "$inst_tmp.SHA256SUMS")
     case $0 in *.sh) [ -f "$0" ] || inst_v='-' ;; *) inst_v='-' ;; esac
-    if [ -z "$inst_v" ]; then
+    if [ -z "$inst_stamped" ]; then
+        inst_say "this installer holds no pins of its own: it is not compared with $(inst_tag).sh of SHA256SUMS"
+    elif [ -z "$inst_v" ]; then
         inst_say "SHA256SUMS has no line for $(inst_tag).sh: this installer itself is not compared"
     elif [ "$inst_v" != - ] && [ "$(inst_sha256 "$0")" != "$inst_v" ]; then
         inst_die "$0 is not $(inst_tag).sh of the signed SHA256SUMS: take the installer of the release again; no file was changed"
