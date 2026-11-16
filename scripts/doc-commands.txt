@@ -122,3 +122,4 @@ docs/warp.md a6d65372d0 live WARP of Cloudflare; <KEY>, HOST:PORT and ... are pl
 docs/warp.md 9f6cad43c6 live a WARP proxy in the foreground; ~/.config/podnet/rules of the user
 docs/development.md fe6648d10b skip a step of the maintainer: it writes src/cli/scenarios.txt in the repository
 docs/forward.md 2bce1676d1 live a forward through the relay to hosts of a private network
+docs/link.md 7c69a49b3e skip a reference list: the placeholders ADDRESS, FILE and FP

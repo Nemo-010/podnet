@@ -289,7 +289,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #597 | COORD-096: podnet took v0.58.0 to v0.63.0 (to podcrates) | open (a message to podcrates) | none |
 | #598 | [gh action] requested: ci, deny and a dry run of release on the installer core, the row proxy-only and the take of v0.59.0 (T-360, T-358, T-386) | closed: deny 43796829153 and release 43796832964 passed on 1852fcc; ci 43796824990 failed there on two install-test cases (T-360, fixed in c24e0cf); ci 43820922609, deny 43820922608, secrets 43820922620 and live 43820922672 passed on 01487d8 | none |
 | #599 | vnet: let a stock client bind a wildcard, lock a file and enumerate interfaces | closed (outside the team: verified, labelled `confirmed`; T-390 and T-391 in c3616be, T-392 in the commit of its entry) | T-390, T-391, T-392 |
-| #600 | link: an exec service never tells the peer how the program ended | open (outside the team: verified, labelled `confirmed`) | T-403 |
+| #600 | link: an exec service never tells the peer how the program ended | closed (outside the team: verified, labelled `confirmed`; T-403 in the commit of its entry) | T-403 |
 | #601 | forward has no name table for a client that cannot edit its hosts file | closed (outside the team: verified, labelled `confirmed`; T-404 in the commit of its entry) | T-404 |
 | #602 | router doors count bytes but cannot cap them | closed (outside the team: verified, labelled `confirmed`; T-405 in the commit of its entry) | T-405 |
 | #603 | COORD-097: a fix in the frozen src/tunnel.rs: the quic+warp leg reconnects when its WARP session closes (T-402) (to podcrates) | open (a message to podcrates; close it when podcrates takes the fix with pod-cloudflare) | none |

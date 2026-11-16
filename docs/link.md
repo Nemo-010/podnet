@@ -167,6 +167,20 @@ podnet link dial ADDRESS --peer FP --service tool
 * When the program closes its stdout, the stream ends, and the program has 10 s to end (else it is killed). When the peer ends its side,
   the stdin of the program closes. A reset stream kills the program. A program that ends with a fault is logged.
 
+`--service NAME=exec-status:/ABS/PATH` runs the program in the same way, and the peer gets how it ended (T-403):
+
+```sh
+podnet link listen ADDRESS --allow FILE --service build=exec-status:/usr/local/bin/build
+podnet link dial ADDRESS --peer FP --service build --status
+```
+
+* After the answer of the service, the listener sends records: a type byte, a length of 4 bytes (big endian, 64 KiB at
+  most), the bytes. Type 1 is stdout, type 2 is stderr, type 3 is the exit status (4 bytes, signed; 128+N for the signal
+  N) and is the last record. The stdin of the program is the bytes of the dialer, as for `exec:`.
+* `link dial --status` writes the stdout of the program to stdout and its stderr to stderr, and exits with the exit
+  status. A stream that ends with no status, or a record of another type (a service that is not `exec-status:`), exits 69.
+* `exec:` does not change: its stream is the bytes of the program, and the dialer exits 0 at the end of the stream.
+
 The file server serves a tree at a peer with `podnet serve DIR --at peer:FP/SERVICE --at-listen ADDRESS` (see `docs/serve.md`, "Serve at a peer"), or, through a running `link connect`, with `podnet serve DIR --ingress peer:FP/SERVICE`.
 
 Proof: `tests/service_exec.rs`. Not proven: `--exec-user` as root (the test runs without privilege and checks the refusal).

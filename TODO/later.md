@@ -2171,7 +2171,7 @@ class `refused`, as a refused user token; no token in the text), `two_devtunnel_
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2186,7 +2186,7 @@ case: a CI job on host A runs a build on host B over a link, and must get the st
 ## Premise
 
 - Read on 2026-11-16 at 1caa0be: `src/cli/cmd/link/dial.rs` ends with `std::process::exit(0)` when the far end ended the
-  stream first (`:272`). The `exec` service logs the status of the program on the listener only.
+  stream first (`:287`). The `exec` service logs the status of the program on the listener only.
 - The frames of the link are in `pod-link` of podcrates: a new record form of a service may need an ask to podcrates.
 
 ## Approach
@@ -2202,6 +2202,19 @@ case: a CI job on host A runs a build on host B over a link, and must get the st
 ```sh
 cargo test --workspace
 ```
+
+## Done
+
+2026-11-16, the commit of this entry. `--service NAME=exec-status:/ABS/PATH` of `link listen` and `link connect` runs the
+program as `exec:`, and sends records (a type byte, a length of 4 bytes, the bytes): 1 stdout, 2 stderr, 3 the exit
+status (128+N for a signal), last (`src/link_exec.rs`). `link dial --status` copies stdout and stderr, and exits with the
+status; a stream with no status or another record exits 69. The records go in the bytes of the stream: `pod-link` does
+not change, and no ask to podcrates is needed. `exec:` does not change. `docs/link.md`, The service `exec`.
+
+Tests: `link_exec::tests::a_record_goes_and_comes_back` and `the_framed_form_sends_the_status` (a program that reads a
+line, writes to stdout and stderr, and exits 3). By hand: `echo hello | podnet link dial ... --service job --status`
+printed `out: hello`, wrote `err: oops` to stderr and exited 3; `--status` against an `exec:` service exits 69; the
+service `exec:` still exits 0.
 
 # T-404: forward: a name table (`--name NAME=HOST:PORT`, `--alias-port`) with an address of 127.0.0.0/8 for each name and the DNS door (GitHub #601)
 

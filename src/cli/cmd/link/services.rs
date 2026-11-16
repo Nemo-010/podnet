@@ -47,7 +47,9 @@ pub(crate) struct ServiceArgs {
     /// its stdin and stdout are the stream and its stderr goes to the log.
     /// Give its arguments with --exec-arg, its environment with --exec-env
     /// (the environment is empty beyond the names given) and its user with
-    /// --exec-user (root only).
+    /// --exec-user (root only). A TARGET `exec-status:/ABS/PATH` runs the
+    /// program in the same way. The peer gets its stdout, its stderr and its
+    /// exit status as records (`link dial --status`).
     #[arg(long, value_name = "NAME=TARGET")]
     pub(crate) service: Vec<String>,
     /// The address where `BIND` of the service `socks5` listens (default
@@ -135,9 +137,12 @@ pub(super) fn services_of(
                 "--service {name}: the service {name} takes no target: give `--service {name}`"
             )));
         }
-        let found = match text.strip_prefix(podnet::link_exec::PREFIX) {
-            Some(program) => Service::Exec(exec_of(args, name, program)?),
-            None => Service::Target(target(text, "--service")?),
+        let found = if let Some(program) = text.strip_prefix(podnet::link_exec::STATUS_PREFIX) {
+            Service::Exec(exec_of(args, name, program)?.framed())
+        } else if let Some(program) = text.strip_prefix(podnet::link_exec::PREFIX) {
+            Service::Exec(exec_of(args, name, program)?)
+        } else {
+            Service::Target(target(text, "--service")?)
         };
         if out.insert(name.to_string(), found).is_some() {
             return Err(usage(format!(

@@ -84,6 +84,11 @@ pub(crate) struct DialArgs {
     /// With --node: the most links that the stream may cross, 1 to 16.
     #[arg(long, value_name = "N", requires = "node", default_value_t = podnet::link_forward::DEFAULT_HOPS, value_parser = clap::value_parser!(u8).range(1..=16))]
     pub(crate) hops: u8,
+    /// For a service `exec-status:` of the listener: write the stdout of the
+    /// program to stdout and its stderr to stderr, and exit with its exit
+    /// status. A stream that ends with no status exits 69.
+    #[arg(long, conflicts_with_all = ["check", "listen"])]
+    pub(crate) status: bool,
     /// Connect and check the peer, print its fingerprint, and exit 0. It
     /// opens no stream. With --egress elements, first resolve and dial each
     /// element once and print the result (exit 69, naming the element, when
@@ -238,6 +243,16 @@ pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> 
         let _ = up.shutdown().await;
     });
     let mut stdout = tokio::io::stdout();
+    if args.status {
+        // T-403: the records of `exec-status:`.
+        let code = status_records(&mut down, &mut stdout).await;
+        send.abort();
+        link.close().await;
+        stdout.flush().await?;
+        let code = code?;
+        tokio::io::stderr().flush().await?;
+        std::process::exit(code);
+    }
     let mut buf = vec![0u8; 16 * 1024];
     loop {
         let n = match down.read(&mut buf).await {
@@ -272,4 +287,43 @@ pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> 
         std::process::exit(0);
     }
     Ok(())
+}
+
+/// Copy the records of `exec-status:` to stdout and stderr; the exit status
+/// of the program, or exit 69 when the stream ends with no status.
+async fn status_records<R, W>(down: &mut R, stdout: &mut W) -> Result<i32>
+where
+    R: tokio::io::AsyncRead + Unpin,
+    W: tokio::io::AsyncWrite + Unpin,
+{
+    use podnet::link_exec::{read_record, STATUS, STDERR, STDOUT};
+    let mut stderr = tokio::io::stderr();
+    loop {
+        let record = read_record(down).await.map_err(|e| {
+            exit::fault(Fault::Unavailable, e.context("the records of exec-status:"))
+        })?;
+        match record {
+            Some((STDOUT, data)) => stdout.write_all(&data).await?,
+            Some((STDERR, data)) => stderr.write_all(&data).await?,
+            Some((STATUS, data)) if data.len() == 4 => {
+                let code = i32::from_be_bytes([data[0], data[1], data[2], data[3]]);
+                // An exit code is 0 to 255.
+                return Ok(code.clamp(0, 255));
+            }
+            Some((kind, _)) => {
+                return Err(exit::fault(
+                    Fault::Unavailable,
+                    anyhow::anyhow!("a record of type {kind}: is the service exec-status:?"),
+                ))
+            }
+            None => {
+                return Err(exit::fault(
+                    Fault::Unavailable,
+                    anyhow::anyhow!(
+                        "the stream ended with no exit status (is the service exec-status:?)"
+                    ),
+                ))
+            }
+        }
+    }
 }

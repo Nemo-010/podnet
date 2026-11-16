@@ -40,6 +40,22 @@ use crate::link_service as service;
 /// The prefix of the target in `--service NAME=exec:/ABS/PATH`.
 pub const PREFIX: &str = "exec:";
 
+/// The prefix of the framed form (T-403): `--service NAME=exec-status:/ABS/PATH`.
+/// After the answer of the service, the listener sends records: a type
+/// byte, a length of 4 bytes (big endian), the bytes. Type [`STDOUT`] and
+/// [`STDERR`] carry the output; type [`STATUS`] (4 bytes, a signed exit
+/// code; 128+N for the signal N) is the last record. The stdin of the
+/// program is the bytes of the dialer, as for `exec:`.
+pub const STATUS_PREFIX: &str = "exec-status:";
+
+/// The record types of `exec-status:`.
+pub const STDOUT: u8 = 1;
+pub const STDERR: u8 = 2;
+pub const STATUS: u8 = 3;
+
+/// The most bytes of one record.
+pub const RECORD_LIMIT: usize = 64 * 1024;
+
 /// The most programs that run at one time.
 pub const MAX_RUNNING: usize = 64;
 
@@ -67,6 +83,8 @@ pub struct Spec {
     args: Vec<String>,
     env: Vec<String>,
     user: Option<Account>,
+    /// `exec-status:`: the framed form.
+    framed: bool,
 }
 
 /// A user, resolved when the listener starts.
@@ -140,7 +158,14 @@ impl Spec {
             args,
             env,
             user,
+            framed: false,
         })
+    }
+
+    /// The framed form `exec-status:` (T-403).
+    pub fn framed(mut self) -> Spec {
+        self.framed = true;
+        self
     }
 
     /// The command: no inherited environment beyond the allow list.
@@ -225,6 +250,7 @@ fn slots() -> &'static std::sync::Arc<Semaphore> {
 pub struct Running {
     child: Child,
     service: String,
+    framed: bool,
     _slot: OwnedSemaphorePermit,
 }
 
@@ -246,6 +272,7 @@ pub fn start(name: &str, spec: &Spec) -> Result<Running, (u8, anyhow::Error)> {
     Ok(Running {
         child,
         service: name.to_string(),
+        framed: spec.framed,
         _slot: slot,
     })
 }
@@ -270,6 +297,9 @@ impl Running {
     where
         S: AsyncRead + AsyncWrite + Unpin + Send,
     {
+        if self.framed {
+            return self.pump_framed(stream).await;
+        }
         let mut stdin = self.child.stdin.take().context("no stdin")?;
         let mut stdout = self.child.stdout.take().context("no stdout")?;
         let stderr = self.child.stderr.take().context("no stderr")?;
@@ -306,6 +336,109 @@ impl Running {
     }
 }
 
+impl Running {
+    /// The framed form: stdout and stderr as records, then the status.
+    async fn pump_framed<S>(mut self, stream: S) -> Result<()>
+    where
+        S: AsyncRead + AsyncWrite + Unpin + Send,
+    {
+        let mut stdin = self.child.stdin.take().context("no stdin")?;
+        let mut stdout = self.child.stdout.take().context("no stdout")?;
+        let mut stderr = self.child.stderr.take().context("no stderr")?;
+        let (mut read, write) = tokio::io::split(stream);
+        let write = tokio::sync::Mutex::new(write);
+        let up = async {
+            let _ = tokio::io::copy(&mut read, &mut stdin).await;
+            drop(stdin);
+            std::future::pending::<()>().await;
+        };
+        let out = async {
+            tokio::try_join!(
+                records(&mut stdout, STDOUT, &write),
+                records(&mut stderr, STDERR, &write)
+            )
+        };
+        let copied = tokio::select! {
+            copied = out => copied,
+            () = up => unreachable!("the copy to the program never ends"),
+        };
+        let status = match tokio::time::timeout(END_LIMIT, self.child.wait()).await {
+            Ok(status) => status?,
+            Err(_) => {
+                let _ = self.child.kill().await;
+                self.child.wait().await?
+            }
+        };
+        copied?;
+        let code = status_code(&status);
+        let mut write = write.into_inner();
+        write_record(&mut write, STATUS, &code.to_be_bytes()).await?;
+        let _ = write.shutdown().await;
+        if code != 0 {
+            tracing::info!(
+                service = self.service,
+                code,
+                "the program of a stream ended; the peer gets the status"
+            );
+        }
+        Ok(())
+    }
+}
+
+/// The exit code of a status: the code, or 128+N for the signal N.
+pub fn status_code(status: &std::process::ExitStatus) -> i32 {
+    use std::os::unix::process::ExitStatusExt as _;
+    status
+        .code()
+        .unwrap_or_else(|| 128 + status.signal().unwrap_or(0))
+}
+
+/// One record: the type, the length (big endian), the bytes.
+pub async fn write_record<W: AsyncWrite + Unpin>(w: &mut W, kind: u8, data: &[u8]) -> Result<()> {
+    let len = u32::try_from(data.len()).context("a record is too large")?;
+    let mut head = [0u8; 5];
+    head[0] = kind;
+    head[1..].copy_from_slice(&len.to_be_bytes());
+    w.write_all(&head).await?;
+    w.write_all(data).await?;
+    w.flush().await?;
+    Ok(())
+}
+
+/// Copy `from` as records of type `kind`.
+async fn records<R, W>(from: &mut R, kind: u8, to: &tokio::sync::Mutex<W>) -> Result<()>
+where
+    R: AsyncRead + Unpin,
+    W: AsyncWrite + Unpin,
+{
+    let mut buf = vec![0u8; RECORD_LIMIT];
+    loop {
+        let n = from.read(&mut buf).await?;
+        if n == 0 {
+            return Ok(());
+        }
+        write_record(&mut *to.lock().await, kind, &buf[..n]).await?;
+    }
+}
+
+/// Read the next record: its type and its bytes, or `None` at the end of
+/// the stream. A record over [`RECORD_LIMIT`] is an error.
+pub async fn read_record<R: AsyncRead + Unpin>(r: &mut R) -> Result<Option<(u8, Vec<u8>)>> {
+    let mut head = [0u8; 5];
+    match r.read_exact(&mut head).await {
+        Ok(_) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(None),
+        Err(e) => return Err(e.into()),
+    }
+    let len = u32::from_be_bytes([head[1], head[2], head[3], head[4]]) as usize;
+    if len > RECORD_LIMIT {
+        anyhow::bail!("a record of {len} bytes: the most is {RECORD_LIMIT}");
+    }
+    let mut data = vec![0u8; len];
+    r.read_exact(&mut data).await?;
+    Ok(Some((head[0], data)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -324,5 +457,63 @@ mod tests {
             assert_eq!(exit::code_of(&err), 64, "{program}: {err:#}");
         }
         assert!(Spec::new("/bin/cat", vec!["-n".into()], vec!["HOME".into()], None).is_ok());
+    }
+
+    /// T-403: a record goes and comes back; the end of the stream is None;
+    /// a record over the limit is an error.
+    #[tokio::test]
+    async fn a_record_goes_and_comes_back() {
+        let mut buf = Vec::new();
+        write_record(&mut buf, STDERR, b"oops").await.unwrap();
+        write_record(&mut buf, STATUS, &3i32.to_be_bytes())
+            .await
+            .unwrap();
+        let mut r = &buf[..];
+        assert_eq!(
+            read_record(&mut r).await.unwrap(),
+            Some((STDERR, b"oops".to_vec()))
+        );
+        assert_eq!(
+            read_record(&mut r).await.unwrap(),
+            Some((STATUS, vec![0, 0, 0, 3]))
+        );
+        assert_eq!(read_record(&mut r).await.unwrap(), None);
+        let big = [STDOUT, 0xff, 0xff, 0xff, 0xff];
+        assert!(read_record(&mut &big[..]).await.is_err());
+    }
+
+    /// T-403: `exec-status:` sends stdout and stderr as records, then the
+    /// exit status of the program.
+    #[tokio::test]
+    async fn the_framed_form_sends_the_status() {
+        let dir = tempfile::tempdir().unwrap();
+        let job = dir.path().join("job");
+        std::fs::write(
+            &job,
+            "#!/bin/sh\nread line\necho \"out: $line\"\necho oops >&2\nexit 3\n",
+        )
+        .unwrap();
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(&job, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let spec = Spec::new(job.to_str().unwrap(), vec![], vec![], None)
+            .unwrap()
+            .framed();
+        let running = start("job", &spec).map_err(|(_, e)| e).unwrap();
+        let (mut ours, theirs) = tokio::io::duplex(1 << 16);
+        let pump = tokio::spawn(running.pump(theirs));
+        ours.write_all(b"hi\n").await.unwrap();
+        let (mut out, mut err, mut code) = (Vec::new(), Vec::new(), None);
+        while let Some((kind, data)) = read_record(&mut ours).await.unwrap() {
+            match kind {
+                STDOUT => out.extend(data),
+                STDERR => err.extend(data),
+                STATUS => code = Some(i32::from_be_bytes(data.try_into().unwrap())),
+                other => panic!("type {other}"),
+            }
+        }
+        pump.await.unwrap().unwrap();
+        assert_eq!(out, b"out: hi\n");
+        assert_eq!(err, b"oops\n");
+        assert_eq!(code, Some(3));
     }
 }

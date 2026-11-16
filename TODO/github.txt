@@ -298,7 +298,7 @@
 597 issue open
 598 issue closed
 599 issue closed
-600 issue open
+600 issue closed
 601 issue closed
 602 issue closed
 603 issue open
