@@ -30,6 +30,8 @@ None. No subagent runs.
   runners are shared; cancel the runs of a head that a newer push replaces.
 * Each workflow passed on `01487d8`: ci 43820922609, deny 43820922608, secrets 43820922620, live 43820922672, gate
   43820928202 (the first run of `gate.yml`). GitHub #598 is closed in the record.
+* Each workflow passed on `89a6e1e` (podcrates v0.61.0 and its installer core): ci 43831877376, deny 43831877606,
+  secrets 43831877485, live 43831877467, gate 43831896685.
 * Read each run when the watcher reports its end (`CLAUDE.md` step 1). Do not wait for a comment.
 
 ## The work of 2026-11-16, second session (all on `main`)
