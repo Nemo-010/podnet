@@ -7096,6 +7096,14 @@ cargo test --test install_script
 shellcheck --shell=sh scripts/install.sh
 ```
 
+## Correction
+
+2026-11-16: ci 43796824990 on 1852fcc failed in the jobs `restricted-host` and `no-loopback`.
+`the_install_test_passes_in_each_shell` and `an_installer_with_no_pin_check_fails_the_install_test` run
+`scripts/install-test.sh`, which serves the fake release on `127.0.0.1`. The two tests now skip with `need_loopback!()`
+on a host with no loopback or with `bind(AF_INET)` refused. `sh scripts/restricted-host.sh --test install_script`:
+2 tests skipped, 33 passed, exit 0.
+
 ## Done
 
 2026-11-16, 0529753. `scripts/install.sh` is the installer core of podcrates v0.58.0 (`scripts/install/core.sh` and
@@ -7112,14 +7120,6 @@ podlab profiles small-tmp, noexec-tmp, proc-masked, inherited-fds, root-unreadab
 no-proc, ro-etc-ssl and seccomp-nonewprivs; a copy with no pin check fails it (planted defect). `cargo test --test
 install_script`: 33 passed. `shellcheck -S warning` passes; `shellcheck --shell=sh` gives info SC2317 only, on two
 hooks of the inline core. `sh scripts/agent/check.sh` passed, and clippy with `--features full` passed.
-
-## Correction
-
-2026-11-16: ci 43796824990 on 1852fcc failed in the jobs `restricted-host` and `no-loopback`.
-`the_install_test_passes_in_each_shell` and `an_installer_with_no_pin_check_fails_the_install_test` run
-`scripts/install-test.sh`, which serves the fake release on `127.0.0.1`. The two tests now skip with `need_loopback!()`
-on a host with no loopback or with `bind(AF_INET)` refused. `sh scripts/restricted-host.sh --test install_script`:
-2 tests skipped, 33 passed, exit 0.
 
 # T-361: git init: make the root when it does not exist
 
