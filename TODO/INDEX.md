@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**387 entries: 12 open, 10 partial, 37 blocked, 328 done.**
+**389 entries: 12 open, 10 partial, 37 blocked, 330 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 36 | 40 |
-| P2 | 5 | 4 | 10 | 171 | 190 |
+| P2 | 5 | 4 | 10 | 173 | 192 |
 | P3 | 7 | 4 | 25 | 120 | 156 |
-| **All** | 12 | 10 | 37 | 328 | 387 |
+| **All** | 12 | 10 | 37 | 330 | 389 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -433,3 +433,5 @@ M8 Overlays, M9 Later.
 | [T-385](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.58.0 and remove the glue of the gaps of pod-manual |
 | [T-386](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.59.0 (the fixes of pod-link and pod-hold for T-380 and T-381) |
 | [T-387](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.60.0 (the network labs of pod-lab, clap's requires in pod-manual) |
+| [T-388](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.61.0 (a way out of a network lab, the rows that send a packet out) |
+| [T-389](crates.md) | P2 | S | M5 | chore | done | The installer core of podcrates v0.61.0: the cosign check of the core |

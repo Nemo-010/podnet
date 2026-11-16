@@ -4122,9 +4122,9 @@ H, not H" with the same hash twice.
 ## Premise
 
 - Implement from the description, not from the donor source (the donor is GPL-3.0-or-later).
-- `scripts/install.sh:327-351` (`resolve_tag`): the branches `v*) echo "$1"` and `*) echo "v$1"` pass the
-  text through. The line `scripts/install.sh:84` builds `base` from it.
-- `scripts/install.sh:401-413` (`check_sum`): the `awk` prints each matching hash, and the compare is
+- `scripts/install.sh:250-274` (`resolve_tag`): the branches `v*) echo "$1"` and `*) echo "v$1"` pass the
+  text through. The line `scripts/install.sh:82` builds `base` from it.
+- `scripts/install.sh:325-337` (`check_sum`): the `awk` prints each matching hash, and the compare is
   against the joined text.
 - The rule that exists: `src/update.rs:167-174` (`valid_tag`: 1 to 64 characters, first `v` or a digit, no
   `..`), used by `src/update.rs:185`, `src/update.rs:271` and `src/update.rs:348`.
@@ -4132,8 +4132,8 @@ H, not H" with the same hash twice.
   of the hash. SHA256SUMS is signed, so this is a hardening gap, not a hole.
 - `tests/install_script.rs:105-115` (`Lab::curl`): the argument loop skips each word that starts with `-`,
   so no flag can change a result. `Lab::run` clears the environment and sets no `TMPDIR`; one test sets it
-  (`tests/install_script.rs:408`). The script passes `--proto` at `scripts/install.sh:887` and
-  `scripts/install.sh:911` (after T-360).
+  (`tests/install_script.rs:408`). The script passes `--proto` at `scripts/install.sh:1000` and
+  `scripts/install.sh:1024` (after T-360).
 - Closed issues that touch the same files and add no such rule: GitHub #227 (`valid_tag` for `update`
   only), #290 (seven defects of the script), #216, #246, #168, #169, #2, #17, #19. No entry of the record
   covers it.

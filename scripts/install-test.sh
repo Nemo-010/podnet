@@ -162,8 +162,13 @@ ok "a file:// mirror replaces an old binary"
 stamped=$work/podnet-install.sh
 python3 -I "$root/scripts/install/pins.py" stamp "$tree" --version "$version" --assets "$rel" --out "$stamped" > /dev/null ||
     fail "pins.py stamp failed"
+: > "$work/cosign.log"
 runargs "$stamped" --prefix "$work/d7" || fail "stamped: exit $?"
 expect "installed $work/d7/podnet" "stamped"
+# The core checks the signature of SHA256SUMS for the copy of a release.
+expect "the signature of SHA256SUMS: ok (cosign, https://github.com/PodUtils/podnet/.github/workflows/release.yml@refs/tags/v$version)" "stamped"
+grep -q -e "--certificate-identity https://github.com/PodUtils/podnet/.github/workflows/release.yml@refs/tags/v$version" "$work/cosign.log" ||
+    fail "stamped: cosign did not get the identity of release.yml"
 runargs "$stamped" --prefix "$work/d7" || fail "stamped second run: exit $?"
 expect "is already installed" "stamped second run"
 [ -s "$work/log" ] && fail "stamped second run: a request: $(cat "$work/log")"
@@ -205,4 +210,17 @@ run "$tree" PODNET_INSTALL_DIR="$work/d11" PODNET_VERSION='v1/../x' && fail "hos
 expect "not a release tag" "hostile version"
 [ -s "$work/log" ] && fail "hostile version: a request"
 ok "a hostile version stops before a request"
+
+# 12. PODNET_COSIGN=none: no signature check, and the run says so. A bad
+# signature stops the copy of a release too.
+: > "$work/cosign.log"
+run "$tree" PODNET_INSTALL_DIR="$work/d12" PODNET_COSIGN=none COSIGN_RC=1 || fail "cosign none: exit $?"
+expect "PODNET_COSIGN=none: the signature of SHA256SUMS is not checked" "cosign none"
+[ -s "$work/cosign.log" ] && fail "cosign none: cosign ran"
+# shellcheck disable=SC2086 # the shell is a list of words.
+env -i PATH="$work/fake:$PATH" HOME="$work/home" PODNET_MIRROR="$mirror" COSIGN_RC=1 \
+    $shell "$stamped" --prefix "$work/d12b" > "$work/out" 2>&1 && fail "stamped, bad signature: exit 0"
+expect "signature of SHA256SUMS is not valid" "stamped, bad signature"
+[ ! -e "$work/d12b/podnet" ] || fail "stamped, bad signature: a binary was installed"
+ok "PODNET_COSIGN=none skips the signature; a bad signature stops the copy of a release"
 echo "$n cases passed in $shell"

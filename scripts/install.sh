@@ -10,7 +10,7 @@
 # and sh exits 0 when curl fails.
 #
 # The script is POSIX sh. It is the installer core of PodUtils/podcrates
-# (scripts/install/core.sh, inline below, unchanged) and the part of podnet
+# (scripts/install/core.sh and core-net.sh, inline below, unchanged) and the part of podnet
 # after it. Each release publishes podnet-install.sh: this file with the
 # pins of the release (scripts/install/pins.py stamp). This copy of the
 # tree has no pins: it finds the release (PODNET_VERSION, else the newest,
@@ -53,17 +53,16 @@ INST_TARGETS=""
 # BEGIN CORE (scripts/install/pins.py puts scripts/install/core.sh here)
 # SPDX-License-Identifier: 0BSD
 # The core of each installer of PodUtils (docs/install.md). POSIX sh: it
-# runs under dash, busybox sh and bash --posix. A project installer sets
-# INST_NAME, INST_ENV and INST_REPO, holds the block of pins, includes this
-# file (scripts/install/pins.py puts it inline for a release), can replace
-# the hooks inst_files, inst_selfcheck and inst_setup, and calls
-# inst_main "$@".
+# runs under dash, busybox sh, bash --posix, the sh of macOS and Git Bash.
+# A project installer sets INST_NAME, INST_ENV and INST_REPO, holds the
+# block of pins, includes this file and core-net.sh (scripts/install/pins.py
+# puts them inline for a release), can replace the hooks inst_files,
+# inst_selfcheck and inst_setup, and calls inst_main "$@".
 #
 # The rules: no root; no file outside the prefix; no file of the host read
 # that the install does not need; a file goes to a temporary name in the
-# prefix, its SHA-256 must agree with its pin, it must run, and only then
-# does an atomic move put it in place. A second run checks each file
-# against its pin and downloads nothing that agrees.
+# prefix, its SHA-256 must agree with its pin, it must run, and then an
+# atomic move puts it in place. A second run downloads no file that agrees.
 
 inst_tag() { printf '%s-install' "$INST_NAME"; }
 inst_say() { printf '%s: %s\n' "$(inst_tag)" "$*"; }
@@ -78,8 +77,7 @@ inst_key() { printf '%s' "$1" | tr -c 'A-Za-z0-9\n' '_'; }
 inst_pin() { eval "printf '%s' \"\${INST_SUM_$(inst_key "$1"):-}\""; }
 inst_size() { eval "printf '%s' \"\${INST_SIZE_$(inst_key "$1"):-0}\""; }
 
-# The hooks. inst_files TARGET EXE prints one line "NAME ASSET" for each
-# file: NAME in the prefix, ASSET of the release.
+# The hooks. inst_files TARGET EXE: one line "NAME ASSET" for each file.
 inst_files() { printf '%s %s\n' "$INST_NAME$2" "$INST_NAME-$1$2"; }
 # The first line of FILE --version must be "INST_NAME VERSION".
 inst_version_ok() { case $1 in "$INST_NAME $INST_VERSION" | "$INST_NAME $INST_VERSION "*) return 0 ;; *) return 1 ;; esac; }
@@ -110,6 +108,7 @@ Variables:
   ${INST_ENV}_MIRROR=URL       download each file from URL/ASSET
   ${INST_ENV}_DOWNLOADER=TOOL  use TOOL: curl, wget, python3 or busybox
   ${INST_ENV}_TARGET=TRIPLE    use the file of this target
+  ${INST_ENV}_COSIGN=CMD       check the signature with CMD (default: cosign), or none
   https_proxy, HTTPS_PROXY, no_proxy, NO_PROXY: the proxy
 EOF
 }
@@ -185,59 +184,6 @@ inst_detect_target() {
         inst_die "no file for this host (uname -s: $inst_os, uname -m: $inst_machine); this release has: $INST_TARGETS"
 }
 
-# The proxy comes from the environment. curl, wget, python3 and busybox
-# wget read it there: it never goes into argv or a file.
-inst_proxy() {
-    [ -n "${https_proxy:-}" ] || [ -z "${HTTPS_PROXY:-}" ] || export https_proxy="$HTTPS_PROXY"
-    [ -n "${no_proxy:-}" ] || [ -z "${NO_PROXY:-}" ] || export no_proxy="$NO_PROXY"
-    for inst_v in "${https_proxy:-}" "${http_proxy:-}"; do
-        [ -n "$inst_v" ] || continue
-        # The credential of the proxy is not shown.
-        inst_say "proxy: $(printf '%s' "$inst_v" | sed 's#^\([A-Za-z0-9+.-]*://\)[^@/]*@#\1#')"
-    done
-}
-
-# The first downloader that a probe finds. busybox wget is the last one:
-# some builds do not check TLS certificates.
-inst_detect_downloader() {
-    inst_dl='' inst_bbwget=''
-    inst_v=$(inst_knob DOWNLOADER)
-    for inst_t in ${inst_v:-curl wget python3 busybox}; do
-        case $inst_t in
-            curl) inst_have curl || continue ;;
-            wget)
-                inst_have wget || continue
-                if wget --help 2>&1 | grep -q BusyBox; then
-                    [ -n "$inst_v" ] || continue
-                    inst_t=busybox inst_bbwget=wget
-                else
-                    inst_wget_opts=''
-                    ! wget --help 2>&1 | grep -q -e '--no-config' || inst_wget_opts=--no-config
-                fi
-                ;;
-            python3) python3 -I -c 'import urllib.request' > /dev/null 2>&1 || continue ;;
-            busybox)
-                if busybox wget --help > /dev/null 2>&1; then
-                    inst_bbwget='busybox wget'
-                elif inst_have wget && wget --help 2>&1 | grep -q BusyBox; then
-                    inst_bbwget=wget
-                else
-                    continue
-                fi
-                ;;
-            *) inst_usage_die "${INST_ENV}_DOWNLOADER=$inst_t: give curl, wget, python3 or busybox" ;;
-        esac
-        inst_dl=$inst_t
-        break
-    done
-    if [ -z "$inst_dl" ]; then
-        [ -z "$inst_v" ] || inst_die "${INST_ENV}_DOWNLOADER=$inst_v: the tool is not usable on this host"
-        inst_die "no downloader: install curl, wget or python3, or give --offline FILE"
-    fi
-    [ "$inst_dl" != busybox ] ||
-        inst_warn "busybox wget can download with no check of the TLS certificate; the SHA-256 pins of this installer still check each file"
-}
-
 # The first SHA-256 tool that a probe finds.
 inst_detect_sha() {
     inst_sha=''
@@ -261,7 +207,7 @@ inst_sha256() {
 h = hashlib.sha256()
 for b in iter(lambda: sys.stdin.buffer.read(1 << 20), b""):
     h.update(b)
-print(h.hexdigest())' < "$1"
+sys.stdout.buffer.write(h.hexdigest().encode() + b"\n")' < "$1"
             ;;
     esac | cut -d ' ' -f 1
 }
@@ -277,31 +223,6 @@ inst_wait() {
     return "$inst_rc"
 }
 
-# Download URL to FILE.
-# shellcheck disable=SC2086 # inst_wget_opts and inst_bbwget are lists of words.
-inst_fetch() {
-    case $1 in
-        file://*) inst_wait cp "${1#file://}" "$2"; return ;;
-        https://*) inst_p='=https' ;;
-        *) inst_p='=http,https' ;;
-    esac
-    case $inst_dl in
-        curl) inst_wait curl -q -fsSL --proto "$inst_p" --proto-redir "$inst_p" --retry 3 --connect-timeout 30 -o "$2" "$1" ;;
-        wget) inst_wait wget $inst_wget_opts -q -t 3 -T 60 -O "$2" "$1" ;;
-        busybox) inst_wait $inst_bbwget -q -O "$2" "$1" ;;
-        python3)
-            inst_wait python3 -I -c 'import shutil, sys, urllib.request
-with urllib.request.urlopen(sys.argv[1], timeout=60) as r, open(sys.argv[2], "wb") as f:
-    shutil.copyfileobj(r, f)' "$1" "$2" 2> /dev/null
-            ;;
-    esac
-}
-
-inst_url() {
-    inst_v=$(inst_knob MIRROR)
-    printf '%s/%s' "${inst_v:-https://github.com/$INST_REPO/releases/download/v$INST_VERSION}" "$1" | sed 's#//*\([^/]*\)$#/\1#'
-}
-
 # The prefix: --prefix, else $XDG_BIN_HOME, else ~/.local/bin.
 inst_resolve_prefix() {
     if [ -n "$inst_opt_prefix" ]; then
@@ -313,6 +234,8 @@ inst_resolve_prefix() {
     else
         inst_die "HOME is not set: give --prefix DIR"
     fi
+    # A path of Windows (C:\...) under Git Bash, MSYS2 or Cygwin.
+    case $inst_prefix in [A-Za-z]:*) ! inst_have cygpath || inst_prefix=$(cygpath -u "$inst_prefix") ;; esac
     case $inst_prefix in /*) ;; *) inst_prefix=$(pwd)/$inst_prefix ;; esac
     case $inst_prefix in
         *'"'* | *'$'* | *'`'* | *\\* | *'
@@ -391,6 +314,7 @@ inst_bundle() {
 }
 
 # Get ASSET to FILE (a temporary name in the prefix), and check its pin.
+# shellcheck disable=SC2154 # core-net.sh sets inst_dl.
 inst_get() {
     if [ -n "$inst_offline" ]; then
         inst_bundle
@@ -438,9 +362,9 @@ EOF
 }
 
 # The first line of FILE --version, in printable ASCII, in at most 30 s
-# where timeout is there.
+# where timeout runs a command (timeout.exe of Windows does not).
 inst_run_version() {
-    if inst_have timeout; then
+    if inst_have timeout && timeout 5 sh -c : 2> /dev/null; then
         timeout 30 "$1" --version < /dev/null 2> /dev/null
     else
         "$1" --version < /dev/null 2> /dev/null
@@ -481,6 +405,7 @@ inst_main() {
         inst_say "downloader: $inst_dl"
     fi
     if [ "$inst_dry" = 1 ]; then
+        [ "$inst_todo" = 0 ] || inst_signature dry
         while read -r inst_n inst_a inst_s; do
             [ -n "$inst_n" ] || continue
             if [ "$inst_s" = ok ]; then
@@ -498,11 +423,14 @@ EOF
     fi
     if [ "$inst_todo" = 1 ]; then
         inst_check_space $((inst_need + 1024))
+        inst_signature
         # Each file to a temporary name, checked, then run once.
         while read -r inst_n inst_a inst_s; do
             [ "$inst_s" = get ] || continue
             inst_get "$inst_a" "$inst_tmp.$inst_n"
             chmod 0755 "$inst_tmp.$inst_n"
+            # On macOS, curl, wget and python3 set no quarantine attribute; a
+            # browser does, on a file of an --offline bundle.
             [ "$inst_os" != Darwin ] || xattr -d com.apple.quarantine "$inst_tmp.$inst_n" 2> /dev/null || true
             inst_v=$(inst_run_version "$inst_tmp.$inst_n")
             inst_version_ok "$inst_v" ||
@@ -544,6 +472,177 @@ inst_path_line() {
         printf '%s\n' "$inst_v" >> "$inst_addpath" || inst_die "cannot write $inst_addpath"
         inst_say "added the PATH line to $inst_addpath"
     fi
+}
+# SPDX-License-Identifier: 0BSD
+# The network part of the installer core (docs/install.md): the proxy, the
+# downloader, the download, and the cosign signature of SHA256SUMS of the
+# release. An installer includes it after core.sh; scripts/install/pins.py
+# puts both inline for a release.
+#
+# The pins in the installer stay the first check of each file. Where
+# cosign is there, the signature step adds: SHA256SUMS has a keyless
+# signature of the release workflow of INST_REPO at the tag vINST_VERSION,
+# issued to GitHub Actions; each pin of this target and this installer
+# itself agree with SHA256SUMS. A mirror that changes the installer, its
+# files and SHA256SUMS together then fails there.
+# shellcheck disable=SC2154 # core.sh sets each inst_ variable.
+
+# The proxy comes from the environment. curl, wget, python3 and busybox
+# wget read it there: it never goes into argv or a file.
+inst_proxy() {
+    [ -n "${https_proxy:-}" ] || [ -z "${HTTPS_PROXY:-}" ] || export https_proxy="$HTTPS_PROXY"
+    [ -n "${no_proxy:-}" ] || [ -z "${NO_PROXY:-}" ] || export no_proxy="$NO_PROXY"
+    for inst_v in "${https_proxy:-}" "${http_proxy:-}"; do
+        [ -n "$inst_v" ] || continue
+        # The credential of the proxy is not shown.
+        inst_say "proxy: $(printf '%s' "$inst_v" | sed 's#^\([A-Za-z0-9+.-]*://\)[^@/]*@#\1#')"
+    done
+}
+
+# The first downloader that a probe finds. busybox wget is the last one:
+# some builds do not check TLS certificates.
+inst_detect_downloader() {
+    inst_dl='' inst_bbwget=''
+    inst_v=$(inst_knob DOWNLOADER)
+    for inst_t in ${inst_v:-curl wget python3 busybox}; do
+        case $inst_t in
+            curl) inst_have curl || continue ;;
+            wget)
+                inst_have wget || continue
+                if wget --help 2>&1 | grep -q BusyBox; then
+                    [ -n "$inst_v" ] || continue
+                    inst_t=busybox inst_bbwget=wget
+                else
+                    inst_wget_opts=''
+                    ! wget --help 2>&1 | grep -q -e '--no-config' || inst_wget_opts=--no-config
+                fi
+                ;;
+            python3) python3 -I -c 'import urllib.request' > /dev/null 2>&1 || continue ;;
+            busybox)
+                if busybox wget --help > /dev/null 2>&1; then
+                    inst_bbwget='busybox wget'
+                elif inst_have wget && wget --help 2>&1 | grep -q BusyBox; then
+                    inst_bbwget=wget
+                else
+                    continue
+                fi
+                ;;
+            *) inst_usage_die "${INST_ENV}_DOWNLOADER=$inst_t: give curl, wget, python3 or busybox" ;;
+        esac
+        inst_dl=$inst_t
+        break
+    done
+    if [ -z "$inst_dl" ]; then
+        [ -z "$inst_v" ] || inst_die "${INST_ENV}_DOWNLOADER=$inst_v: the tool is not usable on this host"
+        inst_die "no downloader: install curl, wget or python3, or give --offline FILE"
+    fi
+    [ "$inst_dl" != busybox ] ||
+        inst_warn "busybox wget can download with no check of the TLS certificate; the SHA-256 pins of this installer still check each file"
+}
+
+# Download URL to FILE.
+# shellcheck disable=SC2086 # inst_wget_opts and inst_bbwget are lists of words.
+inst_fetch() {
+    case $1 in
+        file://*) inst_wait cp "${1#file://}" "$2"; return ;;
+        https://*) inst_p='=https' ;;
+        *) inst_p='=http,https' ;;
+    esac
+    case $inst_dl in
+        curl) inst_wait curl -q -fsSL --proto "$inst_p" --proto-redir "$inst_p" --retry 3 --connect-timeout 30 -o "$2" "$1" ;;
+        wget) inst_wait wget $inst_wget_opts -q -t 3 -T 60 -O "$2" "$1" ;;
+        busybox) inst_wait $inst_bbwget -q -O "$2" "$1" ;;
+        python3)
+            inst_wait python3 -I -c 'import shutil, sys, urllib.request
+with urllib.request.urlopen(sys.argv[1], timeout=60) as r, open(sys.argv[2], "wb") as f:
+    shutil.copyfileobj(r, f)' "$1" "$2" 2> /dev/null
+            ;;
+    esac 2> "$2.err"
+    inst_rc=$?
+    # The reason of the downloader, in printable ASCII: curl of Windows
+    # ends each line with a CR.
+    [ ! -s "$2.err" ] || tr -cd '\n -~' < "$2.err" >&2
+    rm -f "$2.err"
+    return "$inst_rc"
+}
+
+# The URL of ASSET: NAME_MIRROR/ASSET, else the release of INST_REPO.
+inst_url() {
+    inst_v=$(inst_knob MIRROR)
+    printf '%s/%s' "${inst_v:-https://github.com/$INST_REPO/releases/download/v$INST_VERSION}" "$1" | sed 's#//*\([^/]*\)$#/\1#'
+}
+
+# The identity of the signer: the release workflow at the tag. A project
+# with another name of its release workflow sets INST_WORKFLOW.
+inst_signer() {
+    printf 'https://github.com/%s/.github/workflows/%s@refs/tags/v%s' "$INST_REPO" "${INST_WORKFLOW:-release.yml}" "$INST_VERSION"
+}
+inst_issuer=https://token.actions.githubusercontent.com
+
+# The cosign command: NAME_COSIGN, else cosign on PATH. Empty, with the
+# reason in inst_cosign_why, when the signature is not checked.
+inst_detect_cosign() {
+    inst_cosign=$(inst_knob COSIGN) inst_cosign_why=''
+    case $inst_cosign in
+        none) inst_cosign='' inst_cosign_why="${INST_ENV}_COSIGN=none" ;;
+        '') if inst_have cosign; then inst_cosign=cosign; else inst_cosign_why='cosign is not on PATH'; fi ;;
+        *) inst_have "$inst_cosign" || inst_usage_die "${INST_ENV}_COSIGN=$inst_cosign: no such command; give the path of cosign, or none" ;;
+    esac
+}
+
+# The SHA-256 of NAME in the file SUMS: empty unless exactly one line names it.
+inst_sumline() {
+    awk -v f="$1" '{ sub(/\r$/, "") } NF == 2 && ($2 == f || $2 == "*" f) { n++; h = tolower($1) } END { if (n == 1) print h }' "$2"
+}
+
+# inst_signature [dry]: check SHA256SUMS of the release and its signature
+# before a download, or say once why there is no check. The plan
+# (inst_plan_text) gives the files of this target.
+inst_signature() {
+    if [ -n "$inst_offline" ]; then
+        inst_say "offline: the signature of SHA256SUMS is not checked; the pins of this installer check each file"
+        return 0
+    fi
+    inst_detect_cosign
+    if [ -z "$inst_cosign" ]; then
+        inst_say "$inst_cosign_why: the signature of SHA256SUMS is not checked; the pins of this installer check each file"
+        return 0
+    fi
+    if [ "${1:-}" = dry ]; then
+        inst_say "dry run: $(inst_url SHA256SUMS) and its signature, checked with $inst_cosign for $(inst_signer)"
+        return 0
+    fi
+    for inst_f in SHA256SUMS SHA256SUMS.sigstore.json; do
+        inst_v=$(inst_url "$inst_f")
+        inst_fetch "$inst_v" "$inst_tmp.$inst_f" ||
+            inst_die "$inst_f: the download from $inst_v failed ($inst_dl); no file was changed. With cosign there, the signature is necessary: give ${INST_ENV}_COSIGN=none to install with the pins of this installer alone"
+    done
+    # cosign keeps its trust root in TUF_ROOT, else in ~/.sigstore: the
+    # install writes no file outside the prefix.
+    export TUF_ROOT="${TUF_ROOT:-$inst_tmp.tuf}"
+    inst_wait "$inst_cosign" verify-blob --bundle "$inst_tmp.SHA256SUMS.sigstore.json" \
+        --certificate-identity "$(inst_signer)" --certificate-oidc-issuer "$inst_issuer" \
+        "$inst_tmp.SHA256SUMS" > "$inst_tmp.cosign.log" 2>&1 || {
+        tail -n 5 "$inst_tmp.cosign.log" | tr -cd '\n -~' | sed 's/^/    /' >&2
+        inst_die "the cosign signature of SHA256SUMS is not valid for $(inst_signer) (the lines above are the output of $inst_cosign); no file was changed"
+    }
+    while read -r _ inst_a _; do
+        [ -n "$inst_a" ] || continue
+        inst_v=$(inst_sumline "$inst_a" "$inst_tmp.SHA256SUMS")
+        [ "$inst_v" = "$(inst_pin "$inst_a")" ] ||
+            inst_die "$inst_a: the pin of this installer does not agree with the signed SHA256SUMS (${inst_v:-no line}); no file was changed"
+    done << EOF
+$inst_plan_text
+EOF
+    # This installer itself, when it runs from a file (not from a pipe).
+    inst_v=$(inst_sumline "$(inst_tag).sh" "$inst_tmp.SHA256SUMS")
+    case $0 in *.sh) [ -f "$0" ] || inst_v='-' ;; *) inst_v='-' ;; esac
+    if [ -z "$inst_v" ]; then
+        inst_say "SHA256SUMS has no line for $(inst_tag).sh: this installer itself is not compared"
+    elif [ "$inst_v" != - ] && [ "$(inst_sha256 "$0")" != "$inst_v" ]; then
+        inst_die "$0 is not $(inst_tag).sh of the signed SHA256SUMS: take the installer of the release again; no file was changed"
+    fi
+    inst_say "the signature of SHA256SUMS: ok ($inst_cosign, $(inst_signer))"
 }
 # END CORE
 
@@ -587,6 +686,8 @@ Variables:
   PODNET_DOWNLOADER=TOOL   curl, wget, aria2c, http, python3, python, perl
                            or busybox
   PODNET_MIRROR=URL        download each file from URL/FILE
+  PODNET_COSIGN=CMD        check the signature with CMD (default: cosign),
+                           or none
   PODNET_TARGET=TRIPLE     use the binary of this target
   GITHUB_TOKEN, GH_TOKEN   sent to api.github.com only
   DEBUG=1                  trace the script (the token is not shown)
@@ -651,6 +752,11 @@ podnet_main() {
         podnet_pins
         podnet_bridge
         podnet_nosha
+        # podnet_pins checked the signature of SHA256SUMS. The check of the
+        # core would compare this file with podnet-install.sh of the
+        # release; this copy of the tree is not that file.
+        # shellcheck disable=SC2317 # the core calls it by name.
+        inst_signature() { return 0; }
         rm -rf "$tmp"
         tmp=''
     fi
@@ -734,11 +840,18 @@ podnet_temp() {
     fi
 }
 
+# True when the signature of SHA256SUMS is checked (cosign is there, and
+# PODNET_COSIGN is not none).
+podnet_cosign() {
+    inst_detect_cosign
+    [ -n "$inst_cosign" ]
+}
+
 # The pins of this copy of the tree, from SHA256SUMS of the release.
 podnet_pins() {
     base=$(inst_knob MIRROR)
     if [ -n "$base" ]; then
-        command -v cosign > /dev/null 2>&1 ||
+        podnet_cosign ||
             inst_warn "PODNET_MIRROR: SHA256SUMS comes from the mirror, and no cosign checks it"
     fi
     base=${base:-https://github.com/$repo/releases/download/$tag}
@@ -834,7 +947,7 @@ warn_insecure() {
     case "$downloader" in
         busybox | wget-busybox)
             inst_warn "busybox wget does not check TLS certificates: a host on the path can change the files."
-            if command -v cosign > /dev/null 2>&1; then
+            if podnet_cosign; then
                 inst_warn "cosign checks the signature of SHA256SUMS, so a changed file is refused."
             else
                 inst_warn "SHA256SUMS comes the same way, so its check does not protect you. Install curl, wget, python3 or cosign, or check the binary with: sha256sum -c SHA256SUMS (from a trusted copy)."
@@ -994,15 +1107,17 @@ highest() {
     }' | sort | tail -n 1 | awk '{ print $NF }'
 }
 
-# The cosign signature of SHA256SUMS, when cosign is installed: the
-# certificate must name release.yml of the repository at the tag.
+# The cosign signature of SHA256SUMS, when cosign is there (PODNET_COSIGN
+# gives the command, or none): the certificate must name release.yml of the
+# repository at the tag.
 verify_signature() {
-    if ! command -v cosign > /dev/null 2>&1; then
-        inst_say "no cosign: the signature of SHA256SUMS is not checked (podnet update checks it)" >&2
+    inst_detect_cosign
+    if [ -z "$inst_cosign" ]; then
+        inst_say "$inst_cosign_why: the signature of SHA256SUMS is not checked (podnet update checks it)" >&2
         return 0
     fi
     get "$1/SHA256SUMS.sigstore.json" "$2/SHA256SUMS.sigstore.json" SHA256SUMS.sigstore.json
-    if ! cosign verify-blob --bundle "$2/SHA256SUMS.sigstore.json" \
+    if ! TUF_ROOT="${TUF_ROOT:-$2/tuf}" "$inst_cosign" verify-blob --bundle "$2/SHA256SUMS.sigstore.json" \
         --certificate-identity "https://github.com/$repo/.github/workflows/release.yml@refs/tags/$tag" \
         --certificate-oidc-issuer https://token.actions.githubusercontent.com \
         "$2/SHA256SUMS" > "$2/cosign.log" 2>&1; then

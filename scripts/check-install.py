@@ -5,16 +5,16 @@
 
 The rules:
 
-* Each file of scripts/install/SOURCES (core.sh, pins.py) has the SHA-256
+* Each file of scripts/install/SOURCES (core.sh, core-net.sh, pins.py) has the SHA-256
   of its line. These are the files of PodUtils/podcrates at the tag of the
   file, with no change.
-* scripts/install.sh holds core.sh inline, between the lines of the block
-  of the core, as `pins.py stamp` puts it. The copy of the tree must run
+* scripts/install.sh holds core.sh and core-net.sh inline, in this order,
+  between the lines of the block of the core, as `pins.py stamp` puts them. The copy of the tree must run
   alone (`sh -c "$s"`), so it cannot include core.sh by a path.
 * The block of pins of scripts/install.sh is empty: only a release writes
   pins (`pins.py stamp` in release.yml).
 
---write puts core.sh inline in scripts/install.sh (after a take of a new
+--write puts the core inline in scripts/install.sh (after a take of a new
 version). --self-test runs the check on planted faults: a changed byte of
 core.sh, a changed byte of the inline core, and a block with pins. It exits
 0 only when the check finds each fault and passes the control copy.
@@ -32,13 +32,18 @@ ROOT = Path(__file__).resolve().parent.parent
 BEGIN = "# BEGIN PINS (scripts/install/pins.py writes this block; do not edit it)"
 END = "# END PINS"
 CORE_BEGIN = "# BEGIN CORE (scripts/install/pins.py puts scripts/install/core.sh here)"
+# The files of the core, in the order of their include (pins.py, CORE).
+CORE = ("core.sh", "core-net.sh")
 CORE_END = "# END CORE"
 
 
-def inline(core: str) -> str:
+def inline(d: Path) -> str:
     """The block of the core, as inline_core of pins.py writes it."""
-    body = core.split("\n", 1)[1] if core.startswith("#!") else core
-    return f"{CORE_BEGIN}\n{body.rstrip()}\n{CORE_END}\n"
+    bodies = []
+    for name in CORE:
+        text = (d / name).read_text(encoding="utf-8")
+        bodies.append((text.split("\n", 1)[1] if text.startswith("#!") else text).rstrip())
+    return f"{CORE_BEGIN}\n" + "\n".join(bodies) + f"\n{CORE_END}\n"
 
 
 def block(text: str, begin: str, end: str) -> tuple[int, int] | None:
@@ -67,8 +72,8 @@ def check(root: Path) -> list[str]:
     span = block(text, CORE_BEGIN, CORE_END)
     if span is None:
         faults.append(f"{script}: no block of the core")
-    elif text[span[0] : span[1]] != inline((d / "core.sh").read_text(encoding="utf-8")):
-        faults.append(f"{script}: the inline core is not scripts/install/core.sh (run --write)")
+    elif text[span[0] : span[1]] != inline(d):
+        faults.append(f"{script}: the inline core is not scripts/install/{' and '.join(CORE)} (run --write)")
     span = block(text, BEGIN, END)
     want = f'{BEGIN}\nINST_VERSION=""\nINST_TARGETS=""\n{END}\n'
     if span is None:
@@ -84,7 +89,7 @@ def write(root: Path) -> None:
     span = block(text, CORE_BEGIN, CORE_END)
     if span is None:
         raise SystemExit(f"check-install: {script}: no block of the core")
-    core = inline((root / "scripts/install/core.sh").read_text(encoding="utf-8"))
+    core = inline(root / "scripts/install")
     script.write_text(text[: span[0]] + core + text[span[1] :], encoding="utf-8")
     print(f"check-install: {script}: the core is inline")
 

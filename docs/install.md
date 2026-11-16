@@ -76,7 +76,7 @@ in a script or a CI step: a pipe has the exit status of `sh`, and `sh`
 exits 0 when `curl` fails or is missing.
 
 The script is the installer core of PodUtils/podcrates
-(`scripts/install/core.sh` at the tag of `scripts/install/SOURCES`,
+(`scripts/install/core.sh` and `scripts/install/core-net.sh` at the tag of `scripts/install/SOURCES`,
 inline and unchanged) and the part of podnet after it. Each release also
 has `podnet-install.sh`: the same script with the pins of the release (the
 SHA-256 and the size of each file, written by
@@ -86,8 +86,14 @@ SHA-256 and the size of each file, written by
 * The copy of the tree finds the release, gets `SHA256SUMS`, checks its
   cosign signature when `cosign` is installed, and takes the pin of the
   binary from its one line in `SHA256SUMS`. `podnet-install.sh` of a
-  release has the pins in the file: it needs no `SHA256SUMS`, no API and
-  no cosign.
+  release has the pins in the file: it needs no API. When `cosign` is
+  installed and the run is not `--offline`, it gets `SHA256SUMS` and its
+  signature before the download, checks the signature (the certificate
+  of `release.yml` at the tag), and compares each pin and the installer
+  itself with the signed lines. A failed check stops the run.
+* `PODNET_COSIGN=CMD` gives the cosign command; `PODNET_COSIGN=none` turns
+  off the check of the signature (the pins and `SHA256SUMS` still check
+  each file), and the run says so.
 * A second run with the same version changes nothing and says so (`podnet
   VERSION is already installed`): a binary in place that agrees with its
   pin stays (its inode and its time too), and no binary is downloaded.
@@ -154,7 +160,7 @@ sh podnet-install.sh
 fake release on the loopback and in a `file://` directory, and no network
 (`cargo test --test install_script` runs it in `dash`, `bash --posix` and
 `busybox sh`). `python3 -I scripts/check-install.py` checks that
-`scripts/install/core.sh` and `scripts/install/pins.py` have the SHA-256
+`scripts/install/core.sh`, `scripts/install/core-net.sh` and `scripts/install/pins.py` have the SHA-256
 of `scripts/install/SOURCES`, that `scripts/install.sh` holds the core
 inline, and that it holds no pins.
 

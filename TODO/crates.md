@@ -1544,3 +1544,91 @@ with `podcrates_ref: v0.60.0`. No code change: podnet does not use the changed A
 `requires` rules of `tunnel`, `serve` and `share` (`--auth-user` needs `--auth-password-file`, and the reverse;
 `--max-upload` needs `--upload`; `--at` and `--at-listen` need each other); `llms-full.txt` is written again.
 `sh scripts/agent/check.sh`: each step passes (the record after this section).
+
+# T-388: Take podcrates v0.61.0 (a way out of a network lab, the rows that send a packet out)
+
+**Source:** PodUtils/podcrates#209 (COORD-121 of podcrates, 2026-11-16).
+**Category:** chore
+**Milestone:** M3
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podcrates v0.61.0 is at the commit `cbbd0168`. Its notes give `podlab run --way-out` (their entry 746), the network rows of
+`pod-hostprobe` behind `Settings::network` (their entry 751), the fix of `chroot_usable` (their entry 758, podvm), and the signed installer
+core (their entries 717 and 718). Breaking: `pod_hostprobe::Settings::network`, `probes::Kind::Network` and `pod_lab::Options::way_out`.
+
+## Premise
+
+- Read at the tag: the notes through COORD-121 and `adoption/podnet/` (only the old hand-off of `pod-warp`).
+- podnet does not use `pod_hostprobe` or `pod_lab`.
+
+## Approach
+
+1. Move each podcrates tag of the `Cargo.toml` files to `v0.61.0`; update `Cargo.lock` and `fuzz/Cargo.lock`.
+2. Move `uses:` and `podcrates_ref` of `.github/workflows/issue-sync.yml` to the commit of the tag.
+3. The installer core of the tag is T-389. A live lane with `--way-out` goes under T-358.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-16, the commit of this entry. Each podcrates tag is `v0.61.0`; `Cargo.lock` and `fuzz/Cargo.lock` change only
+the crates of podcrates. `issue-sync.yml` calls the workflow of podcrates at `cbbd0168d467e9a09372a5e948aaef10b651734c`
+with `podcrates_ref: v0.61.0`. No code change. `sh scripts/agent/check.sh` passed.
+
+# T-389: The installer core of podcrates v0.61.0: the cosign check of the core
+
+**Source:** PodUtils/podcrates#209 (COORD-121, their entries 717 and 718).
+**Category:** chore
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The installer core of podcrates v0.61.0 is two files, `core.sh` and `core-net.sh`. The core checks the keyless cosign
+signature of `SHA256SUMS` before a download, where `cosign` is there and the run is not offline, with the knob
+`PODNET_COSIGN`. It also compares the file it runs from with the line of `podnet-install.sh` in the signed
+`SHA256SUMS`. podnet vendors the core of v0.58.0.
+
+## Premise
+
+- `scripts/install.sh` runs the core with podnet's hooks. The copy of the tree checks the signature itself
+  (`verify_signature`), then takes the pin of the binary from `SHA256SUMS`.
+- With the core of v0.61.0 and no change, a copy of the tree that runs from a file on a host with `cosign` stops: it is
+  not `podnet-install.sh` of the release.
+
+## Approach
+
+1. Take `core.sh`, `core-net.sh` and `pins.py` of the tag; write their SHA-256 in `scripts/install/SOURCES`.
+2. `scripts/check-install.py` checks and writes the two files inline, in the order of `pins.py`.
+3. The copy of the tree turns off `inst_signature` of the core after its own check. podnet's check takes
+   `PODNET_COSIGN` (a command, or none) through `inst_detect_cosign` of the core.
+4. `scripts/install-test.sh`: the copy of a release gets the check of the core with the identity of `release.yml`;
+   `PODNET_COSIGN=none` skips the check; a bad signature stops the copy of a release.
+
+## Prove
+
+```sh
+python3 -I scripts/check-install.py --self-test
+sh scripts/install-test.sh dash
+cargo test --test install_script
+```
+
+## Done
+
+2026-11-16, the commit of this entry. `scripts/install/` holds `core.sh`, `core-net.sh` and `pins.py` of podcrates
+`v0.61.0` (`cbbd016`), unchanged, with their SHA-256 in `SOURCES`; `check-install.py` passes, and its self-test finds each
+plant. `scripts/install-test.sh` passes 12 cases in `dash` and `bash --posix` (case 7: the copy of a release checks the
+signature with `--certificate-identity https://github.com/PodUtils/podnet/.github/workflows/release.yml@refs/tags/v9.9.9`;
+case 12: `PODNET_COSIGN=none` runs no cosign and says so, and a bad signature stops the copy of a release). `cargo test
+--test install_script`: 33 passed. `docs/install.md` and `docs/decisions.md` (2026-11-16, The installer core v0.61.0)
+give the change.
