@@ -7796,3 +7796,43 @@ python3 scripts/check-workflows.py
 
 2026-11-16, the commit of this entry. The curl of "agent up and down" retries for 60 s with `--retry-all-errors` (exit 6,
 the name does not resolve, is retried). The next push runs live.
+
+# T-397: live: two quick tunnels over WARP within a minute register two devices, and WARP answers HTTP 429
+
+**Source:** live 43894127680 on defa106 (2026-11-16), failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The step "Quick tunnel with UDP and TCP 7844 dropped (staggered legs)" of `.github/workflows/live.yml` failed: "quic+warp:
+registering with WARP: registering a WARP device: the WARP service limits new devices for each address (HTTP 429, error
+1015); the service asks to wait 60 s". The step before it ("Quick tunnel, QUIC through WARP (TCP 443)") had registered a
+device 30 s earlier.
+
+## Premise
+
+- A quick tunnel with no `--warp-identity` registers a new WARP device for each run (`src/tunnel/warp_targets.rs:27`,
+  `docs/tunnels.md`). podnet names the limit and the wait in its error. The fault is in the check, not in podnet.
+- live passed on 3f203cc with the same steps: the limit holds at some times only.
+
+## Approach
+
+1. The two WARP steps of the quick tunnel give `--warp-identity "$RUNNER_TEMP/tunnel-warp.json"`: the first run
+   registers the device, the second loads it.
+2. The step "Remove the WARP device" also deletes that device.
+
+## Prove
+
+```sh
+python3 scripts/check-workflows.py
+# live passes on the next push
+```
+
+## Done
+
+2026-11-16, the commit of this entry. The two steps share one device file, and the last step deletes the device. The
+next push runs live.

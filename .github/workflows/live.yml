@@ -397,7 +397,10 @@ jobs:
           test -z "$(ls "$HOME/.local/state/podnet/autostart")"
       - name: Quick tunnel, QUIC through WARP (TCP 443)
         timeout-minutes: 5
-        run: sh scripts/live-run.sh warpleg target/release/podnet demo --exit-on-verify --protocol quic --transport warp
+        # T-397: the WARP steps of the quick tunnel share one device. A new
+        # device for each run hits the limit of new devices for each address
+        # (HTTP 429, error 1015) when two runs come within a minute.
+        run: sh scripts/live-run.sh warpleg target/release/podnet demo --exit-on-verify --protocol quic --transport warp --warp-identity "$RUNNER_TEMP/tunnel-warp.json"
       # UDP and TCP 7844 dropped with no answer: the staggered race starts
       # WARP after two 2 s steps, not after the serial time limits.
       - name: Quick tunnel with UDP and TCP 7844 dropped (staggered legs)
@@ -413,7 +416,7 @@ jobs:
           jq -e '.legs[] | select(.leg == "quic+warp") | .status == "ok"' doctor-drop.json
           jq -e '.legs[] | select(.leg == "http2") | .status != "ok"' doctor-drop.json
           jq -e '.legs[] | select(.leg == "quic") | .status != "ok"' doctor-drop.json
-          sh scripts/live-run.sh race timeout 240 target/release/podnet demo --exit-on-verify ||
+          sh scripts/live-run.sh race timeout 240 target/release/podnet demo --exit-on-verify --warp-identity "$RUNNER_TEMP/tunnel-warp.json" ||
             { tail -40 race.err; exit 1; }
           grep 'the leg won the race' race.err
           grep -q 'leg=quic+warp' race.err
@@ -1266,6 +1269,9 @@ jobs:
         run: |
           if [ -x target/release/podnet ]; then
             sh scripts/live-run.sh delete target/release/podnet warp delete && echo "the WARP device is deleted" || echo "podnet warp delete failed"
+            if [ -f "$RUNNER_TEMP/tunnel-warp.json" ]; then
+              sh scripts/live-run.sh delete-tunnel target/release/podnet warp --identity "$RUNNER_TEMP/tunnel-warp.json" delete && echo "the WARP device of the tunnel is deleted" || echo "podnet warp delete of the tunnel device failed"
+            fi
           fi
 
   # After two failed runs in a row, open one issue. Do not open a second one

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**395 entries: 13 open, 10 partial, 36 blocked, 336 done.**
+**396 entries: 13 open, 10 partial, 36 blocked, 337 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 38 | 42 |
-| P2 | 6 | 4 | 10 | 176 | 196 |
+| P2 | 6 | 4 | 10 | 177 | 197 |
 | P3 | 7 | 4 | 24 | 121 | 156 |
-| **All** | 13 | 10 | 36 | 336 | 395 |
+| **All** | 13 | 10 | 36 | 337 | 396 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -441,3 +441,4 @@ M8 Overlays, M9 Later.
 | [T-394](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.63.0 and its installer core (one signature check for the copy of the tree) |
 | [T-395](fixes.md) | P2 | S | M5 | defect | done | live: the check of agent up fails when the resolver of the runner caches NXDOMAIN for the new name |
 | [T-396](link.md) | P3 | S | M9 | chore | done | link: remove the entry 305 and the empty feature `portable` (GitHub #475) |
+| [T-397](fixes.md) | P2 | S | M5 | defect | done | live: two quick tunnels over WARP within a minute register two devices, and WARP answers HTTP 429 |
