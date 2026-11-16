@@ -48,14 +48,15 @@ None. No subagent runs.
 
 0. The release gate (T-358) comes before the next beta (`docs/decisions.md`, 2026-11-15). Run the lane:
 
-   1. `sh scripts/get-podlab.sh v0.60.0 .work/podlab-v0.60.0` (the release asset of podcrates, SHA-256 checked).
+   1. `sh scripts/get-podlab.sh v0.61.0 .work/podlab-v0.61.0` (the release asset of podcrates, SHA-256 checked).
    2. Build the release musl binary of podnet. Copy it to a directory that uid 65534 can read and write, not in `/tmp`
       and not in HOME, for example `/var/tmp/lane/` with mode 1777.
    3. As root: `setpriv --reuid=65534 --regid=65534 --clear-groups env -i PATH=/usr/bin:/bin HOME=OTHERDIR
-      LANE_DIR=DIR/out sh scripts/lab-lane.sh .work/podlab-v0.60.0 DIR/podnet [PROFILE...]`.
+      LANE_DIR=DIR/out sh scripts/lab-lane.sh .work/podlab-v0.61.0 DIR/podnet [PROFILE...]`.
 
-   `gate.yml` runs the same lane on a GitHub runner (by hand; it passed on `01487d8`). Left in T-358: `release.yml`
-   waits for `gate.yml` (step 4); a row with WebSocket through the proxy (`ws-upgrade-refused`: the relay and the tunnel);
+   `gate.yml` runs the same lane on a GitHub runner (by hand, and as the job `gate` of `release.yml`: `publish` needs
+   it). podlab v0.61.0 has `podlab run --way-out PROFILE` (a lab with a way out to the real network through its
+   stand-in proxy): use it for a live row. Left in T-358: the notes of a beta list each scenario and its result (step 4); a row with WebSocket through the proxy (`ws-upgrade-refused`: the relay and the tunnel);
    `ipv6-only` on a host with IPv6; the `icmp` rows; the relay and the tunnel as podssh and podrunner call them; T-384.
    No beta before the gate.
 1. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).

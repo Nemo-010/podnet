@@ -221,7 +221,7 @@ into `TODO/github.txt`, and its row in `TODO/issues.md` has the entries
 | `ci.yml` | each push | fmt, clippy, tests, static musl builds |
 | `live.yml` | each push to `main`, each day, by hand | podnet against the real edge and WARP, on a GitHub runner |
 | `deny.yml`, `secrets.yml` | each push | licences and advisories; secret scan (`.github/secrets-allow.txt`) |
-| `gate.yml` | by hand, before a release | the release gate (T-358): `scripts/lab-lane.sh` in the labs of `pod-lab`, as the runner user, and its plant |
+| `gate.yml` | by hand; a job of `release.yml` (`publish` needs it) | the release gate (T-358): `scripts/lab-lane.sh` in the labs of `pod-lab`, as the runner user, and its plant |
 | `release.yml` | a tag, or by hand | the release binaries; a dry run with no input |
 | `publish.yml` | a tag `v*`, or by hand | `cargo publish --workspace --dry-run`; the real publish only when `[workspace.metadata.podnet] crates-io = true` (trusted publishing, no token) |
 | `release-proofs.yml` | after a release | checks the release files, SHA256SUMS and the signatures |

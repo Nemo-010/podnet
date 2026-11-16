@@ -113,7 +113,9 @@ podcrates tag of `Cargo.toml`, each profile and `allow-connect`, then the
 plant `LANE_PLANT=net` in `proxy-only`. It turns off
 `kernel.apparmor_restrict_unprivileged_userns` first: the labs need a user
 namespace. Start it by hand: `gh workflow run gate.yml -R PodUtils/podnet
---ref main`.
+--ref main`. `release.yml` calls it as its job `gate`, in the dry run and
+on the tag: the job `publish` needs it, so no release is published
+without a passing gate.
 
 ### The network labs
 

@@ -11,6 +11,8 @@ name: gate
 # * The plant: LANE_PLANT=net (a proxy that does not listen) must fail the
 #   rows of podnet pod in the lab proxy-only.
 #
+# It runs by hand, and as the job gate of release.yml: publish needs it.
+#
 # Each action is pinned by its commit. No job may write to the repository.
 
 on:

@@ -16,6 +16,7 @@ name: release
 # ARMv6 (arm-musleabihf), LoongArch64 and POWER little-endian with
 # cargo-zigbuild in the same image. Each binary is checked for dynamic dependencies, and runs
 # scripts/release-short.sh on its own architecture before it is published.
+# The job gate (gate.yml, the release gate of T-358) must pass first.
 
 on:
   push:
@@ -294,12 +295,19 @@ jobs:
           path: notes/*
           if-no-files-found: error
 
+  # The release gate (T-358): scripts/lab-lane.sh in the labs of pod-lab,
+  # with the static binary of this commit, as a user that is not root.
+  # publish needs it: no release is published without a passing gate.
+  gate:
+    if: inputs.publish == '' || startsWith(github.ref, 'refs/tags/')
+    uses: ./.github/workflows/gate.yml
+
   # On a tag it publishes. Run by hand, each step but the proofs and the last
   # runs, and the files and the body are an artifact. It runs GitHub's actions
   # and Sigstore's cosign installer, each pinned by its commit, and no other
   # tool.
   publish:
-    needs: [linux, linux-zig, notes]
+    needs: [linux, linux-zig, notes, gate]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
