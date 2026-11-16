@@ -287,5 +287,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #595 | [gh action] requested: ci on the consumer .NET HttpClient under the shim (T-358 step 3) | closed: ci 43784289289 passed on aa8ee52 | none |
 | #596 | [gh action] requested: ci and deny on the consumer Python, the fix T-382 and the take of v0.58.0 (T-358, T-382, T-385) | closed: ci 43788961230 and deny 43788964639 passed on 2047070 | none |
 | #597 | COORD-096: podnet took v0.58.0 (to podcrates) | open (a message to podcrates) | none |
+| #598 | [gh action] requested: ci, deny and a dry run of release on the installer core, the row proxy-only and the take of v0.59.0 (T-360, T-358, T-386) | open (dispatched on 1852fcc) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
