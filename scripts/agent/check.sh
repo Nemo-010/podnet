@@ -4,7 +4,8 @@
 # (scripts/check-size.py), the layers of the modules
 # (scripts/check-layers.py), the docs (cargo doc, as CI) and the class of each
 # sh block of the documents (scripts/doc-commands.py --check), and the man page
-# with groff and mandoc when both exist (as CI). Print each
+# with groff and mandoc when both exist, the rules of the workflows, and the
+# shell scripts with shellcheck when it exists (as CI). Print each
 # exit code, and the first faults; exit 1 on a fault. With the argument notest, the tests are skipped.
 #
 #   sh scripts/agent/check.sh [notest]
@@ -39,6 +40,15 @@ if command -v groff > /dev/null 2>&1 && command -v mandoc > /dev/null 2>&1; then
     echo "man $m"; [ "$m" -eq 0 ] || { rc=1; head -20 "$log/man.log"; }
 else
     echo "man skipped (no groff or mandoc on this host)"
+fi
+python3 scripts/check-workflows.py > "$log/workflows.log" 2>&1; w=$?
+echo "workflows $w"; [ "$w" -eq 0 ] || { rc=1; head -20 "$log/workflows.log"; }
+# The shell scripts, as the job "workflows" of CI checks them.
+if command -v shellcheck > /dev/null 2>&1; then
+    shellcheck -S warning scripts/*.sh scripts/*/*.sh > "$log/shellcheck.log" 2>&1; h=$?
+    echo "shellcheck $h"; [ "$h" -eq 0 ] || { rc=1; head -20 "$log/shellcheck.log"; }
+else
+    echo "shellcheck skipped (not on this host)"
 fi
 if [ "${1:-}" != notest ]; then
     timeout 1500 cargo test --workspace > "$log/test.log" 2>&1; t=$?

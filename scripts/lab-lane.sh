@@ -269,6 +269,9 @@ while ! test -S "$work/echo.sock"; do
 done
 
 if test $# -eq 0; then
+    # Each profile name is one word with no space or glob character: the
+    # split of the list into the arguments is the intent.
+    # shellcheck disable=SC2046
     set -- $("$podlab" list | awk '/^[^ ]/ { print $1 }')
 fi
 
