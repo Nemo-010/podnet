@@ -7021,6 +7021,12 @@ list`, `agent status`); as uid 65534 it passed in each lab of `podlab` v0.63.0 t
 (the binary was in HOME, the known fault of the setup). The count: 81 commands, 59 with a scenario, 22 experimental
 (T-398 gives them scenarios). Step 4 is done.
 
+2026-11-16, the row `way-out` (T-402): `podlab run --way-out proxy-only` runs the case `way-tunnel` (a quick tunnel of
+`podnet demo --exit-on-verify` from a host whose only way out is a proxy). gate 43910086958 on ff7fbad failed in two rows:
+`way-out` (the lab sets `SSL_CERT_FILE` to the roots of its stand-in servers, which replace the roots of podnet: the case
+unsets it) and `wg-serve` in `listen-denied` (the lab refuses the unix listener of the forward: now n.a., as the other
+unix listeners). Each other row passed.
+
 What remains: step 1 (above), step 3 (the relay and the tunnel as podssh and podrunner call them), T-398 (T-384 is done).
 
 

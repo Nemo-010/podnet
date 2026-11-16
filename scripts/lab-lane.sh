@@ -330,6 +330,10 @@ case_main() {
         fi
         kill $fwd $wg $stub 2>/dev/null
         cat "$dir/wg.txt" "$dir/forward.txt"
+        if grep -q 'f.sock: Permission denied' "$dir/forward.txt"; then
+            listen_refused "$dir"
+            exit $?
+        fi
         echo "client: $got"
         test "$got" = "echo:ping"
         exit $?
@@ -354,8 +358,11 @@ case_main() {
     way-tunnel)
         # A quick tunnel from a host whose only way out is a proxy: the lab
         # proxy-only with --way-out sends each CONNECT to the real network
-        # (T-358). LANE_CA_FILE names the roots of a proxy of the host that
-        # re-signs TLS (not on a GitHub runner).
+        # (T-358). The lab sets SSL_CERT_FILE to the roots of its stand-in
+        # servers, which replace the roots of podnet: the real edge needs
+        # the roots of the system. LANE_CA_FILE names the roots of a proxy
+        # of the host that re-signs TLS (not on a GitHub runner).
+        unset SSL_CERT_FILE
         if test -n "${LANE_CA_FILE:-}"; then
             timeout 300 "$podnet" demo --exit-on-verify --ca-file "$LANE_CA_FILE" >"$dir/out.txt" 2>&1
         else
