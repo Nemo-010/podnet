@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**385 entries: 14 open, 10 partial, 39 blocked, 322 done.**
+**385 entries: 13 open, 10 partial, 39 blocked, 323 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 3 | 35 | 40 |
-| P2 | 7 | 4 | 11 | 166 | 188 |
+| P2 | 6 | 4 | 11 | 167 | 188 |
 | P3 | 7 | 4 | 25 | 120 | 156 |
-| **All** | 14 | 10 | 39 | 322 | 385 |
+| **All** | 13 | 10 | 39 | 323 | 385 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -405,7 +405,7 @@ M8 Overlays, M9 Later.
 | [T-357](fixes.md) | P2 | S | M5 | feature | done | vnet shim: `PODNET_VNET_FORWARD` sends a TCP destination to a unix socket path |
 | [T-358](fixes.md) | P1 | L | M5 | chore | partial | The release gate: each beta passes a scenario run of its own binary on restricted hosts |
 | [T-359](fixes.md) | P2 | M | M3 | chore | done | One shared crate for the help and the manual of each PodUtils command line |
-| [T-360](fixes.md) | P2 | S | M5 | defect | open | install.sh: a second run with the same version changes nothing and says so |
+| [T-360](fixes.md) | P2 | S | M5 | defect | done | install.sh: a second run with the same version changes nothing and says so |
 | [T-361](fixes.md) | P2 | S | M5 | defect | done | git init: make the root when it does not exist |
 | [T-362](fixes.md) | P3 | S | M5 | defect | done | docs/cli.md: the completion command writes to a directory that can be absent |
 | [T-363](fixes.md) | P2 | S | M5 | defect | done | net passwd-shim: the home of the entry is $HOME, not /state/home |

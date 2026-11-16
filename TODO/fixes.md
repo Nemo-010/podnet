@@ -7034,7 +7034,7 @@ and the i686 check passed.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -7064,6 +7064,23 @@ interrupted run leaves no half install". `scripts/install.sh` downloads and repl
 cargo test --test install_script
 shellcheck --shell=sh scripts/install.sh
 ```
+
+## Done
+
+2026-11-16, 0529753. `scripts/install.sh` is the installer core of podcrates v0.58.0 (`scripts/install/core.sh` and
+`scripts/install/pins.py`, unchanged, pinned by SHA-256 in `scripts/install/SOURCES`, checked by
+`scripts/check-install.py`) with the hooks of podnet. The copy of the tree holds the core inline (the documented line
+runs it with `sh -c "$s"`) and takes the pin of the binary from `SHA256SUMS` after the cosign check; `release.yml`
+publishes `podnet-install.sh` with the pins (`pins.py stamp`) and installs from it twice. A second run says "podnet
+VERSION is already installed", downloads `SHA256SUMS` only, and the binary keeps its inode and its time
+(`a_second_run_changes_nothing`, `scripts/install-test.sh` case 2). New: `--dry-run`, `--offline DIR` (the copy of a
+release), `--prefix`, `--add-path`, `PODNET_MIRROR`, `PODNET_TARGET`, the noexec and free-space checks. Each old
+variable, downloader (`aria2c`, `http`, `python`, `perl` through the part of podnet) and check stays; the comments have
+no issue numbers. `scripts/install-test.sh` passes (11 cases) in `dash`, `bash --posix` and `busybox sh`, and in the
+podlab profiles small-tmp, noexec-tmp, proc-masked, inherited-fds, root-unreadable, no-passwd-entry, noexec-home,
+no-proc, ro-etc-ssl and seccomp-nonewprivs; a copy with no pin check fails it (planted defect). `cargo test --test
+install_script`: 33 passed. `shellcheck -S warning` passes; `shellcheck --shell=sh` gives info SC2317 only, on two
+hooks of the inline core. `sh scripts/agent/check.sh` passed, and clippy with `--features full` passed.
 
 # T-361: git init: make the root when it does not exist
 
