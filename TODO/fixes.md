@@ -7331,7 +7331,7 @@ root-unreadable, no-kvm, proc-masked, no-tun and no-net-admin (it failed in each
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -7358,10 +7358,13 @@ podnet under Landlock, and the unix carrier is the way of `link` there.
 sh scripts/lab-lane.sh PODLAB PODNET no-tun no-kvm
 ```
 
-## Blocker
+## Done
 
-podcrates must change `pod-link` (a COORD issue `(to podcrates)` of the lead session, with T-379 as the form of the fix).
-A tag of podcrates with the fix ends the block.
+2026-11-16, commit 1f5088f (T-386) and the commit of this record. podcrates v0.59.0 fixes `pod-link` (their entry 742:
+on `EXDEV` the unix carrier binds at the path). The lane with `podlab` v0.59.0 and the release musl binary of 1f5088f, as
+uid 65534 (`sh scripts/lab-lane.sh .work/podlab-v0.59.0 PODNET`): `link-unix` passes in root-unreadable, no-kvm,
+proc-masked, no-tun and no-net-admin (it failed in each with v0.56.0 and v0.58.0). The lane exits 0: 187 rows pass, 0
+fail, 20 n.a.
 
 # T-381: The netns backend of podnet pod needs an AF_INET datagram socket (pod-hold)
 
@@ -7370,7 +7373,7 @@ A tag of podcrates with the fix ends the block.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -7400,10 +7403,6 @@ reason is wrong: `unshare ok, but lo cannot be set up (no capability)`.
 sh scripts/lab-lane.sh PODLAB PODNET udp-denied
 ```
 
-## Blocker
-
-podcrates must change `pod-hold` (a COORD issue `(to podcrates)` of the lead session). A tag of podcrates with the fix
-ends the block.
 
 ## Correction
 
@@ -7413,6 +7412,22 @@ ends the block.
 datagram socket", not "no capability". Measured with the release binary as uid 65534: `podlab run udp-denied -- podnet
 pod doctor` gives that reason for `unshare(NEWUSER|NEWNET)` and the veth wire; `podlab run no-kvm` still gives the netns
 backend `ok`. The backend itself still needs the socket: the fix is in `pod-hold` (COORD-095, GitHub #592).
+
+## Done
+
+2026-11-16, commit 1f5088f (T-386) and the commit of this record. podcrates v0.59.0 fixes `pod-hold` (their entry 743:
+`socket(AF_INET, SOCK_STREAM)` for the interface ioctls, else `SOCK_DGRAM`). The probe of `pod doctor` opens the same
+sockets in the same order, and fails only when the two are refused ("a filter refuses an AF_INET socket (stream and
+datagram)"). Measured with the release musl binary of 1f5088f and `podlab` v0.59.0 as uid 65534:
+
+- `sh scripts/lab-lane.sh .work/podlab-v0.59.0 PODNET`: `pod-netns` passes in `udp-denied` (it failed with v0.56.0 and
+  v0.58.0). The lane exits 0: 187 rows pass, 0 fail, 20 n.a.
+- `podlab run udp-denied -- podnet pod --backend netns -- /bin/true` exits 0. `podnet pod doctor` there gives
+  `unshare(NEWUSER|NEWNET)` ok (the veth wire) and `backend netns: ok`.
+- `sh scripts/consumer-pod.sh PODNET PODLAB udp-denied`: `auto` now takes netns. `auto` and `netns` start the program,
+  and it fails only on name resolution (T-383).
+
+Not measured: a host that refuses both socket types (the reason text of the probe).
 
 # T-382: podnet pod takes the netns backend where each TCP connect of the program is refused (Landlock)
 
@@ -7498,6 +7513,13 @@ before the filter of the pod, so the fake DNS of the pod never sees the query.
 ```sh
 sh scripts/consumer-pod.sh PODNET PODLAB udp-denied
 ```
+
+## Correction
+
+2026-11-16: since podcrates v0.59.0 (T-386) the netns backend runs in `udp-denied`, and `auto` takes it there.
+`sh scripts/consumer-pod.sh PODNET PODLAB udp-denied` with the release musl binary of 1f5088f: `netns` and `auto` start
+the program; python3 gives `gaierror: [Errno -3] Temporary failure in name resolution` and curl exits 6, as with
+`seccomp`. The program itself cannot make the UDP socket of its DNS query in each backend.
 
 # T-384: podnet pod --backend netns-kernel reads the ports of its listeners with getsockname (getsockname-denied)
 

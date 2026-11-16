@@ -1450,7 +1450,7 @@ Not done: `--help` from the model (`Command::groups`, `Command::lead`). The help
 **Milestone:** M3
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1483,3 +1483,19 @@ sh scripts/lab-lane.sh .work/podlab-v0.59.0 PODNET
 sh scripts/consumer-pod.sh PODNET PODLAB udp-denied
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-16, commit 1f5088f and the commit of this record. Each podcrates tag is `v0.59.0`; `Cargo.lock` and
+`fuzz/Cargo.lock` change only the crates of podcrates. `ioctl_socket_opens` opens `socket(AF_INET, SOCK_STREAM)`, else
+`socket(AF_INET, SOCK_DGRAM)`, as `control` of `pod-hold`; the reason of `PROBE_NO_IOCTL_SOCKET` names the two types.
+`issue-sync.yml` calls the workflow of podcrates at `0e78211437c62799a82b55c8d043345f74cfca8f` with `podcrates_ref:
+v0.59.0`.
+
+The lane with `podlab` v0.59.0 (`sh scripts/get-podlab.sh v0.59.0 .work/podlab-v0.59.0`: SHA-256 OK) and the release
+musl binary of 1f5088f, as uid 65534: exit 0, 187 rows pass, 0 fail, 20 n.a. (with v0.58.0: 181 pass and 6 fail).
+T-380 and T-381 are done. `sh scripts/consumer-pod.sh PODNET PODLAB udp-denied`: the netns rows fail on name
+resolution only (T-383, Correction).
+
+`sh scripts/agent/check.sh` exits 0; `cargo clippy --locked --workspace --all-targets --features full -- -D warnings`
+exits 0; `cargo check --workspace --target i686-unknown-linux-musl` exits 0.
