@@ -7226,7 +7226,7 @@ sh scripts/lab-lane.sh PODLAB target/x86_64-unknown-linux-musl/release/podnet no
 
 ## Done
 
-2026-11-15, the commit of this entry. `bind_private` falls back to `bind_with_mode` on `EXDEV`. The test
+2026-11-16, d788b51. `bind_private` falls back to `bind_with_mode` on `EXDEV`. The test
 `bind_private_binds_at_the_path_when_the_move_is_refused` passes. The lane as uid 65534: `net-proxy-unix` passes in
 root-unreadable, no-kvm, proc-masked, no-tun and no-net-admin (it failed in each before).
 
