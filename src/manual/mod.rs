@@ -39,24 +39,12 @@ const SEE_ALSO: &[&str] = &[
 /// commands from the reader of clap of `pod-manual`, then the facts, the
 /// description, the examples and the usage of `podnet pod`.
 pub fn manual(cmd: clap::Command) -> Manual {
-    let mut tree = cmd.clone();
-    tree.build();
     let mut m = pod_manual::clap::read(cmd);
-    // The reader of clap of pod-manual v0.54.0 leaves `Flag::env` empty: the
-    // manual names the variable of each flag from the tree itself.
-    fill_env(&tree, &[], &mut m);
     for c in &mut m.commands {
         // The flags of clap for its own help and version: the manual does
         // not show them. `podnet update --version VERSION` is a flag of
         // podnet: it takes a value, and it stays.
         c.flags.retain(|f| !is_clap_flag(f));
-        // The reader of clap of pod-manual v0.54.0 gives a rule for a
-        // conflict with a positional (its value name), and its own check of
-        // the model refuses a rule that names no flag. Until the crate
-        // agrees with itself, the manual shows the rules of flags only.
-        let flags: Vec<String> = c.flags.iter().flat_map(|f| f.spellings()).collect();
-        c.rules
-            .retain(|r| r.names().iter().all(|n| flags.iter().any(|f| f == n)));
     }
     m.date = env!("PODNET_BUILD_DATE").to_string();
     m.description = DESCRIPTION.iter().map(|p| p.to_string()).collect();
@@ -75,25 +63,6 @@ pub fn manual(cmd: clap::Command) -> Manual {
         );
     }
     m
-}
-
-/// The variable of each flag of `cmd` (at `path`) and of its subcommands.
-fn fill_env(cmd: &clap::Command, path: &[String], m: &mut Manual) {
-    if let Some(c) = m.commands.iter_mut().find(|c| c.path == path) {
-        for arg in cmd.get_arguments() {
-            let (Some(long), Some(env)) = (arg.get_long(), arg.get_env()) else {
-                continue;
-            };
-            if let Some(f) = c.flags.iter_mut().find(|f| f.long.as_deref() == Some(long)) {
-                f.env = Some(env.to_string_lossy().into_owned());
-            }
-        }
-    }
-    for sub in cmd.get_subcommands() {
-        let mut next = path.to_vec();
-        next.push(sub.get_name().to_string());
-        fill_env(sub, &next, m);
-    }
 }
 
 /// Whether `f` is the flag that clap adds for its help (`-h, --help`) or

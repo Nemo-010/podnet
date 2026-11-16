@@ -969,6 +969,9 @@ Done so far:
   so no code changes. No new hand-off for podnet. The resolve keeps `webpki-roots` at 1.0.11, the value of
   `pod_tls::ROOTS_VERSION` (also in `fuzz/Cargo.lock`), and changes no other crate than the crates of podcrates.
   `fuzz/Cargo.lock` gets the entry of `pod-manual` that T-359 did not write into it.
+- v0.58.0 (PodUtils/podcrates#200; podnet did not take v0.57.0, and this line covers it): each `pod-*` dependency names
+  `tag = "v0.58.0"` and `version = "0.58.0"`. `pod-manual` closes the gaps of T-359, and podnet removes its glue (T-385).
+  podnet does not take `pod-lab`, so `Options::allow_connect` needs no change. No new hand-off for podnet.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
@@ -1372,3 +1375,45 @@ sh scripts/agent/podcrates.sh   # the pod-hold block of crates/pod-hold/SOURCES 
 hold (the cut of podnet#414) is glue over `pod-hold`. The adoption run passed each line except the
 static build with zig (no zig on the host). The questions of podcrates T-169 (the dial state of a held
 `connect`) and T-170 (the netns hold of a SYN) are answered in a COORD issue (to podcrates).
+
+# T-385: Take podcrates v0.58.0 and remove the glue of the gaps of pod-manual
+
+**Source:** PodUtils/podcrates#200 (COORD-116 of podcrates, 2026-11-16); the entry 725 of podcrates (PodUtils/podnet#589).
+**Category:** chore
+**Milestone:** M3
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+podcrates v0.58.0 is at the commit `ca1107f1`. COORD-116 says: "podnet: the gaps of `pod-manual` are fixed (their entry 725,
+PodUtils/podnet#589). Drop `fill_env`, the filter of the rules, and 7 words of `EXEMPT`; `--help` can come from the
+model (`Command::groups`, `Command::lead`). `check-strings.py --data` with the `services/` of the same tag gives no
+false positive on your binary." Breaking: struct literals of `pod_manual::Command` and `Arg` name `groups`, `lead`
+and `env`, or take `..Default::default()`; `pod_lab::Options` has the field `allow_connect`.
+
+## Premise
+
+- Read at the tag: `PodUtils/podcrates:docs/releases/v0.58.0.md` and `adoption/podnet/` (only the old hand-off of
+  `pod-warp`, which podnet took at v0.37.0).
+- The glue of T-359 in `src/manual/mod.rs`: `fill_env` (the variable of each flag from the clap tree) and the filter
+  that keeps the rules of flags only. `EXEMPT` of `src/cli/manual_tests.rs` has 9 words: `TARGET` and `RUST_LOG`
+  (no fact needed), and 7 quoted words that are no variable.
+- podnet does not use `pod_lab`. Its only literal of a `pod_manual` struct takes `..pod_manual::Flag::default()`.
+
+## Approach
+
+1. Move each podcrates tag of the `Cargo.toml` files to `v0.58.0`; update `Cargo.lock` and `fuzz/Cargo.lock`.
+2. Remove `fill_env`, the filter of the rules and the 7 words; keep a piece only if a test of the crate fails.
+3. Compare `podnet --help`, `podnet man`, `podnet man --roff`, `podnet man --json` and `COMMAND --help --json` before
+   and after: no text is lost.
+4. Move `uses:` and `podcrates_ref` of `.github/workflows/issue-sync.yml` to the commit of the tag.
+
+## Prove
+
+```sh
+cargo test --locked -p podnet --bin podnet manual
+cargo todo check
+sh scripts/agent/check.sh
+```

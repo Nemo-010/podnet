@@ -12,7 +12,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 ## Where the code is
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.56.0` (T-137), with `pod-warp`: `src/warp/` is glue
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.58.0` (T-137), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.13` (T-355, 0a0f3e5).
 * The record is `TODO/`. `cargo todo check` agrees: 378 entries, 12 open, 11 partial, 37 blocked, 318 done.

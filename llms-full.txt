@@ -8,55 +8,6 @@ podnet 0.4.0-beta.13 - Bring your own network to hosts with strong network limit
 SYNOPSIS
   podnet COMMAND [OPTIONS]
 
-  Options:
-    --ca-file PATH
-        A file of TLS roots (PEM). podnet uses only these roots for each
-        connection that it opens as a client. Without it, podnet reads
-        SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system bundle
-        and the compiled-in roots.
-    --proxy URL
-        The proxy for each connection: http://, socks5:// or socks5h://
-        [user:password@]host[:port]. A proxy on a unix socket:
-        socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin and
-        stdout of a command, one for each connection (as ProxyCommand of SSH):
-        http+exec:COMMAND or socks5h+exec:COMMAND. Without it, podnet reads
-        HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY names the targets
-        that do not use a proxy. PODNET_PROXY gives the same value, and keeps a
-        password out of the command line. Percent-encode / ? # @ : in the user
-        and the password. Variable: PODNET_PROXY.
-    --no-proxy
-        Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
-    --egress SPEC
-        The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
-        (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
-        chain (TOP over BELOW) are for podnet forward --network, podnet route
-        and podnet wg serve. With podnet link dial and podnet link connect,
-        each --egress is one element of the chain before the tcp carrier
-        (direct, a proxy, peer:FINGERPRINT/SERVICE). The elements are in order:
-        the last element reaches the carrier address. With podnet wg serve, one
-        --egress is the way of the flows of the peers (each spec of podnet
-        forward --network that carries TCP).
-    --resolve HOST=IP
-        Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
-        adds to it. TLS still checks the name of the certificate.
-    -q, --quiet
-        Log warnings and errors only.
-    -v, --verbose
-        Log more: -v for debug, -vv for trace. RUST_LOG takes priority.
-    --color COLOR
-        Colours in the log: auto (only on a terminal, and not with NO_COLOR),
-        always or never. Default: auto. Values: auto, always, never.
-    --log-format LOG_FORMAT
-        The form of the log on stderr: text, or json (one object for each
-        line). Default: text. Values: text, json.
-
-  Rules:
-    Give only one of --no-proxy, --proxy.
-
-    Give only one of --quiet, --verbose.
-
   Commands:
     tunnel       Expose a service (cloudflared-style)
     serve        Serve a directory over a tunnel
@@ -145,6 +96,55 @@ SYNOPSIS
     logs         Print the log of a detached instance
     wait         Wait until a detached instance is ready, and print its ready
                  document
+
+  Options:
+    --ca-file PATH
+        A file of TLS roots (PEM). podnet uses only these roots for each
+        connection that it opens as a client. Without it, podnet reads
+        SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system bundle
+        and the compiled-in roots.
+    --proxy URL
+        The proxy for each connection: http://, socks5:// or socks5h://
+        [user:password@]host[:port]. A proxy on a unix socket:
+        socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin and
+        stdout of a command, one for each connection (as ProxyCommand of SSH):
+        http+exec:COMMAND or socks5h+exec:COMMAND. Without it, podnet reads
+        HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY names the targets
+        that do not use a proxy. PODNET_PROXY gives the same value, and keeps a
+        password out of the command line. Percent-encode / ? # @ : in the user
+        and the password. Variable: PODNET_PROXY.
+    --no-proxy
+        Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
+    --egress SPEC
+        The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
+        --proxy), relay or relay:URL (as --transport relay and --relay). With
+        podnet pod, each --egress is one -x hop of the chain, in its order
+        (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
+        chain (TOP over BELOW) are for podnet forward --network, podnet route
+        and podnet wg serve. With podnet link dial and podnet link connect,
+        each --egress is one element of the chain before the tcp carrier
+        (direct, a proxy, peer:FINGERPRINT/SERVICE). The elements are in order:
+        the last element reaches the carrier address. With podnet wg serve, one
+        --egress is the way of the flows of the peers (each spec of podnet
+        forward --network that carries TCP).
+    --resolve HOST=IP
+        Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
+        adds to it. TLS still checks the name of the certificate.
+    -q, --quiet
+        Log warnings and errors only.
+    -v, --verbose
+        Log more: -v for debug, -vv for trace. RUST_LOG takes priority.
+    --color COLOR
+        Colours in the log: auto (only on a terminal, and not with NO_COLOR),
+        always or never. Default: auto. Values: auto, always, never.
+    --log-format LOG_FORMAT
+        The form of the log on stderr: text, or json (one object for each
+        line). Default: text. Values: text, json.
+
+  Rules:
+    Give only one of --no-proxy, --proxy.
+
+    Give only one of --quiet, --verbose.
 
 DESCRIPTION
   podnet is one static binary that brings its own network to hosts with strong
@@ -596,6 +596,10 @@ podnet serve
         line). Default: text. Values: text, json.
 
   Rules:
+    Give only one of --dir, DIR.
+
+    Give only one of --hash-password, DIR.
+
     Give only one of --dir, --hash-password.
 
     Give only one of --hash-password, --users.
@@ -830,6 +834,17 @@ podnet git
 
   Usage: podnet git COMMAND [OPTIONS]
 
+  Commands:
+    serve  Serve the git repositories under a root: smart HTTP on --local,
+           through a quick tunnel or both, and SSH on --ssh or through a relay
+           pair. It runs the installed git (git http-backend, git upload-pack,
+           git receive-pack)
+    init   Make a bare repository NAME under the root (NAME.git when NAME has
+           no .git at its end)
+    urls   Print the clone URLs of each repository under the root, and the
+           fingerprint of the SSH host key. They come from the last git serve
+           of the root
+
   Options:
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
@@ -878,17 +893,6 @@ podnet git
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
-
-  Commands:
-    serve  Serve the git repositories under a root: smart HTTP on --local,
-           through a quick tunnel or both, and SSH on --ssh or through a relay
-           pair. It runs the installed git (git http-backend, git upload-pack,
-           git receive-pack)
-    init   Make a bare repository NAME under the root (NAME.git when NAME has
-           no .git at its end)
-    urls   Print the clone URLs of each repository under the root, and the
-           fingerprint of the SSH host key. They come from the last git serve
-           of the root
 
 podnet git serve
   Serve the git repositories under a root: smart HTTP on --local, through a
@@ -1318,6 +1322,8 @@ podnet send
         line). Default: text. Values: text, json.
 
   Rules:
+    Give only one of --text, PATH.
+
     Give only one of --relay-pair, --text.
 
     Give only one of --listen, --no-listen.
@@ -2709,6 +2715,25 @@ podnet net
 
   Usage: podnet net COMMAND [OPTIONS]
 
+  Commands:
+    demo         Prove the userspace TCP handshake + transfer in-process
+    doctor       Probe what this host permits
+    shim         Build (or locate) the LD_PRELOAD shim and print how to use it
+    addresses    Print the default virtual address plan
+    proxy        Run a SOCKS5 / HTTP CONNECT proxy into the virtual network
+    switch       Run a switch that connects stacks on this host and on other
+                 hosts
+    tailscale    Run a SOCKS5 / HTTP CONNECT front door to a tailnet through
+                 tailscaled
+    socksify     Build the LD_PRELOAD shim that sends tailnet connects to a
+                 front door
+    passwd-shim  Write a passwd file and the fakepwd preload for a client (ssh,
+                 ssh-keygen, git) on a host with no /etc/passwd entry for this
+                 user. Then ssh-keygen writes its key (with no shim it exits 0
+                 and writes no key). Use: eval "$(podnet net passwd-shim)"
+    ts-shims     The same files as passwd-shim, with getent and id, and the
+                 hints for tailscaled (Tailscale SSH)
+
   Options:
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
@@ -2757,25 +2782,6 @@ podnet net
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
-
-  Commands:
-    demo         Prove the userspace TCP handshake + transfer in-process
-    doctor       Probe what this host permits
-    shim         Build (or locate) the LD_PRELOAD shim and print how to use it
-    addresses    Print the default virtual address plan
-    proxy        Run a SOCKS5 / HTTP CONNECT proxy into the virtual network
-    switch       Run a switch that connects stacks on this host and on other
-                 hosts
-    tailscale    Run a SOCKS5 / HTTP CONNECT front door to a tailnet through
-                 tailscaled
-    socksify     Build the LD_PRELOAD shim that sends tailnet connects to a
-                 front door
-    passwd-shim  Write a passwd file and the fakepwd preload for a client (ssh,
-                 ssh-keygen, git) on a host with no /etc/passwd entry for this
-                 user. Then ssh-keygen writes its key (with no shim it exits 0
-                 and writes no key). Use: eval "$(podnet net passwd-shim)"
-    ts-shims     The same files as passwd-shim, with getent and id, and the
-                 hints for tailscaled (Tailscale SSH)
 
 podnet net demo
   Prove the userspace TCP handshake + transfer in-process.
@@ -3539,6 +3545,67 @@ podnet warp
 
   Usage: podnet warp COMMAND [OPTIONS]
 
+  Commands:
+    register    Register a device (or load the saved one) and print it
+    status      Print the device and the account (type, WARP+ state, quota)
+    license     Attach a WARP+ license key to the device
+    rotate      Make a new MASQUE key and enrol it. The old key stops working
+    delete      Remove the device from the WARP service and delete the saved
+                file
+    probe       Open the tunnel and test TCP connects through it. Exit 69 when
+                a target fails
+    exit        Open the tunnel and print its exit: the data center (colo), the
+                country and the address that a destination sees (from
+                http://1.1.1.1/cdn-cgi/trace). Also the IPv6 egress address
+                (the trace at 2606:4700:4700::1111, else the TXT of
+                whoami.cloudflare). Exit 69 when there is no answer
+    export      Print a WireGuard config of a new WARP device (wg-quick or
+                JSON), for other clients. The device and its private key are in
+                warp-wg.json of the state directory, not in warp.json. Its data
+                path is WireGuard on UDP (port 2408), not MASQUE on TCP 443.
+                The output holds the private key: a terminal is refused with no
+                --out (--out - prints it), and a redirected file becomes mode
+                0600. WARP reads 3 reserved bytes in each message; kernel
+                WireGuard and wg-quick send zeros. --check tells if the device
+                needs the bytes
+    scan        Measure front doors of WARP: the TCP connect and the TLS
+                handshake with the pinned key, for each --candidate and the
+                front doors of the device record. The fastest goes first. Exit
+                69 when none answers
+    forward     Forward local listeners through WARP (as ssh -L): each
+                connection to LISTEN goes through the tunnel to HOST:PORT
+    proxy       Run a local SOCKS5 and HTTP CONNECT proxy whose traffic goes
+                through WARP (the proxy mode of the WARP client)
+    up          Start WARP for this sandbox, in the background: a detached warp
+                proxy on 127.0.0.1:PORT and on a unix socket, and an env file
+                with the proxy variables. Later shells join it with `eval
+                "$(podnet warp env)"`, `podnet warp exec -- CMD`, `podnet warp
+                shell`, or --persist
+    down        Stop what podnet warp up started, and remove its env file and
+                its block in ~/.bashrc and ~/.profile
+    env         Print the proxy variables of the running podnet warp up, for
+                `eval "$(podnet warp env)"`. Exit 69 with no output when warp
+                up has no TCP listener (no proxy variables)
+    exec        Run a program under the pod of the running podnet warp up: TCP,
+                DNS and UDP go through WARP, also for static binaries. With
+                --detach or --name, the pod is an instance (podnet ps, logs,
+                stop): it lives until each process of the pod ends, also a
+                daemon that the program started
+    shell       Run $SHELL under the pod of the running podnet warp up. When it
+                does not run, the shell starts as it is (with the proxy
+                variables when the env file is there)
+    nc          A byte pipe from stdin and stdout to HOST:PORT through WARP,
+                for `ssh -o ProxyCommand='podnet warp nc %h %p'` and git over
+                SSH. It uses the running podnet warp up, else a WARP session of
+                its own
+    ssh-config  Print an SSH config block and GIT_SSH_COMMAND that use podnet
+                warp nc. With --write, --remove or --check: own the block in
+                the SSH config file, between two marker lines
+    tun         Make a TUN interface whose packets go through WARP. Needs
+                CAP_NET_ADMIN and /dev/net/tun. Routes are not changed
+    run         Run a program with all its traffic sent through WARP. No root
+                and no TUN device are necessary (podnet-netns)
+
   Options:
     --identity PATH
         The file that keeps the device and its MASQUE key, so that each run
@@ -3660,67 +3727,6 @@ podnet warp
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
-
-  Commands:
-    register    Register a device (or load the saved one) and print it
-    status      Print the device and the account (type, WARP+ state, quota)
-    license     Attach a WARP+ license key to the device
-    rotate      Make a new MASQUE key and enrol it. The old key stops working
-    delete      Remove the device from the WARP service and delete the saved
-                file
-    probe       Open the tunnel and test TCP connects through it. Exit 69 when
-                a target fails
-    exit        Open the tunnel and print its exit: the data center (colo), the
-                country and the address that a destination sees (from
-                http://1.1.1.1/cdn-cgi/trace). Also the IPv6 egress address
-                (the trace at 2606:4700:4700::1111, else the TXT of
-                whoami.cloudflare). Exit 69 when there is no answer
-    export      Print a WireGuard config of a new WARP device (wg-quick or
-                JSON), for other clients. The device and its private key are in
-                warp-wg.json of the state directory, not in warp.json. Its data
-                path is WireGuard on UDP (port 2408), not MASQUE on TCP 443.
-                The output holds the private key: a terminal is refused with no
-                --out (--out - prints it), and a redirected file becomes mode
-                0600. WARP reads 3 reserved bytes in each message; kernel
-                WireGuard and wg-quick send zeros. --check tells if the device
-                needs the bytes
-    scan        Measure front doors of WARP: the TCP connect and the TLS
-                handshake with the pinned key, for each --candidate and the
-                front doors of the device record. The fastest goes first. Exit
-                69 when none answers
-    forward     Forward local listeners through WARP (as ssh -L): each
-                connection to LISTEN goes through the tunnel to HOST:PORT
-    proxy       Run a local SOCKS5 and HTTP CONNECT proxy whose traffic goes
-                through WARP (the proxy mode of the WARP client)
-    up          Start WARP for this sandbox, in the background: a detached warp
-                proxy on 127.0.0.1:PORT and on a unix socket, and an env file
-                with the proxy variables. Later shells join it with `eval
-                "$(podnet warp env)"`, `podnet warp exec -- CMD`, `podnet warp
-                shell`, or --persist
-    down        Stop what podnet warp up started, and remove its env file and
-                its block in ~/.bashrc and ~/.profile
-    env         Print the proxy variables of the running podnet warp up, for
-                `eval "$(podnet warp env)"`. Exit 69 with no output when warp
-                up has no TCP listener (no proxy variables)
-    exec        Run a program under the pod of the running podnet warp up: TCP,
-                DNS and UDP go through WARP, also for static binaries. With
-                --detach or --name, the pod is an instance (podnet ps, logs,
-                stop): it lives until each process of the pod ends, also a
-                daemon that the program started
-    shell       Run $SHELL under the pod of the running podnet warp up. When it
-                does not run, the shell starts as it is (with the proxy
-                variables when the env file is there)
-    nc          A byte pipe from stdin and stdout to HOST:PORT through WARP,
-                for `ssh -o ProxyCommand='podnet warp nc %h %p'` and git over
-                SSH. It uses the running podnet warp up, else a WARP session of
-                its own
-    ssh-config  Print an SSH config block and GIT_SSH_COMMAND that use podnet
-                warp nc. With --write, --remove or --check: own the block in
-                the SSH config file, between two marker lines
-    tun         Make a TUN interface whose packets go through WARP. Needs
-                CAP_NET_ADMIN and /dev/net/tun. Routes are not changed
-    run         Run a program with all its traffic sent through WARP. No root
-                and no TUN device are necessary (podnet-netns)
 
 podnet warp register
   Register a device (or load the saved one) and print it.
@@ -6684,6 +6690,20 @@ podnet wg
 
   Usage: podnet wg COMMAND [OPTIONS]
 
+  Commands:
+    serve  Be a WireGuard peer for a list of peers, with no TUN device and no
+           capability. The UDP port is ListenPort of the file. A userspace
+           stack ends the TCP and UDP flows of each peer, and dials each target
+           through the way of --egress SPEC (a network spec: direct, a proxy
+           URL, wg:FILE, warp, a chain; default: the way out of the process).
+           The file is a wg-quick file: [Interface] with PrivateKey,
+           ListenPort, Address (A.B.C.D/N: the net of the peers; the server has
+           its first address) and MTU (576 to 9000, default 1420); one [Peer]
+           for each peer with PublicKey, AllowedIPs (inside the net) and
+           PresharedKey (optional). A key that the file does not list gets no
+           answer. A packet with a source outside the AllowedIPs of its peer is
+           dropped. IPv4 only inside the tunnel
+
   Options:
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
@@ -6732,20 +6752,6 @@ podnet wg
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
-
-  Commands:
-    serve  Be a WireGuard peer for a list of peers, with no TUN device and no
-           capability. The UDP port is ListenPort of the file. A userspace
-           stack ends the TCP and UDP flows of each peer, and dials each target
-           through the way of --egress SPEC (a network spec: direct, a proxy
-           URL, wg:FILE, warp, a chain; default: the way out of the process).
-           The file is a wg-quick file: [Interface] with PrivateKey,
-           ListenPort, Address (A.B.C.D/N: the net of the peers; the server has
-           its first address) and MTU (576 to 9000, default 1420); one [Peer]
-           for each peer with PublicKey, AllowedIPs (inside the net) and
-           PresharedKey (optional). A key that the file does not list gets no
-           answer. A packet with a source outside the AllowedIPs of its peer is
-           dropped. IPv4 only inside the tunnel
 
 podnet wg serve
   Be a WireGuard peer for a list of peers, with no TUN device and no
@@ -6834,6 +6840,17 @@ podnet relay
 
   Usage: podnet relay COMMAND [OPTIONS]
 
+  Commands:
+    pair     Ask the relay for a pair: a name, a node token (kept in a file of
+             mode 0600 in the state directory) and a connect token for the
+             operator. A pair lasts at most 72 h
+    node     Hold the node socket of a pair, and connect each session of an
+             operator to a local service. A lost socket is opened again
+    connect  Open a session to a node and copy stdin and stdout (an SSH
+             ProxyCommand), or each connection of --listen
+    stop     Stop a node and its sessions at the relay (POST /v1/stop), and
+             remove the local pair file
+
   Options:
     --relay URL
         The relay for a new pair. A pair keeps the relay that made it. Default:
@@ -6885,17 +6902,6 @@ podnet relay
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
-
-  Commands:
-    pair     Ask the relay for a pair: a name, a node token (kept in a file of
-             mode 0600 in the state directory) and a connect token for the
-             operator. A pair lasts at most 72 h
-    node     Hold the node socket of a pair, and connect each session of an
-             operator to a local service. A lost socket is opened again
-    connect  Open a session to a node and copy stdin and stdout (an SSH
-             ProxyCommand), or each connection of --listen
-    stop     Stop a node and its sessions at the relay (POST /v1/stop), and
-             remove the local pair file
 
 podnet relay pair
   Ask the relay for a pair: a name, a node token (kept in a file of mode 0600
@@ -7254,55 +7260,6 @@ podnet link
 
   Usage: podnet link COMMAND [OPTIONS]
 
-  Options:
-    --ca-file PATH
-        A file of TLS roots (PEM). podnet uses only these roots for each
-        connection that it opens as a client. Without it, podnet reads
-        SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system bundle
-        and the compiled-in roots.
-    --proxy URL
-        The proxy for each connection: http://, socks5:// or socks5h://
-        [user:password@]host[:port]. A proxy on a unix socket:
-        socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin and
-        stdout of a command, one for each connection (as ProxyCommand of SSH):
-        http+exec:COMMAND or socks5h+exec:COMMAND. Without it, podnet reads
-        HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY names the targets
-        that do not use a proxy. PODNET_PROXY gives the same value, and keeps a
-        password out of the command line. Percent-encode / ? # @ : in the user
-        and the password. Variable: PODNET_PROXY.
-    --no-proxy
-        Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
-    --egress SPEC
-        The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
-        (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
-        chain (TOP over BELOW) are for podnet forward --network, podnet route
-        and podnet wg serve. With podnet link dial and podnet link connect,
-        each --egress is one element of the chain before the tcp carrier
-        (direct, a proxy, peer:FINGERPRINT/SERVICE). The elements are in order:
-        the last element reaches the carrier address. With podnet wg serve, one
-        --egress is the way of the flows of the peers (each spec of podnet
-        forward --network that carries TCP).
-    --resolve HOST=IP
-        Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
-        adds to it. TLS still checks the name of the certificate.
-    -q, --quiet
-        Log warnings and errors only.
-    -v, --verbose
-        Log more: -v for debug, -vv for trace. RUST_LOG takes priority.
-    --color COLOR
-        Colours in the log: auto (only on a terminal, and not with NO_COLOR),
-        always or never. Default: auto. Values: auto, always, never.
-    --log-format LOG_FORMAT
-        The form of the log on stderr: text, or json (one object for each
-        line). Default: text. Values: text, json.
-
-  Rules:
-    Give only one of --no-proxy, --proxy.
-
-    Give only one of --quiet, --verbose.
-
   Commands:
     listen     Listen at an address of a carrier. A peer must prove its key,
                and the allow list (--allow) must hold it, before it can open a
@@ -7358,6 +7315,55 @@ podnet link
     carriers   List the carriers of this build, with the flags of each and
                whether this host can use it. A carrier that this host cannot
                use gives its reason
+
+  Options:
+    --ca-file PATH
+        A file of TLS roots (PEM). podnet uses only these roots for each
+        connection that it opens as a client. Without it, podnet reads
+        SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system bundle
+        and the compiled-in roots.
+    --proxy URL
+        The proxy for each connection: http://, socks5:// or socks5h://
+        [user:password@]host[:port]. A proxy on a unix socket:
+        socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin and
+        stdout of a command, one for each connection (as ProxyCommand of SSH):
+        http+exec:COMMAND or socks5h+exec:COMMAND. Without it, podnet reads
+        HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY names the targets
+        that do not use a proxy. PODNET_PROXY gives the same value, and keeps a
+        password out of the command line. Percent-encode / ? # @ : in the user
+        and the password. Variable: PODNET_PROXY.
+    --no-proxy
+        Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
+    --egress SPEC
+        The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
+        --proxy), relay or relay:URL (as --transport relay and --relay). With
+        podnet pod, each --egress is one -x hop of the chain, in its order
+        (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
+        chain (TOP over BELOW) are for podnet forward --network, podnet route
+        and podnet wg serve. With podnet link dial and podnet link connect,
+        each --egress is one element of the chain before the tcp carrier
+        (direct, a proxy, peer:FINGERPRINT/SERVICE). The elements are in order:
+        the last element reaches the carrier address. With podnet wg serve, one
+        --egress is the way of the flows of the peers (each spec of podnet
+        forward --network that carries TCP).
+    --resolve HOST=IP
+        Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
+        adds to it. TLS still checks the name of the certificate.
+    -q, --quiet
+        Log warnings and errors only.
+    -v, --verbose
+        Log more: -v for debug, -vv for trace. RUST_LOG takes priority.
+    --color COLOR
+        Colours in the log: auto (only on a terminal, and not with NO_COLOR),
+        always or never. Default: auto. Values: auto, always, never.
+    --log-format LOG_FORMAT
+        The form of the log on stderr: text, or json (one object for each
+        line). Default: text. Values: text, json.
+
+  Rules:
+    Give only one of --no-proxy, --proxy.
+
+    Give only one of --quiet, --verbose.
 
 podnet link listen
   Listen at an address of a carrier. A peer must prove its key, and the allow
@@ -8959,6 +8965,17 @@ podnet autostart
 
   Usage: podnet autostart COMMAND [OPTIONS]
 
+  Commands:
+    add     Add an entry that runs `podnet ARGS`. The token and a proxy
+            password go to a private env file (mode 0600), not to the unit, the
+            crontab or the command line. Exit 69 when this host has no systemd
+            user manager and no crontab
+    remove  Remove an entry: its unit or its crontab line, and its files. Other
+            units and crontab lines stay as they are
+    list    List the entries
+    run     Run an entry in the place of this process: the unit and the crontab
+            line call this. It reads NAME.args and NAME.env in DIR
+
   Options:
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
@@ -9007,17 +9024,6 @@ podnet autostart
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
-
-  Commands:
-    add     Add an entry that runs `podnet ARGS`. The token and a proxy
-            password go to a private env file (mode 0600), not to the unit, the
-            crontab or the command line. Exit 69 when this host has no systemd
-            user manager and no crontab
-    remove  Remove an entry: its unit or its crontab line, and its files. Other
-            units and crontab lines stay as they are
-    list    List the entries
-    run     Run an entry in the place of this process: the unit and the crontab
-            line call this. It reads NAME.args and NAME.env in DIR
 
 podnet autostart add
   Add an entry that runs `podnet ARGS`. The token and a proxy password go to a
@@ -9081,6 +9087,8 @@ podnet autostart add
         line). Default: text. Values: text, json.
 
   Rules:
+    Give only one of --from, ARGS.
+
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
@@ -9266,6 +9274,13 @@ podnet agent
 
   Usage: podnet agent COMMAND [OPTIONS]
 
+  Commands:
+    up      Test the host (podnet doctor --agent), and start podnet warp up
+            when direct networking does not do each task. Start a detached
+            quick tunnel for each --expose PORT, and print one JSON document
+    down    Stop what podnet agent up started and put back each change
+    status  Print the state: the instances, podnet warp up, and the doctor
+
   Options:
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
@@ -9314,13 +9329,6 @@ podnet agent
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
-
-  Commands:
-    up      Test the host (podnet doctor --agent), and start podnet warp up
-            when direct networking does not do each task. Start a detached
-            quick tunnel for each --expose PORT, and print one JSON document
-    down    Stop what podnet agent up started and put back each change
-    status  Print the state: the instances, podnet warp up, and the doctor
 
 podnet agent up
   Test the host (podnet doctor --agent), and start podnet warp up when direct
@@ -9620,6 +9628,10 @@ podnet stop
         line). Default: text. Values: text, json.
 
   Rules:
+    Give one of NAME, --all.
+
+    Give only one of --all, NAME.
+
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.

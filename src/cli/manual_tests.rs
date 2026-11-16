@@ -123,20 +123,8 @@ fn sources() -> Vec<(PathBuf, String)> {
 }
 
 /// The names that need no fact, and the facts that no source names: cargo
-/// sets TARGET for build.rs; tracing-subscriber reads RUST_LOG. The others
-/// are quoted words of the shape of a variable that are no variable: a crate,
-/// the names of C constants, the name of a hash.
-const EXEMPT: &[&str] = &[
-    "TARGET",
-    "RUST_LOG",
-    "pod_proxy",
-    "F_GETFL",
-    "F_SETFL",
-    "SO_ORIGINAL_DST",
-    "AF_INET",
-    "AF_INET6",
-    "SHA2_256",
-];
+/// sets TARGET for build.rs; tracing-subscriber reads RUST_LOG.
+const EXEMPT: &[&str] = &["TARGET", "RUST_LOG"];
 
 /// Each variable that the code reads or sets is a fact, and each fact is in
 /// the code.
