@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**392 entries: 15 open, 10 partial, 37 blocked, 330 done.**
+**392 entries: 13 open, 10 partial, 37 blocked, 332 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 2 | 2 | 2 | 36 | 42 |
+| P1 | 0 | 2 | 2 | 38 | 42 |
 | P2 | 6 | 4 | 10 | 173 | 193 |
 | P3 | 7 | 4 | 25 | 120 | 156 |
-| **All** | 15 | 10 | 37 | 330 | 392 |
+| **All** | 13 | 10 | 37 | 332 | 392 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -435,6 +435,6 @@ M8 Overlays, M9 Later.
 | [T-387](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.60.0 (the network labs of pod-lab, clap's requires in pod-manual) |
 | [T-388](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.61.0 (a way out of a network lab, the rows that send a packet out) |
 | [T-389](crates.md) | P2 | S | M5 | chore | done | The installer core of podcrates v0.61.0: the cosign check of the core |
-| [T-390](fixes.md) | P1 | S | M5 | defect | open | vnet shim: fcntl reads the struct flock pointer of the lock commands as an int |
-| [T-391](fixes.md) | P1 | S | M5 | defect | open | vnet shim: a bind to the wildcard address gets a name that no peer dials |
+| [T-390](fixes.md) | P1 | S | M5 | defect | done | vnet shim: fcntl reads the struct flock pointer of the lock commands as an int |
+| [T-391](fixes.md) | P1 | S | M5 | defect | done | vnet shim: a bind to the wildcard address gets a name that no peer dials |
 | [T-392](fixes.md) | P2 | M | M5 | defect | open | vnet shim: answer netlink route dumps with the virtual interfaces |

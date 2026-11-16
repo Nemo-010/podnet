@@ -894,9 +894,48 @@ static void sa_set_port(struct sockaddr_storage *ss, int port) {
     else if (ss->ss_family == AF_INET6) ((struct sockaddr_in6 *)ss)->sin6_port = htons(port);
 }
 
+/* A bind to the wildcard address (INADDR_ANY or in6addr_any) means each
+   address of this host. Under the shim the host has one address, the local
+   address: the bind takes it, so that a peer that dials the local address
+   finds the name (T-391). An AF_INET6 descriptor gets the mapped form, as
+   autobind gives it. Return 1 and fill ss when sa is a wildcard. */
+static int wildcard_to_local(const struct sockaddr *sa, socklen_t len,
+                             struct sockaddr_storage *ss, socklen_t *out) {
+    if (!sa) return 0;
+    memset(ss, 0, sizeof *ss);
+    if (sa->sa_family == AF_INET && len >= (socklen_t)sizeof(struct sockaddr_in)) {
+        const struct sockaddr_in *s = (const struct sockaddr_in *)sa;
+        if (s->sin_addr.s_addr != htonl(INADDR_ANY)) return 0;
+        struct sockaddr_in *d = (struct sockaddr_in *)ss;
+        *d = *s;
+        d->sin_addr = cfg.local_v4;
+        *out = sizeof *d;
+        return 1;
+    }
+    if (sa->sa_family == AF_INET6 && len >= (socklen_t)sizeof(struct sockaddr_in6)) {
+        const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)sa;
+        if (!IN6_IS_ADDR_UNSPECIFIED(&s->sin6_addr)) return 0;
+        struct sockaddr_in6 *d = (struct sockaddr_in6 *)ss;
+        *d = *s;
+        memset(d->sin6_addr.s6_addr, 0, 16);
+        d->sin6_addr.s6_addr[10] = 0xff;
+        d->sin6_addr.s6_addr[11] = 0xff;
+        memcpy(d->sin6_addr.s6_addr + 12, &cfg.local_v4, 4);
+        *out = sizeof *d;
+        return 1;
+    }
+    return 0;
+}
+
 static int bind_one(int fd, const struct sockaddr *sa, socklen_t len) {
     struct sockaddr_un un;
     socklen_t un_len;
+    struct sockaddr_storage local;
+    socklen_t local_len;
+    if (wildcard_to_local(sa, len, &local, &local_len)) {
+        sa = (const struct sockaddr *)&local;
+        len = local_len;
+    }
     if (to_abstract(sa, len, &un, &un_len) < 0) return -1;
     int rc = r_bind(fd, (struct sockaddr *)&un, un_len);
     if (rc == 0) {
@@ -1397,7 +1436,20 @@ int fcntl(int fd, int cmd, ...) {
         break;
     }
 
-    /* Third argument is a pointer the kernel writes through. */
+    /* Third argument is a pointer the kernel reads or writes through: the
+       record locks (struct flock, T-390) and the owner (struct f_owner_ex). */
+    case F_GETLK:
+    case F_SETLK:
+    case F_SETLKW:
+#ifdef F_OFD_GETLK
+    case F_OFD_GETLK:
+    case F_OFD_SETLK:
+    case F_OFD_SETLKW:
+#endif
+#ifdef F_GETOWN_EX
+    case F_GETOWN_EX:
+    case F_SETOWN_EX:
+#endif
     case F_GETPIPE_SZ:
     case F_GET_SEALS:
     case F_GET_RW_HINT:

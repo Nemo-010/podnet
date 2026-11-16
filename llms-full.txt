@@ -15235,6 +15235,14 @@ IPv4 address, as `127.0.0.1` does. `accept`, `recvfrom` and `recvmsg` give
 the address in the family of the descriptor: an `AF_INET6` descriptor gets
 an IPv4 peer in the mapped form.
 
+A bind to the wildcard address (`0.0.0.0` or `::`) takes the local address
+(`PODNET_VNET_LOCAL_ADDR`, default `10.66.0.2`; for an `AF_INET6`
+descriptor the mapped form) (T-391). Under the shim the host has one
+address, so a server bound to the wildcard address meets each client that
+dials the local address, and each client that dials `127.0.0.1` when
+`PODNET_VNET_MAP_LOOPBACK` is set. `getsockname` then gives the local
+address, not the wildcard.
+
 ### 3.2 Interposed calls
 
 | Call | Action on a virtual descriptor |
@@ -15246,6 +15254,7 @@ an IPv4 peer in the mapped form.
 | `getsockname`, `getpeername` | Return the logical address. Truncate to `*len` as Linux does. A null address gives the length. A stream client with no `bind` gets a local address at `connect` (the shim address and a port of 49152-65535), and the server sees it as the peer. |
 | `setsockopt`, `getsockopt` | Record `IPPROTO_TCP` options (`TCP_NODELAY`, `TCP_KEEPIDLE`) and answer them. |
 | `close`, `dup`, `dup2`, `dup3`, `fcntl(F_DUPFD*)` | Clear or copy the virtual state. |
+| `fcntl` (each other command) | Forward with the third argument in its type: none, an `int`, or a pointer (`F_GETLK`, `F_SETLK`, `F_SETLKW`, the `F_OFD_*` locks, `F_GETOWN_EX`, `F_SETOWN_EX`, the pipe, seal and hint commands, T-390). |
 
 `read`, `write`, `poll`, `epoll` and `shutdown` are not interposed. They work
 on the real `AF_UNIX` descriptor.

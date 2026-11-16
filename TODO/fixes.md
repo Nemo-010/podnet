@@ -2472,7 +2472,7 @@ cargo test -p podnet-netns tailscale
 
 ## Problem
 
-`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs`, before this entry) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:127-128` say `host:port`. The dial is a bare `TcpStream::connect` (same file): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`crates/podnet-vnet/src/proxy.rs:210`). Measured by the issue: a dead `--proxy` changed nothing.
+`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs`, before this entry) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:136-137` say `host:port`. The dial is a bare `TcpStream::connect` (same file): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`crates/podnet-vnet/src/proxy.rs:210`). Measured by the issue: a dead `--proxy` changed nothing.
 
 ## Premise
 
@@ -2688,7 +2688,7 @@ cargo test -p podnet --test cli
 
 ## Problem
 
-`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:29-45`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:280-285` and `net addresses` advertise the resolver.
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:29-45`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:289-294` and `net addresses` advertise the resolver.
 
 ## Premise
 
@@ -2700,7 +2700,7 @@ cargo test -p podnet --test cli
 1. Build one `Resolver` from `--map`. Pass it as `StackConfig.dns` (switch path) and to the door through `hosts_pairs()`.
 2. `net shim --map NAME=ADDR` (repeatable) fills `ShimOptions::hosts`.
 3. `--map-file PATH` with `Resolver::from_lines`. Validate each address against the subnet at parse time.
-4. Update the help and `docs/virtual-network.md:280-285`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
+4. Update the help and `docs/virtual-network.md:289-294`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
 
 ## Prove
 
@@ -7623,7 +7623,7 @@ sh scripts/consumer-pod.sh PODNET PODLAB getsockname-denied
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -7651,6 +7651,14 @@ answers `EFAULT`. Qt takes a `QLockFile` on the profile, so the client never bin
 cargo test -p podnet-vnet
 ```
 
+## Done
+
+2026-11-16, the commit of this entry. `fcntl` of `crates/podnet-vnet/shim/podnet-vnet.c` reads a pointer for `F_GETLK`,
+`F_SETLK`, `F_SETLKW`, `F_OFD_GETLK`, `F_OFD_SETLK`, `F_OFD_SETLKW` (under `#ifdef`), `F_GETOWN_EX` and `F_SETOWN_EX`.
+`tests/shim_daemon.rs`, `a_record_lock_passes_its_struct_flock`: each lock command and `F_GETOWN_EX` gives rc 0 under the
+shim and with no shim. The plant (the shim source of 5419c25) fails it with `Bad address` for each command.
+`docs/virtual-network.md` 3.2 lists the commands.
+
 # T-391: vnet shim: a bind to the wildcard address gets a name that no peer dials
 
 **Source:** GitHub #599 (Nemo-010, outside the team; verified and labelled `confirmed` on 2026-11-16).
@@ -7658,7 +7666,7 @@ cargo test -p podnet-vnet
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -7689,6 +7697,15 @@ daemon binds when nothing told it otherwise, so this is most servers, not a corn
 ```sh
 cargo test -p podnet-vnet
 ```
+
+## Done
+
+2026-11-16, the commit of this entry. `bind_one` of the shim gives a bind to `0.0.0.0` the local address, and a bind to
+`::` the mapped form of the local address (`wildcard_to_local`); the bind of port 0 goes through it too.
+`tests/shim_daemon.rs`, `a_wildcard_bind_takes_the_local_address`: a server bound to `0.0.0.0` and to `::` answers a
+client that dials `10.66.0.2`, and a server bound to `0.0.0.0` answers a client that dials `127.0.0.1` with
+`PODNET_VNET_MAP_LOOPBACK=1`; the control binds `10.66.0.2`. The plant (the shim source of 5419c25) fails it.
+`getsockname` gives the local address after a wildcard bind (`docs/virtual-network.md` 3.1).
 
 # T-392: vnet shim: answer netlink route dumps with the virtual interfaces
 
