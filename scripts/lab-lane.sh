@@ -256,9 +256,9 @@ case_main() {
         exit $bad
         ;;
     net-switch)
-        # Two stacks on a unix switch (T-398): stack A forwards
-        # 10.66.0.2:8080 to the echo server; a SOCKS5 client of stack B
-        # connects 10.66.0.2:8080 through the switch.
+        # Two stacks on a unix switch (T-398): stack A (podnet expose --via
+        # switch) forwards 10.66.0.2:8080 to the echo server; a SOCKS5
+        # client of stack B connects 10.66.0.2:8080 through the switch.
         "$podnet" net switch --listen "unix:$dir/sw" >"$dir/sw.txt" 2>&1 &
         sw=$!
         if ! wait_path "$dir/sw"; then
@@ -267,8 +267,8 @@ case_main() {
             listen_refused "$dir"
             exit $?
         fi
-        "$podnet" net proxy --switch "unix:$dir/sw" --address 10.66.0.2 --listen "unix:$dir/a.sock" \
-            --forward "10.66.0.2:8080=unix:$dir/../echo.sock" >"$dir/a.txt" 2>&1 &
+        "$podnet" expose "unix:$dir/../echo.sock" --via switch --as 10.66.0.2:8080 -- \
+            --switch "unix:$dir/sw" --address 10.66.0.2 --listen "unix:$dir/a.sock" >"$dir/a.txt" 2>&1 &
         sa=$!
         "$podnet" net proxy --switch "unix:$dir/sw" --address 10.66.0.3 --listen "unix:$dir/b.sock" >"$dir/b.txt" 2>&1 &
         sb=$!

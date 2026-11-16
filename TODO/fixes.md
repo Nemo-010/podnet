@@ -7946,5 +7946,7 @@ rotate`, `warp shell` and `wg serve`.
 2026-11-16, the third part (not run yet: the next `live`). `live.yml`: the step "WARP API through its second host" runs
 `warp rotate` on its own device, then a DNS query through `warp nc -u` with the new key; the step "warp up, env, exec,
 --persist and down" runs `warp shell` with `SHELL=/bin/sh` and a `curl` of the trace on stdin (`warp=on`, and no line
-"with no pod"). 6 commands stay experimental: `autostart run`, `expose`, `net tailscale`, `ssh-relay`, `warp license`
-(it needs a WARP+ key) and `wg serve`.
+"with no pod"). In the lane case `net-switch`, stack A is now `podnet expose unix:ECHO --via switch --as
+10.66.0.2:8080 -- --switch ...` (it passes in `bind-denied` and `udp-denied`). 5 commands stay experimental: `autostart
+run`, `net tailscale` (a `tailscaled`), `ssh-relay` (an SSH relay of another party), `warp license` (a WARP+ key) and `wg
+serve` (WireGuard keys for a client; a key in the repository would need an exception of the secret scan).
