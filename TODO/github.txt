@@ -177,7 +177,7 @@
 472 issue closed
 473 issue closed
 474 issue closed
-475 issue open
+475 issue closed
 476 issue closed
 477 issue closed
 478 issue closed

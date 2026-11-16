@@ -195,7 +195,6 @@ pub fn document(rows: &[Component]) -> Value {
             .into_iter()
             .map(|(name, reason)| json!({ "name": name, "reason": reason }))
             .collect::<Vec<_>>(),
-        "portable": build_features::built("portable"),
     })
 }
 

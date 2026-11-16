@@ -367,6 +367,9 @@ one place; a second key flag would give a second place. `--seal` needs `--resume
 `relay_reverse::e2e_fault` (the layer `relay` may not use `podnet`; the link uses it from there).
 (5) The live step of 200 MiB stays without `--seal`: `.github/workflows/` does not change in this work.
 
+2026-11-16, the owner (Q1, `docs/decisions.md`, The seal of the reverse road): `--seal` stays opt-in. Make it the
+default only when `relay pair` gives the node fingerprint with the connect token.
+
 ## Done
 
 2026-11-13, commit 030c7ae. `src/relay_reverse/resume.rs`: `run_node_resumable` (the node over

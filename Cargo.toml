@@ -292,8 +292,6 @@ ss = []
 trojan = []
 # The C ABI (T-304).
 c-abi = []
-# The portable subset (T-305). It takes away; `full` does not hold it.
-portable = []
 # Each optional carrier and service, for CI (`cargo test --features full`).
 full = ["tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ss", "trojan", "c-abi"]
 

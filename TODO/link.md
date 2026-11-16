@@ -2706,65 +2706,8 @@ T-262, T-275 and T-311 are done.
 
 2026-11-13, commit 09ef55e. `include/podnet.h` declares 14 functions (the 11 of the issue, `podnet_identity_fingerprint`, `podnet_link_pair`, `podnet_stream_service`); `crates/podnet-capi/src/lib.rs` implements them over `podnet::link`, `hello` and `link_service` on a tokio runtime that `podnet_init` starts. Each entry point runs in `guard` (`catch_unwind`, thread-local error text of at most 64 KiB, codes -1 to -6 and -99). `docs/build.md` ("The C library"), `docs/link.md`, `docs/library.md`, `docs/decisions.md` and `README.md` say it; `llms-full.txt` is regenerated. `scripts/check-layers.py` has the crate (one module `capi`). The CI job `c-abi` is in `.github/workflows/ci.yml` and in `needs` of `all`.
 Fail first: with a planted line `int podnet_planted(void);` in the header, `cargo test -p podnet-capi --test c_abi symbols` fails: `assertion left == right failed: dynamic symbols against the header` (the header has `podnet_planted`, the library does not). Without the plant: `cargo test -p podnet-capi`: 5 unit tests passed (`a_panic_is_mapped_to_the_panic_code_and_the_error_text`, `the_error_text_is_cut_to_64_kib_on_a_character_boundary`, `a_null_argument_is_a_bad_argument`, `init_is_idempotent_and_a_bad_config_is_refused`, `the_version_is_the_version_of_the_crate`) and 6 passed in `crates/podnet-capi/tests/c_abi.rs` (`the_header_lists_the_functions_of_the_api`, `the_exported_symbols_of_the_shared_library_equal_the_header`, `the_static_library_defines_the_functions_of_the_header`, `a_c_program_echoes_1_mib_over_a_memory_link_with_the_shared_library`, `a_c_program_echoes_1_mib_over_a_memory_link_with_the_static_library`, `ctypes_echoes_1_mib_over_a_memory_link`). The C test prints `c_abi: ok, 1 MiB echoed, digest ac51aa6881728030`; the ctypes test prints `c_abi.py: ok, 1 MiB echoed, sha256 ...`. Run by hand: the C test under `-fsanitize=address,undefined`: exit 0; under valgrind 3.22 (`--leak-check=full`, `--errors-for-leak-kinds=definite,indirect,possible`): 0 errors, no leak (the runtime has no signal driver and `podnet_free` joins its threads); `cargo rustc -p podnet-capi --target x86_64-unknown-linux-musl --crate-type staticlib` builds, and `cargo build -p podnet-capi --target x86_64-unknown-linux-musl` drops the `cdylib` with a warning.
-Not proven: the CI job `c-abi` (not run here: the release build for the glibc target, the apt install of valgrind, the musl static library in CI); the ASan and valgrind runs were on a debug build of the library (the job uses the release build); no C function for a network carrier, and no `portable` build (T-305); the library has no test of a panic across the C boundary from a C program (a unit test checks `guard`); aarch64 and the other targets of the release set are not built.
+Not proven: the CI job `c-abi` (not run here: the release build for the glibc target, the apt install of valgrind, the musl static library in CI); the ASan and valgrind runs were on a debug build of the library (the job uses the release build); no C function for a network carrier, and no portable build (removed by the owner, 2026-11-16); the library has no test of a panic across the C boundary from a C program (a unit test checks `guard`); aarch64 and the other targets of the release set are not built.
 
-
-# T-305: link: a portable build subset for Windows, macOS and FreeBSD (GitHub #475)
-
-**Source:** GitHub #475 (https://github.com/PodUtils/podnet/issues/475), row E9.
-**Category:** feature
-**Milestone:** M9
-**Priority:** P3
-**Effort:** L
-**Status:** blocked
-
-## Problem
-
-Row E9 of GitHub #475 is part of the `link` workstream (GitHub #466 to #476): a generic peer-to-peer link for podnet. The row reads: A build that runs on Windows, macOS and FreeBSD, with the privileged and Linux-specific parts excluded. The status in the issue is "planned". The row is done when: a `portable` CI job builds and runs `podnet components --json`, a memory-carrier round trip and the C test on Windows, macOS and FreeBSD; a command that needs `netns` exits 69 with the feature name; the job is skipped only if the platform is absent from the runner matrix, and the skip is printed with the platform name.
-
-The rules of the issue that apply to this row:
-
-- `portable` excludes `podnet-netns`, the TUN path in `warp`, `podnet pod`, the vnet switch and raw ICMP. It keeps the session, the stream carriers the platform supports (`tcp`, `ws`, `h2`, `poll`, `sse`, `memory`, `unix` where available), the services that need no privilege, and the C entry point.
-- A command that needs an excluded feature exits 69 with `built without feature X`. It is not a panic and not an empty result.
-- Windows uses `AF_UNIX` where the build supports it. Named pipes are not added in the first version.
-- Peer credential checks differ for each platform and are documented for each row.
-- No static libc on macOS. Static on Linux. The MSRV job applies to the portable target too.
-- The release notes record the binary size difference between the default build and the portable build.
-- `podnet components --json` reports the excluded features and the reason for each.
-- GitHub #89 (T-001) is the test guide for hosts with limited networking. A row that cannot run on a platform is named there, not omitted.
-
-## Premise
-
-- The workspace has no `[features]` table and no `cfg(feature)` gate. No `portable` feature exists.
-- A conflict with a ruling of the owner: `CLAUDE.md`, Decisions, says "Platforms: Linux only. No Windows or macOS builds." The ruling covers Windows and macOS. FreeBSD is not named.
-- Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
-
-## Approach
-
-1. The owner ruled Linux only (2026-11-12, `docs/decisions.md`, Platforms and the link crate); nothing is built for another platform.
-2. If the owner allows it: add the feature `portable` (T-311) and the inventory (T-310). Gate the excluded modules with `cfg`. Add the exit-69 message. Add the CI job with a runner matrix.
-3. If the owner refuses: the owner removes this entry (`TODO/RULES.md`, Nothing closes as out of scope).
-
-## Prove
-
-```sh
-cargo test --test cli components
-sh scripts/agent/check.sh
-```
-
-## Blocker
-
-The owner, 2026-11-12 (`docs/decisions.md`, Platforms and the link crate): the ruling "Platforms: Linux only" stands. The entry unblocks only when the owner rules for another platform.
-
-## Start condition
-
-T-311, T-310, T-262 and T-275 are done, and the owner rules for another platform.
-
-## Correction
-
-2026-11-15, the rules of the issues (`issue_rules`, T-137): GitHub #475 holds this entry, and the entry is not done, so
-the issue is open in the record. GitHub has it closed as not planned (2026-11-13). Question Q2 of `docs/decisions.md`
-asks the owner to remove this entry by a ruling; then the issue closes in the record.
 
 # T-306: link: the query keys of a carrier URL (GitHub #476)
 
@@ -3009,7 +2952,7 @@ The rules of the issue that apply to this row:
 
 1. Add `podnet components` and `--json` over the registry (T-264).
 2. Extend `tests/cli/manual.rs`: each compiled row has a section in the manual.
-3. Report the excluded features and the reason for each, for the portable build (T-305).
+3. Report the excluded features and the reason for each.
 
 ## Prove
 
@@ -3027,7 +2970,7 @@ T-264 is done.
 
 2026-11-12, commit 6edc8b6. `podnet components [--json]` lists one row for each carrier of the registry (`src/carriers.rs`, read only) and each service (`ss`, `trojan`): `name`, `kind`, `framing`, `duplex`, `needs_privilege`, `available`, `reason`, `cost`, `feature`, `built`, `about`, `address`. The code is in `src/components.rs` (`podnet::components`, with `check_limits`: 64 rows, 4 KiB for each row) and `src/cli/cmd/components.rs`. A row of a feature that is off says `available: false`, `built: false`, the reason, and `null` for `framing` and `duplex`. The JSON has `features`, `excluded` (each feature that is off, with its reason, for the portable build) and `portable`. The manual has a section INVENTORY (`podnet man inventory`, `src/manual/inventory.rs`): text, man page and JSON. `docs/link.md`, `docs/cli.md`, the README map, `llms.txt` and `llms-full.txt` are updated.
 Tests: `cargo test --test cli components`: 3 passed (`components_json_has_one_row_for_each_carrier_and_service`, `a_row_of_a_feature_that_is_off_says_why`, `the_text_lists_each_row`). `cargo test --test cli manual`: `the_manual_has_a_section_for_each_compiled_component` passed; with the entry of `memory` removed from the manual it failed with `no section in the manual for "memory"`. Unit tests in `src/components.rs`: `a_row_has_the_stable_fields_and_the_limits`, `a_feature_that_is_off_is_unavailable_with_its_reason`, `the_manual_has_an_entry_for_each_row`. `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc and layers are 0. The test step has 4 failing targets (`cli` `a_dialer_of_another_uid_needs_allow_other_uid`, `link_unix`, two shim tests) only because the agent TMPDIR is under a directory of root with mode 0700, so uid 65534 cannot enter it; with `TMPDIR=/tmp/t310tmp` (mode 755) the four targets pass (89, 8, 1 and 11 tests).
-Not proven: a build with `--features full` (the rows of the compiled features were not run; the test code reads `built` from the output, so it covers them); the row of a service whose code exists (T-294, T-295 add it); the `portable` subset (T-305, blocked).
+Not proven: a build with `--features full` (the rows of the compiled features were not run; the test code reads `built` from the output, so it covers them); the row of a service whose code exists (T-294, T-295 add it); the portable subset (removed by the owner, 2026-11-16).
 
 # T-311: link: Cargo features for the link carriers and services (GitHub #476)
 
@@ -3076,7 +3019,7 @@ T-262 is done (the crate). Each optional entry lands after this one.
 
 2026-11-12, commits d1b5587 and 55d5c14. `Cargo.toml` of `podnet` has a `[features]` table: `default = []`, the optional features `quic`, `s3`, `icmp`, `ss`, `trojan`, `c-abi` and `portable`, and `full` (each optional feature but `portable`, which takes code away). `src/build_features.rs` (`podnet::build_features`) has `OPTIONAL`, `FULL`, `built`, `enabled`, `reason` and `require` (a feature that is off exits 69 and names the feature; a name that is no feature exits 64). The registry `src/carriers.rs` has the rows `quic`, `s3` and `icmp` with the field `feature` filled (`Some("quic")` and so on; `unix` and `memory` keep `None`). A carrier whose feature is off is listed by `podnet link carriers` as `unavailable: not built: the feature NAME is off (build with --features NAME)`, the JSON has `built: false`, `feature` and `reason`, `podnet doctor` shows it as `unknown` (not `fail`), and `--carrier NAME` exits 69 with the same reason. With the feature on, the row says that the code of the carrier is not in this build and names its entry (T-273, T-279, T-282). The CI job `features` runs clippy and `cargo test --locked --workspace --features full`. `docs/build.md` has the section Features; `docs/link.md` has the three rows.
 Fail first: at base `cargo test --workspace --features full` exits 101 with `none of the selected packages contains this feature: full`; before the change `tests/link_features.rs` did not compile (`unresolved import podnet::build_features`). `cargo test --test link_features`: 10 passed in the default build and 10 passed with `--features full`, among them `a_gated_command_in_a_default_build_exits_69_with_the_feature_name`, `a_carrier_whose_feature_is_off_is_listed_as_not_built_and_exits_69_when_named`, `link_carriers_lists_a_gated_carrier_with_not_built_and_the_json_has_the_feature`, `a_command_that_names_a_carrier_that_is_not_built_exits_69` (the binary: `link dial --carrier quic` exits 69), `full_holds_each_optional_feature_but_portable`. `cargo test --workspace` (default) and `cargo test --workspace --features full`: default build: 1650 passed, 2 failed (the llms files that I had not regenerated after a doc edit, and quick_tunnel_standin_falls_back_to_http2_when_quic_has_no_listener under load), 2 ignored, 69 test binaries; both pass after the regeneration and alone (3 runs); --features full: 1652 passed, 0 failed, 2 ignored, 69 binaries; `sh scripts/agent/check.sh` at the end: fmt, clippy, record, size, doc, layers and test all 0 (its default `cargo test --workspace` passed whole).
-Not proven: the static musl build and the zig builds (not run; the default features add no code and no dependency, and `Cargo.lock` did not change); the default carriers `unix` and `memory` do not sit behind a feature (they stay in each build); no optional feature gates code yet, because no optional carrier or service exists (T-273, T-279, T-282, T-294, T-295 and T-304 land behind their features and replace the `pending` makers); `portable` gates nothing (T-305 is blocked).
+Not proven: the static musl build and the zig builds (not run; the default features add no code and no dependency, and `Cargo.lock` did not change); the default carriers `unix` and `memory` do not sit behind a feature (they stay in each build); no optional feature gates code yet, because no optional carrier or service exists (T-273, T-279, T-282, T-294, T-295 and T-304 land behind their features and replace the `pending` makers); `portable` gates nothing (removed with the entry 305 by the owner, 2026-11-16).
 
 # T-353: link: a closed half can end the listener of a split session with "the carrier of the link ended"
 
@@ -3124,3 +3067,44 @@ sh scripts/agent/check.sh
 
 2026-11-15, the take of podcrates `v0.51.0` (their entry 639, PodUtils/podcrates#172). `cargo test --test link_split`:
 50 runs of 50 passed alone, and 40 of 40 passed with four runs at once (10 rounds). No code of podnet changed.
+
+# T-396: link: remove the entry 305 and the empty feature `portable` (GitHub #475)
+
+**Source:** GitHub #475 (https://github.com/PodUtils/podnet/issues/475), row E9; the owner's ruling of 2026-11-16 (`docs/decisions.md`, The portable build).
+**Category:** chore
+**Milestone:** M9
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+GitHub #475 asks for a portable build for Windows, macOS and FreeBSD. The ruling "Platforms: Linux only" stands. The
+entry 305 held the row and stayed blocked, so the record kept #475 open, and the daily `record-issues` check failed on
+it. The Cargo feature `portable` gated no code, and `podnet components --json` printed a field `portable` for it.
+
+## Premise
+
+- The owner removed the entry 305 on 2026-11-16 (question Q2).
+- `Cargo.toml` declared `portable = []`. No `cfg(feature = "portable")` gated code: `src/build_features.rs` only listed
+  the name. Read at defa106.
+
+## Approach
+
+1. Remove the entry 305 and its row in `TODO/INDEX.md`. Write the ruling in `docs/decisions.md`.
+2. Remove the feature `portable` from `Cargo.toml`, `src/build_features.rs`, `src/components.rs`, the help of
+   `podnet components`, `docs/build.md`, `docs/link.md` and `tests/link_features.rs`. No code is lost: the feature
+   gated nothing.
+3. Close #475 in the record as not planned.
+
+## Prove
+
+```sh
+cargo test --test link_features
+cargo todo check
+```
+
+## Done
+
+2026-11-16, the commit of this entry. The entry 305 and the feature `portable` are removed; `full` holds each optional
+feature, and `tests/link_features.rs` checks that `FULL` equals `OPTIONAL`. #475 is closed in the record (not planned).

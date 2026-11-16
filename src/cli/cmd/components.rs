@@ -10,7 +10,7 @@ use podnet::components;
 #[derive(Args, Debug)]
 pub(crate) struct ComponentsArgs {
     /// Print one JSON document: {"components": [...], "features": [...],
-    /// "excluded": [...], "portable": BOOL}. Each row has the fields name,
+    /// "excluded": [...]}. Each row has the fields name,
     /// kind, framing, duplex, needs_privilege, available, reason, cost,
     /// feature, built, about and address.
     #[arg(long)]

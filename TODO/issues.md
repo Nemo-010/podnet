@@ -170,7 +170,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #472 | link: record layer (AEAD, compression, padding, replay and resume) (E6) | closed: T-298 to T-301 done; ci 43491819082 on d53df25 | T-298, T-299, T-300, T-301 |
 | #473 | link: direction split and chain composition (E7) | closed (each entry done; the last is T-302, 3623ec5) | T-302, T-303 |
 | #474 | link: C ABI (E8) | closed (ci 43382314031 at 9583ea3) | T-304 |
-| #475 | link: portable build subset (E9) | open (T-305 is blocked on the owner: the ruling "Platforms: Linux only" stands, revisit when a user asks; GitHub has it closed as not planned on 2026-11-13, and only a ruling of the owner removes T-305) | T-305 |
+| #475 | link: portable build subset (E9) | closed (not planned: the owner removed its entry 305 on 2026-11-16; the ruling "Platforms: Linux only" stands; a later ask for a platform is a new issue; `docs/decisions.md`, 2026-11-16, The portable build) | T-396 |
 | #476 | link: CLI query keys, control plane, aliases, dump, components and build features (E10) | closed (ci 43382314031 at 9583ea3) | T-306, T-307, T-308, T-309, T-310, T-311 |
 | #477 | COORD-046: podnet took v0.28.0 at b08e06f (to podcrates) | closed (a COORD issue between sessions) | none |
 | #478 | COORD-047: podnet took v0.29.0 and pod-hold syn-hold at 98d8a71 (to podcrates) | closed (a COORD issue between sessions) | none |

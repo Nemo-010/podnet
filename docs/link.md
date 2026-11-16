@@ -323,8 +323,8 @@ carrier exits 69 with that reason.
 (`carrier` or `service`), `framing`, `duplex`, `needs_privilege`, `available`, `reason`, `cost`, `feature`, `built`, `about` and
 `address`. The names are stable, the list has at most 64 rows, and a row has at most 4 KiB in JSON. A row of a feature that this
 build leaves out has `available: false`, `built: false` and the reason; its `framing` and `duplex` are `null`. The services are
-`ss` and `trojan` (features `ss` and `trojan`). The JSON also has `features` (each optional feature and whether it is built),
-`excluded` (each feature that is off, with its reason) and `portable`. `podnet man inventory` is the section of the manual for
+`ss` and `trojan` (features `ss` and `trojan`). The JSON also has `features` (each optional feature and whether it is built)
+and `excluded` (each feature that is off, with its reason). `podnet man inventory` is the section of the manual for
 each row, and `tests/cli/manual.rs` requires a section for each row that the build holds.
 
 ## The TCP carrier

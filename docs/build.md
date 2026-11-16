@@ -51,8 +51,7 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | `ss` | The Shadowsocks service. | T-294 |
 | `trojan` | The Trojan service. | T-295 |
 | `c-abi` | The C ABI. The code is the crate `crates/podnet-capi` (see The C library), which does not turn the feature on: the feature gates no code. | T-304 |
-| `portable` | The portable subset. It takes code away. | T-305 |
-| `full` | `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `dns`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`. It does not hold `portable`. | T-311 |
+| `full` | `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `dns`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`: each optional feature. | T-311 |
 
 ```sh
 cargo build --release --features quic,icmp   # two optional carriers

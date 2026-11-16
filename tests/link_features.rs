@@ -43,15 +43,12 @@ fn podnet(args: &[&str]) -> std::process::Output {
 fn the_optional_features_are_the_ones_of_the_issue() {
     assert_eq!(
         features::OPTIONAL,
-        [
-            "tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ss", "trojan", "c-abi",
-            "portable"
-        ]
+        ["tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ss", "trojan", "c-abi"]
     );
 }
 
 #[test]
-fn full_holds_each_optional_feature_but_portable() {
+fn full_holds_each_optional_feature() {
     let manifest =
         std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml")).unwrap();
     let table = manifest
@@ -75,11 +72,7 @@ fn full_holds_each_optional_feature_but_portable() {
     for name in features::FULL {
         assert!(full.contains(&format!("{name:?}")), "{full}");
     }
-    assert!(
-        !full.contains("portable"),
-        "portable is a subset, not an addition: {full}"
-    );
-    assert_eq!(features::FULL.len() + 1, features::OPTIONAL.len());
+    assert_eq!(features::FULL, features::OPTIONAL);
 }
 
 #[test]

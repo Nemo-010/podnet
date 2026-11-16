@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 395 entries: 13 open, 10 partial, 37 blocked, 335 done.
+`TODO/INDEX.md` holds 395 entries: 13 open, 10 partial, 36 blocked, 336 done.
 
 ## State
 
@@ -75,7 +75,7 @@ not wait for a larger one.
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`), T-326 (a release of `russh` that takes `rsa` 0.10.0); T-163 is
     partial (its edge leg waits for `pod-cloudflare`); and the link entries T-294, T-295.
-12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** the open entries of `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. The carriers ws, h2, quic, udp, dns, icmp and the poll carriers are done (the glue of `pod-link` v0.40.0), and the record layer of E6; the seccomp rule of a raw socket in a pod is done (`pod --allow-raw icmp`); the ARQ is done (`podnet::link_arq`). The mesh keeps the two next hops of one round in a diamond. The S3 carrier is done (`pod_link::s3` of v0.46.0, proven against the stand-in of `pod-link` of v0.47.0). Go on with the services T-294 and T-295 (blocked on `pod-egress`), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-294 and T-295 (`pod-egress`, T-127), T-305 (the owner: Linux only, 2026-11-12). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
+12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** the open entries of `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. The carriers ws, h2, quic, udp, dns, icmp and the poll carriers are done (the glue of `pod-link` v0.40.0), and the record layer of E6; the seccomp rule of a raw socket in a pod is done (`pod --allow-raw icmp`); the ARQ is done (`podnet::link_arq`). The mesh keeps the two next hops of one round in a diamond. The S3 carrier is done (`pod_link::s3` of v0.46.0, proven against the stand-in of `pod-link` of v0.47.0). Go on with the services T-294 and T-295 (blocked on `pod-egress`), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-294 and T-295 (`pod-egress`, T-127); the portable build was removed by the owner (2026-11-16). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
 13. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
     podssh first; cfb and githome wait):
     T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).
@@ -126,9 +126,7 @@ None now. T-025 (the public image) and the crate names of T-007 were measured do
 
 ## Questions for the owner
 
-- **Q1.** Is `--seal` (the end-to-end channel, T-087) the default of `relay node --resume` and `relay connect
-  --resume`? It blocks nothing: T-087 is done with `--seal` off by default. The recommendation: no, keep it opt-in until
-  `relay pair` gives the node fingerprint with the connect token (`docs/decisions.md`, Questions for the owner).
+None now. The owner ruled Q1 and Q2 on 2026-11-16 (`docs/decisions.md`).
 
 Write each question as `- **Qn.** QUESTION`, with the entries
 that it blocks and a recommendation. Number the questions in sequence

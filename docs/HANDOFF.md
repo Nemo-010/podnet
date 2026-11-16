@@ -36,7 +36,6 @@ None. No subagent runs, no scheduled task. The head is the commit of this handof
 * `gate.yml` (the release gate) passed on 01487d8, 89a6e1e, and as the job `gate / lane` of the release dry runs
   43839899756 (5fbb2e3) and 43849173659 (81d2e73). The second dry run writes the section "The release gate" in the body
   (226 pass, 0 fail, 24 n.a.).
-* `record-issues` (each day) fails on #475 alone until Q2 is ruled (see "Waiting on the owner").
 * Read each run when the watcher reports its end (`CLAUDE.md` step 1). Do not wait for a comment.
 
 ## The work of 2026-11-16, second session (all on `main`)
@@ -105,10 +104,5 @@ None. No subagent runs, no scheduled task. The head is the commit of this handof
 
 ## Waiting on the owner
 
-* Q2 in `docs/decisions.md`: remove T-305 by ruling, so that #475 stays closed.
-* The ~76 issues of Nemo-010 (author_association NONE): add the label `confirmed`, or add the author to the team.
-  `issue-sync` does not change them. On 2026-11-16 the session labelled `confirmed` #467, #468, #470 and #473 (each
-  entry done; the record closes them) because `record-issues` failed on them. `record-issues` still fails on #475 until
-  Q2 is ruled: GitHub has it closed, and the record keeps it open for T-305.
-* The relay-tls-proxy bundle of the owner's local agent was not reviewed: the review stopped at a safety block of the
-  model. The owner can ask a narrower question.
+None. The owner ruled on 2026-11-16: the entry 305 is removed (#475 closed, T-396), `--seal` stays opt-in (Q1), and each
+triaged issue of Nemo-010 gets the label `confirmed` (not the deferred #484 to #501).

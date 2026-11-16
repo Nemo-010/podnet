@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**395 entries: 13 open, 10 partial, 37 blocked, 335 done.**
+**395 entries: 13 open, 10 partial, 36 blocked, 336 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 38 | 42 |
 | P2 | 6 | 4 | 10 | 176 | 196 |
-| P3 | 7 | 4 | 25 | 120 | 156 |
-| **All** | 13 | 10 | 37 | 335 | 395 |
+| P3 | 7 | 4 | 24 | 121 | 156 |
+| **All** | 13 | 10 | 36 | 336 | 395 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -350,7 +350,6 @@ M8 Overlays, M9 Later.
 | [T-302](link.md) | P3 | L | M9 | feature | done | link: split one session across an up carrier and a down carrier (GitHub #473) |
 | [T-303](link.md) | P3 | M | M9 | feature | done | link: chain composition with a peer element and --check (GitHub #473) |
 | [T-304](link.md) | P3 | L | M9 | feature | done | link: a C ABI with a header, a shared library and a static library (GitHub #474) |
-| [T-305](link.md) | P3 | L | M9 | feature | blocked | link: a portable build subset for Windows, macOS and FreeBSD (GitHub #475) |
 | [T-306](link.md) | P3 | M | M9 | feature | done | link: the query keys of a carrier URL (GitHub #476) |
 | [T-307](link.md) | P3 | M | M9 | feature | done | link: the write verbs of the control plane (GitHub #476) |
 | [T-308](link.md) | P3 | S | M9 | feature | done | link: names for live links (GitHub #476) |
@@ -441,3 +440,4 @@ M8 Overlays, M9 Later.
 | [T-393](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.62.0 (the servers of the command in a network lab, the resume line of pod-session) |
 | [T-394](crates.md) | P2 | S | M3 | chore | done | Take podcrates v0.63.0 and its installer core (one signature check for the copy of the tree) |
 | [T-395](fixes.md) | P2 | S | M5 | defect | done | live: the check of agent up fails when the resolver of the runner caches NXDOMAIN for the new name |
+| [T-396](link.md) | P3 | S | M9 | chore | done | link: remove the entry 305 and the empty feature `portable` (GitHub #475) |

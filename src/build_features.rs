@@ -2,7 +2,7 @@
 //!
 //! The default build has no optional feature. An optional carrier or
 //! service sits behind a Cargo feature ([`OPTIONAL`]). The feature `full`
-//! turns on all of them but `portable` ([`FULL`]); CI builds and tests it.
+//! turns on all of them ([`FULL`]); CI builds and tests it.
 //! No flag at run time turns a feature on: a binary cannot run code that
 //! it was not built with.
 //!
@@ -17,13 +17,11 @@ use anyhow::anyhow;
 use crate::exit::{self, Fault};
 
 /// The optional features, in the order of the issue.
-pub const OPTIONAL: [&str; 13] = [
+pub const OPTIONAL: [&str; 12] = [
     "tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ss", "trojan", "c-abi",
-    "portable",
 ];
 
-/// The features that `full` turns on: each optional feature but
-/// `portable` (a subset takes code away; `full` adds it).
+/// The features that `full` turns on: each optional feature.
 pub const FULL: [&str; 12] = [
     "tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ss", "trojan", "c-abi",
 ];
@@ -44,7 +42,6 @@ pub fn built(name: &str) -> bool {
         "ss" => cfg!(feature = "ss"),
         "trojan" => cfg!(feature = "trojan"),
         "c-abi" => cfg!(feature = "c-abi"),
-        "portable" => cfg!(feature = "portable"),
         _ => false,
     }
 }
@@ -88,7 +85,7 @@ mod tests {
     fn the_names_agree_with_the_gates() {
         // `built` has an arm for each optional feature: an unknown name is
         // the only false in a `full` build.
-        assert!(FULL.iter().all(|f| OPTIONAL.contains(f)));
+        assert_eq!(FULL, OPTIONAL);
         assert!(!built("warp-drive"));
         assert!(enabled().iter().all(|f| built(f)));
     }
