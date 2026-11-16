@@ -2,7 +2,6 @@ use std::net::SocketAddr;
 
 use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 
-use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::UdpSocket;
 
 use super::*;
@@ -188,4 +187,76 @@ async fn dns_door_over_a_network() {
     tcp.read_exact(&mut back).await.unwrap();
     assert_eq!(back[2] & 0x80, 0x80);
     assert_eq!(net.1.load(SeqCst), 1, "the TCP query used the network");
+}
+
+/// T-404: the door answers a name of its table itself, on UDP and on TCP,
+/// with no query through the network; another name goes through it.
+#[tokio::test]
+async fn dns_door_answers_its_names() {
+    crate::test_host::need_loopback!();
+    let upstream = resolver().await;
+    let door = loop {
+        let probe = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let addr = probe.local_addr().unwrap();
+        if tokio::net::TcpListener::bind(addr).await.is_ok() {
+            break addr;
+        }
+    };
+    let names = super::super::aliases(&["svc.internal=10.0.0.5:22".to_string()]).unwrap();
+    let table = Arc::new(super::super::alias_table(&names));
+    let net = Arc::new(Counted(Direct, Default::default(), Default::default()));
+    tokio::spawn(serve_dns_with(
+        door,
+        net.clone(),
+        Target::Addr(upstream),
+        Some(table),
+    ));
+    // A query of svc.internal, type A.
+    let mut query = vec![0x56u8, 0x78, 0x01, 0x00, 0, 1, 0, 0, 0, 0, 0, 0];
+    for label in ["svc", "internal"] {
+        query.push(label.len() as u8);
+        query.extend_from_slice(label.as_bytes());
+    }
+    query.extend_from_slice(&[0, 0, 1, 0, 1]);
+    let client = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    client.connect(door).await.unwrap();
+    let mut answer = None;
+    for _ in 0..50 {
+        client.send(&query).await.unwrap();
+        let mut buf = [0u8; 512];
+        if let Ok(Ok(n)) =
+            tokio::time::timeout(Duration::from_millis(200), client.recv(&mut buf)).await
+        {
+            answer = Some(buf[..n].to_vec());
+            break;
+        }
+    }
+    let answer = answer.expect("a UDP answer");
+    assert_eq!(&answer[answer.len() - 4..], &[127, 0, 0, 2]);
+    let mut tcp = tokio::net::TcpStream::connect(door).await.unwrap();
+    tcp.write_u16(query.len() as u16).await.unwrap();
+    tcp.write_all(&query).await.unwrap();
+    let len = tokio::time::timeout(Duration::from_secs(10), tcp.read_u16())
+        .await
+        .unwrap()
+        .unwrap() as usize;
+    let mut back = vec![0u8; len];
+    tcp.read_exact(&mut back).await.unwrap();
+    assert_eq!(&back[back.len() - 4..], &[127, 0, 0, 2]);
+    assert_eq!(
+        net.1.load(SeqCst) + net.2.load(SeqCst),
+        0,
+        "the names need no network"
+    );
+    // Another name goes through the network.
+    let other = [
+        0x12u8, 0x34, 0x01, 0x00, 0, 1, 0, 0, 0, 0, 0, 0, 1, b'a', 0, 0, 1, 0, 1,
+    ];
+    client.send(&other).await.unwrap();
+    let mut buf = [0u8; 512];
+    tokio::time::timeout(Duration::from_secs(10), client.recv(&mut buf))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(net.2.load(SeqCst), 1, "the other name used the network");
 }

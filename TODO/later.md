@@ -2210,7 +2210,7 @@ cargo test --workspace
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2237,6 +2237,20 @@ answers the names of the table. The use case: an RDP client in a locked-down con
 ```sh
 cargo test --workspace
 ```
+
+## Done
+
+2026-11-16, the commit of this entry. `podnet forward --name NAME=HOST:PORT --alias-port PORT`: the names get
+127.0.0.2, 127.0.0.3 and on (`podnet::forwards::aliases`), a rule for each, and a line `podnet: name ADDRESS NAME`
+(the line of a hosts file). `--dns` answers the names of the table (`serve_dns_with`, with the table of
+`podnet_vnet::dns::Resolver`): over UDP, and over TCP until the first other query, which goes to the upstream with the
+rest of the connection. `docs/forward.md`, "Names for a client that takes only HOST:PORT".
+
+Tests: `forwards::tests::the_names_get_the_addresses_in_their_order` (the order, the lowercase, the bad forms, a name
+given twice, 254 names at most); `forwards::udp::tests::dns_door_answers_its_names` (UDP and TCP answers of a name with no
+use of the network; another name goes through it). By hand: two names to one TCP echo server, `--dns 127.0.0.1:15353`:
+the UDP and TCP queries give 127.0.0.2 and 127.0.0.3, `example.com` comes from the upstream, and a connect to
+127.0.0.3:17000 gets `echo:ping`.
 
 # T-405: route: a rate, a quota, a period and `on_exhaust` for each door, with the usage kept across a restart (GitHub #602)
 

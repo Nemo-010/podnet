@@ -290,10 +290,12 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #598 | [gh action] requested: ci, deny and a dry run of release on the installer core, the row proxy-only and the take of v0.59.0 (T-360, T-358, T-386) | closed: deny 43796829153 and release 43796832964 passed on 1852fcc; ci 43796824990 failed there on two install-test cases (T-360, fixed in c24e0cf); ci 43820922609, deny 43820922608, secrets 43820922620 and live 43820922672 passed on 01487d8 | none |
 | #599 | vnet: let a stock client bind a wildcard, lock a file and enumerate interfaces | closed (outside the team: verified, labelled `confirmed`; T-390 and T-391 in c3616be, T-392 in the commit of its entry) | T-390, T-391, T-392 |
 | #600 | link: an exec service never tells the peer how the program ended | open (outside the team: verified, labelled `confirmed`) | T-403 |
-| #601 | forward has no name table for a client that cannot edit its hosts file | open (outside the team: verified, labelled `confirmed`) | T-404 |
+| #601 | forward has no name table for a client that cannot edit its hosts file | closed (outside the team: verified, labelled `confirmed`; T-404 in the commit of its entry) | T-404 |
 | #602 | router doors count bytes but cannot cap them | open (outside the team: verified, labelled `confirmed`) | T-405 |
 | #603 | COORD-097: a fix in the frozen src/tunnel.rs: the quic+warp leg reconnects when its WARP session closes (T-402) (to podcrates) | open (a message to podcrates; close it when podcrates takes the fix with pod-cloudflare) | none |
 | #604 | COORD-098: the relay keeps a lost node socket for minutes after a reset (409); an ask for pod-relay and the relay server (to podcrates) | open (a message to podcrates; T-406 waits for the answer) | none |
+| #605 | COORD-099: the answer to PodUtils/podrunner#201: --loopback-rules holds each loopback port but the broker (since v0.4.0-beta.10) (to podrunner) | open (a message to podrunner; close it when podrunner closes #201) | none |
 | #606 | live: two runs in a row failed | open (live 43912914825 attempt 2: T-407; live 43918102449: the relay, T-406; live 43926742960: T-408; live 43983078556: T-411) | T-406, T-407, T-408, T-411 |
+| #606 | live: two runs in a row failed | open (live 43912914825 attempt 2: T-407; live 43918102449: the relay, T-406; live 43926742960: T-408) | T-406, T-407, T-408 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

@@ -1676,9 +1676,17 @@ podnet forward
         runs exits 69. With udp:PORT or udp:ADDR:PORT the forward carries UDP:
         each client has its own flow, and a flow ends after 60 s with no
         datagram. A datagram for a full flow is dropped.
+    --name NAME=HOST:PORT
+        A name for a client that takes only HOST:PORT: NAME=HOST:PORT
+        (repeatable, 254 at most). Each name gets the next address of 127.0.0.2
+        to 127.0.0.255, a listener there on --alias-port, and a forward to
+        HOST:PORT. --dns answers each name with its address.
+    --alias-port PORT
+        The port of the listeners of --name.
     --dns ADDR:PORT
         A DNS door: answer DNS queries on ADDR:PORT (UDP and TCP) through the
-        network, from the resolver at --dns-upstream.
+        network, from the resolver at --dns-upstream. The names of --name get
+        their address from the door itself.
     --dns-upstream HOST:PORT
         The resolver of --dns, an address at the far end of the network.
         Default: 1.1.1.1:53.
@@ -1746,6 +1754,10 @@ podnet forward
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
+
+    --name needs --alias-port.
+
+    --alias-port needs --name.
 
   Examples:
     Open one stream of the link to the peer for each connection to
@@ -13376,7 +13388,23 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
   network, use the router ([router.md](router.md), "Doors" and `resolvers`).
 * `--run-for SECONDS` stops after that time.
 
-### A service of a peer
+### Names for a client that takes only HOST:PORT
+
+```sh
+podnet forward --network relay --alias-port 7000 \
+  --name win.internal=win.internal:3389 --name db.internal=db.internal:5432 \
+  --dns 127.0.0.1:5353
+```
+
+* `--name NAME=HOST:PORT` (repeatable, 254 at most) gives the name the next address of `127.0.0.2` to `127.0.0.255`
+  and a forward from that address on `--alias-port PORT` to `HOST:PORT`. The client connects to `NAME:PORT`. `--name`
+  and `--alias-port` need each other. The whole of `127.0.0.0/8` is the loopback of Linux: no interface is added.
+* With `--dns ADDR:PORT`, the DNS door answers each name with its address (type A, on UDP and on TCP) and sends each
+  other name to `--dns-upstream` through the network. With no `--dns`, the lines `podnet: name ADDRESS NAME` are the
+  lines of a hosts file.
+* A name is letters, digits, `-` and `.`, in lowercase; each name once (else exit 64) (T-404).
+
+
 
 ```sh
 podnet link connect /run/user/1000/app.sock --peer FINGERPRINT --control /run/user/1000/link.ctl --detach --name peer1

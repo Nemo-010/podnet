@@ -24,8 +24,18 @@ pub(crate) struct ForwardArgs {
     /// is dropped.
     #[arg(short = 'L', long = "local", value_name = "LISTEN=HOST:PORT")]
     local: Vec<String>,
+    /// A name for a client that takes only HOST:PORT: NAME=HOST:PORT
+    /// (repeatable, 254 at most). Each name gets the next address of
+    /// 127.0.0.2 to 127.0.0.255, a listener there on --alias-port, and a
+    /// forward to HOST:PORT. --dns answers each name with its address.
+    #[arg(long = "name", value_name = "NAME=HOST:PORT", requires = "alias_port")]
+    names: Vec<String>,
+    /// The port of the listeners of --name.
+    #[arg(long, value_name = "PORT", requires = "names")]
+    alias_port: Option<u16>,
     /// A DNS door: answer DNS queries on ADDR:PORT (UDP and TCP) through
-    /// the network, from the resolver at --dns-upstream.
+    /// the network, from the resolver at --dns-upstream. The names of
+    /// --name get their address from the door itself.
     #[arg(long, value_name = "ADDR:PORT")]
     dns: Option<std::net::SocketAddr>,
     /// The resolver of --dns, an address at the far end of the network.
@@ -54,12 +64,13 @@ pub(crate) struct ForwardArgs {
 
 /// Run the forwards until a signal or --run-for.
 pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
-    if args.local.is_empty() && args.dns.is_none() {
+    if args.local.is_empty() && args.dns.is_none() && args.names.is_empty() {
         return Err(anyhow::anyhow!(
-            "give -L LISTEN=HOST:PORT or --dns ADDR:PORT"
+            "give -L LISTEN=HOST:PORT, --name NAME=HOST:PORT or --dns ADDR:PORT"
         ))
         .fault(Fault::Usage);
     }
+    let aliases = podnet::forwards::aliases(&args.names).fault(Fault::Usage)?;
     let upstream: Option<Target> = args
         .dns
         .map(|_| {
@@ -69,10 +80,21 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
         })
         .transpose()
         .fault(Fault::Usage)?;
+    // Each name is a rule on its address (T-404).
+    let alias_rules = aliases.iter().map(|a| {
+        format!(
+            "{}:{}={}",
+            a.ip,
+            args.alias_port.unwrap_or_default(),
+            a.target
+        )
+    });
     let rules = args
         .local
         .iter()
-        .map(|spec| podnet::forwards::Rule::parse(spec))
+        .cloned()
+        .chain(alias_rules)
+        .map(|spec| podnet::forwards::Rule::parse(&spec))
         .collect::<Result<Vec<_>>>()
         .fault(Fault::Usage)?;
     let dial: Arc<dyn Dial> = match &args.network {
@@ -101,7 +123,18 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
             "podnet: dns door  {addr}  ->  {upstream}  via {}",
             dial.label()
         );
-        servers.spawn(podnet::forwards::serve_dns(addr, dial.clone(), upstream));
+        let table =
+            (!aliases.is_empty()).then(|| Arc::new(podnet::forwards::alias_table(&aliases)));
+        servers.spawn(podnet::forwards::serve_dns_with(
+            addr,
+            dial.clone(),
+            upstream,
+            table,
+        ));
+    }
+    for a in &aliases {
+        // The line of a hosts file, for a client with no --dns.
+        println!("podnet: name  {}  {}", a.ip, a.name);
     }
     for rule in rules {
         let target = rule.target.clone();

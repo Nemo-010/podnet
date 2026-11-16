@@ -111,3 +111,26 @@ fn a_rule_to_a_peer_refuses_udp_and_a_bad_spec() {
         assert!(Rule::parse(&spec).is_err(), "{spec}");
     }
 }
+
+/// T-404: each name of `forward --name` gets the next address of
+/// 127.0.0.0/8; a bad name, a bad target and a name given twice fail.
+#[test]
+fn the_names_get_the_addresses_in_their_order() {
+    let names = vec![
+        "Svc.Internal.=10.0.0.5:3389".to_string(),
+        "db.internal=db.internal:5432".to_string(),
+    ];
+    let got = aliases(&names).unwrap();
+    assert_eq!(got[0].name, "svc.internal");
+    assert_eq!(got[0].ip, std::net::Ipv4Addr::new(127, 0, 0, 2));
+    assert_eq!(got[0].target, "10.0.0.5:3389");
+    assert_eq!(got[1].ip, std::net::Ipv4Addr::new(127, 0, 0, 3));
+    for bad in ["svc", "a b=h:1", "svc=host", "=h:1", "x_y=h:1"] {
+        assert!(aliases(&[bad.to_string()]).is_err(), "{bad}");
+    }
+    let twice = vec!["a=h:1".to_string(), "A=h:2".to_string()];
+    assert!(aliases(&twice).is_err());
+    let many: Vec<String> = (0..255).map(|i| format!("n{i}=h:1")).collect();
+    assert!(aliases(&many).is_err());
+    assert_eq!(aliases(&many[..254]).unwrap()[253].ip.octets()[3], 255);
+}

@@ -40,7 +40,23 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
   network, use the router ([router.md](router.md), "Doors" and `resolvers`).
 * `--run-for SECONDS` stops after that time.
 
-### A service of a peer
+### Names for a client that takes only HOST:PORT
+
+```sh
+podnet forward --network relay --alias-port 7000 \
+  --name win.internal=win.internal:3389 --name db.internal=db.internal:5432 \
+  --dns 127.0.0.1:5353
+```
+
+* `--name NAME=HOST:PORT` (repeatable, 254 at most) gives the name the next address of `127.0.0.2` to `127.0.0.255`
+  and a forward from that address on `--alias-port PORT` to `HOST:PORT`. The client connects to `NAME:PORT`. `--name`
+  and `--alias-port` need each other. The whole of `127.0.0.0/8` is the loopback of Linux: no interface is added.
+* With `--dns ADDR:PORT`, the DNS door answers each name with its address (type A, on UDP and on TCP) and sends each
+  other name to `--dns-upstream` through the network. With no `--dns`, the lines `podnet: name ADDRESS NAME` are the
+  lines of a hosts file.
+* A name is letters, digits, `-` and `.`, in lowercase; each name once (else exit 64) (T-404).
+
+
 
 ```sh
 podnet link connect /run/user/1000/app.sock --peer FINGERPRINT --control /run/user/1000/link.ctl --detach --name peer1

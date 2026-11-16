@@ -128,8 +128,74 @@ where
     });
 }
 
+/// A name of `forward --name` (T-404): the address on 127.0.0.0/8 that
+/// stands for it, and the target of its forward.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Alias {
+    pub name: String,
+    pub ip: std::net::Ipv4Addr,
+    pub target: String,
+}
+
+/// The most names: the addresses 127.0.0.2 to 127.0.0.255.
+pub const MAX_ALIASES: usize = 254;
+
+/// Parse each `NAME=HOST:PORT` of `forward --name`. The names get the
+/// addresses 127.0.0.2, 127.0.0.3 and on, in their order. A name is
+/// lowercase letters, digits, `-` and `.`, 253 characters at most; each name
+/// once.
+pub fn aliases(specs: &[String]) -> Result<Vec<Alias>> {
+    if specs.len() > MAX_ALIASES {
+        anyhow::bail!("--name: {} names; the most is {MAX_ALIASES}", specs.len());
+    }
+    let mut out: Vec<Alias> = Vec::new();
+    for (i, spec) in specs.iter().enumerate() {
+        let (name, target) = spec
+            .split_once('=')
+            .with_context(|| format!("--name {spec:?}: give NAME=HOST:PORT"))?;
+        let name = name.trim_end_matches('.').to_ascii_lowercase();
+        let good = !name.is_empty()
+            && name.len() <= 253
+            && name
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-' || b == b'.');
+        if !good {
+            anyhow::bail!("--name {spec:?}: a name is letters, digits, - and .");
+        }
+        if out.iter().any(|a| a.name == name) {
+            anyhow::bail!("--name: {name} is given twice");
+        }
+        target
+            .parse::<Target>()
+            .map_err(|_| anyhow::anyhow!("--name {spec:?}: give NAME=HOST:PORT"))?;
+        let ip = std::net::Ipv4Addr::new(127, 0, 0, u8::try_from(i + 2).expect("at most 254"));
+        out.push(Alias {
+            name,
+            ip,
+            target: target.to_string(),
+        });
+    }
+    Ok(out)
+}
+
+/// The table of the DNS door for `aliases`: each name has its address;
+/// each other name goes to the upstream of the door.
+pub fn alias_table(aliases: &[Alias]) -> podnet_vnet::dns::Resolver {
+    let mut table = podnet_vnet::dns::Resolver::new();
+    for a in aliases {
+        table.insert(&a.name, std::net::IpAddr::V4(a.ip));
+    }
+    // A marker: the door has an upstream (the network), so an unknown name
+    // is not answered here.
+    table.upstream = Some(podnet_vnet::addr::VirtAddr::v4(
+        std::net::Ipv4Addr::UNSPECIFIED,
+        53,
+    ));
+    table
+}
+
 mod udp;
-pub use udp::{serve_dns, serve_udp};
+pub use udp::{serve_dns, serve_dns_with, serve_udp};
 
 #[cfg(test)]
 mod tests;

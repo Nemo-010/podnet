@@ -14,6 +14,8 @@ use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
 
 use crate::network::{recv_from, send_to, Dial, Target};
+use podnet_vnet::dns::Resolver;
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
 /// The idle time after which a flow ends.
 pub const IDLE: Duration = Duration::from_secs(60);
@@ -30,6 +32,8 @@ pub(super) struct Flows {
     idle: Duration,
     cap: usize,
     open: Arc<Mutex<HashMap<SocketAddr, mpsc::Sender<Vec<u8>>>>>,
+    /// The names that a DNS door answers itself (T-404).
+    local: Option<Arc<Resolver>>,
 }
 
 impl Flows {
@@ -38,6 +42,7 @@ impl Flows {
             idle,
             cap,
             open: Arc::default(),
+            local: None,
         }
     }
 
@@ -77,6 +82,10 @@ pub(super) async fn serve_udp_with(
             .recv_from(&mut buf)
             .await
             .context("the forward listener")?;
+        if let Some(reply) = flows.local.as_ref().and_then(|t| t.handle(&buf[..n])) {
+            let _ = socket.send_to(&reply, client).await;
+            continue;
+        }
         let datagram = buf[..n].to_vec();
         let queue = {
             let mut open = flows.open.lock().unwrap();
@@ -111,6 +120,17 @@ pub(super) async fn serve_udp_with(
 /// through `dial` to `upstream`. The upstream is an address of the far end
 /// of the network.
 pub async fn serve_dns(addr: SocketAddr, dial: Arc<dyn Dial>, upstream: Target) -> Result<()> {
+    serve_dns_with(addr, dial, upstream, None).await
+}
+
+/// [`serve_dns`] that answers the names of `table` itself (T-404): over UDP,
+/// and over TCP when the first query of a connection asks for one of them.
+pub async fn serve_dns_with(
+    addr: SocketAddr,
+    dial: Arc<dyn Dial>,
+    upstream: Target,
+    table: Option<Arc<Resolver>>,
+) -> Result<()> {
     let udp = Arc::new(
         UdpSocket::bind(addr)
             .await
@@ -119,9 +139,67 @@ pub async fn serve_dns(addr: SocketAddr, dial: Arc<dyn Dial>, upstream: Target) 
     let tcp = tokio::net::TcpListener::bind(udp.local_addr()?)
         .await
         .with_context(|| format!("--dns {addr}"))?;
+    let Some(table) = table else {
+        return tokio::select! {
+            r = serve_udp(udp, dial.clone(), upstream.clone()) => r,
+            r = super::serve_tcp(tcp, dial, upstream) => r,
+        };
+    };
+    let mut flows = Flows::new(IDLE, MAX_FLOWS);
+    flows.local = Some(table.clone());
     tokio::select! {
-        r = serve_udp(udp, dial.clone(), upstream.clone()) => r,
-        r = super::serve_tcp(tcp, dial, upstream) => r,
+        r = serve_udp_with(udp, dial.clone(), upstream.clone(), flows) => r,
+        r = async {
+            loop {
+                let (stream, _) = tcp.accept().await.context("the DNS door")?;
+                tokio::spawn(dns_tcp(stream, dial.clone(), upstream.clone(), table.clone()));
+            }
+        } => r,
+    }
+}
+
+/// One TCP connection of the DNS door: each query of the table gets its
+/// answer here; at the first other query the connection goes to the
+/// upstream, with that query first.
+async fn dns_tcp(
+    mut stream: tokio::net::TcpStream,
+    dial: Arc<dyn Dial>,
+    upstream: Target,
+    table: Arc<Resolver>,
+) {
+    loop {
+        let mut len = [0u8; 2];
+        if stream.read_exact(&mut len).await.is_err() {
+            return;
+        }
+        let mut query = vec![0u8; usize::from(u16::from_be_bytes(len))];
+        if stream.read_exact(&mut query).await.is_err() {
+            return;
+        }
+        if let Some(reply) = table.handle(&query) {
+            let Ok(n) = u16::try_from(reply.len()) else {
+                return;
+            };
+            if stream.write_all(&n.to_be_bytes()).await.is_err()
+                || stream.write_all(&reply).await.is_err()
+            {
+                return;
+            }
+            continue;
+        }
+        let deadline = tokio::time::Instant::now() + super::DIAL_LIMIT;
+        match dial.dial(&upstream, deadline).await {
+            Ok(mut conn) => {
+                if conn.io.write_all(&len).await.is_ok() && conn.io.write_all(&query).await.is_ok()
+                {
+                    let _ = tokio::io::copy_bidirectional(&mut stream, &mut conn.io).await;
+                }
+            }
+            Err(e) => {
+                tracing::warn!(%upstream, way = %dial.label(), "the DNS door did not reach its upstream: {e}")
+            }
+        }
+        return;
     }
 }
 
