@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**378 entries: 12 open, 10 partial, 37 blocked, 319 done.**
+**381 entries: 12 open, 10 partial, 39 blocked, 320 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 2 | 2 | 33 | 37 |
-| P2 | 6 | 4 | 10 | 165 | 185 |
+| P1 | 0 | 2 | 3 | 34 | 39 |
+| P2 | 6 | 4 | 11 | 165 | 186 |
 | P3 | 6 | 4 | 25 | 120 | 155 |
-| **All** | 12 | 10 | 37 | 319 | 378 |
+| **All** | 12 | 10 | 39 | 320 | 381 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -424,3 +424,6 @@ M8 Overlays, M9 Later.
 | [T-376](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: carry a session with no network: serial, HF, spool, discovery, pairing (GitHub #499) |
 | [T-377](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: state the host runtime: no open port, classified egress, stated limits (GitHub #500) |
 | [T-378](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: build the verification harness: classifier, exit codes, conformance matrix (GitHub #501) |
+| [T-379](fixes.md) | P1 | S | M5 | defect | done | A unix listener of podnet fails with EXDEV in a Landlock domain |
+| [T-380](fixes.md) | P1 | S | M5 | defect | blocked | link listen over the unix carrier fails with EXDEV in a Landlock domain (pod-link) |
+| [T-381](fixes.md) | P2 | S | M5 | defect | blocked | The netns backend of podnet pod needs an AF_INET datagram socket (pod-hold) |

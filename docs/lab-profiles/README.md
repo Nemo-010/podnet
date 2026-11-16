@@ -1,7 +1,7 @@
 # Network profiles of podnet for pod-lab
 
 This directory is the hand-off of podnet for the network classes of
-`pod-lab` (PodUtils/podcrates, their entry T-716; podnet T-358 step 1). Each
+`pod-lab` (PodUtils/podcrates, their entry 716; podnet T-358 step 1). Each
 file gives one profile:
 
 * the data of the profile in the form of `crates/pod-lab/src/table/` of

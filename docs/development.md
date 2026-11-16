@@ -63,6 +63,37 @@ record it in `TODO/fixes.md`. Do not give a failing block the class
 `skip`. Give a block the class `skip` only when it is not a command to run
 as written, and write why.
 
+## The lane in the profiles of pod-lab
+
+`scripts/lab-lane.sh` runs the lane of podnet (T-358, step 1) in the
+profiles of `pod-lab` (`PodUtils/podcrates:crates/pod-lab/LANES.md`). It
+takes the binary `podlab` and the podnet binary to test, and runs each
+command in a lab of each profile with `podlab run PROFILE -- ...`.
+
+1. Build `podlab` in a clone of podcrates at the tag that podnet takes:
+   `cargo build --release -p pod-lab --features cli --target
+   x86_64-unknown-linux-musl` (with `CC_x86_64_unknown_linux_musl=clang`).
+2. Build the release binary of podnet (`docs/build.md`).
+3. Run `sh scripts/lab-lane.sh PODLAB PODNET [PROFILE...]` as a user that
+   is not root. With no PROFILE, it runs each profile of `podlab list`.
+   As root, the profile `nonroot-nocaps` does not hold, and each other lab
+   runs as root.
+
+The commands: `podnet --version`, `podnet man --no-pager`, `podnet doctor`
+(exit 0 or 1, no panic), `podnet net shim --forward
+127.0.0.1:7001=unix:PATH` with a dynamic Python client and a unix echo
+server (with a negative control: with no shim, the client gets no echo),
+`podnet link listen` and `podnet link dial` over the unix carrier,
+`podnet pod --backend seccomp` and `--backend netns` around `/bin/true`,
+and `podnet net proxy --listen unix:PATH` with a SOCKS5 greeting.
+
+The script prints one row for each profile and command: `pass`, `fail`
+with the log, or `n.a.` with the reason (a lab that does not hold here; a
+pod backend that podnet refuses with exit 3 and a reason). It exits 1 on a
+failure. The logs are in `LANE_DIR` (default `.work/lab-lane`), which must
+not be in `/tmp` or in `HOME`. It needs `python3`, `cc` (for the shim) and
+`timeout`.
+
 ## Rules for tests
 
 * **A test for each fix.** A fix of a defect comes with a test that fails

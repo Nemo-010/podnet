@@ -153,8 +153,78 @@ pub fn bind_private(
         // A long path: the staged name does not fit in a sockaddr_un. Bind
         // at the path, as before, and set the mode at once.
         Err(e) if e.kind() == std::io::ErrorKind::InvalidInput => bind_in_private_dir(path),
+        // T-379: a Landlock domain that does not handle the right `REFER`
+        // refuses each move to another directory with EXDEV.
+        Err(e) if e.raw_os_error() == Some(libc::EXDEV) => bind_with_mode(path),
         Err(e) => Err(e),
     }
+}
+
+/// Bind a unix listener at `path` with the mode 0600 from the bind on: the
+/// mode of the socket, set with `fchmod` before the bind, is the mode of the
+/// new file (less the umask), so the file never has a wider mode. Then set
+/// 0600, as a umask can make the mode narrower. An existing `path` gives
+/// `AddrInUse`. T-379: the form for a host where [`bind_private`] cannot
+/// move the socket from its staging directory.
+pub fn bind_with_mode(path: &std::path::Path) -> std::io::Result<tokio::net::UnixListener> {
+    use std::os::fd::{AsRawFd as _, FromRawFd as _, OwnedFd};
+    use std::os::unix::ffi::OsStrExt as _;
+    use std::os::unix::fs::PermissionsExt as _;
+    let bytes = path.as_os_str().as_bytes();
+    // SAFETY: an all-zero sockaddr_un is a valid value.
+    let mut addr: libc::sockaddr_un = unsafe { std::mem::zeroed() };
+    if bytes.is_empty() || bytes.len() >= addr.sun_path.len() || bytes.contains(&0) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!(
+                "unix:{}: the path does not fit in a socket address",
+                path.display()
+            ),
+        ));
+    }
+    addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
+    for (to, from) in addr.sun_path.iter_mut().zip(bytes) {
+        *to = *from as libc::c_char;
+    }
+    let len = std::mem::size_of::<libc::sa_family_t>() + bytes.len() + 1;
+    // SAFETY: socket with constant arguments.
+    let fd = unsafe {
+        libc::socket(
+            libc::AF_UNIX,
+            libc::SOCK_STREAM | libc::SOCK_CLOEXEC | libc::SOCK_NONBLOCK,
+            0,
+        )
+    };
+    if fd < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    // SAFETY: a new descriptor that nothing else owns.
+    let sock = unsafe { OwnedFd::from_raw_fd(fd) };
+    // SAFETY: fchmod, bind and listen on a descriptor of this function; addr
+    // lives across the call and len is its used length.
+    let failed = unsafe {
+        libc::fchmod(sock.as_raw_fd(), 0o600) != 0
+            || libc::bind(
+                sock.as_raw_fd(),
+                (&addr as *const libc::sockaddr_un).cast(),
+                len as libc::socklen_t,
+            ) != 0
+    };
+    if failed {
+        return Err(std::io::Error::last_os_error());
+    }
+    let listening = (|| {
+        // SAFETY: listen on a bound descriptor of this function.
+        if unsafe { libc::listen(sock.as_raw_fd(), 1024) } != 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))
+    })();
+    if let Err(e) = listening {
+        let _ = std::fs::remove_file(path);
+        return Err(e);
+    }
+    tokio::net::UnixListener::from_std(std::os::unix::net::UnixListener::from(sock))
 }
 
 /// Bind a unix listener at `path` in a directory that only this user can
@@ -190,6 +260,10 @@ fn move_no_replace(from: &std::path::Path, to: &std::path::Path) -> std::io::Res
         std::ffi::CString::new(to.as_os_str().as_bytes())?,
     );
     const RENAME_NOREPLACE: libc::c_uint = 1;
+    #[cfg(test)]
+    if tests::move_refused() {
+        return Err(std::io::Error::from_raw_os_error(libc::EXDEV));
+    }
     // SAFETY: two NUL-terminated paths, relative to the working directory.
     let rc = unsafe {
         libc::syscall(
@@ -261,6 +335,38 @@ mod tests {
     thread_local! {
         /// T-238: a seam that runs after the bind and before the chmod.
         static AFTER_BIND: std::cell::RefCell<Option<Seam>> = const { std::cell::RefCell::new(None) };
+    }
+
+    thread_local! {
+        /// T-379: the move of the staged socket gives EXDEV, as in a
+        /// Landlock domain that does not handle the right `REFER`.
+        static MOVE_REFUSED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    }
+
+    pub(super) fn move_refused() -> bool {
+        MOVE_REFUSED.with(|refused| refused.get())
+    }
+
+    /// T-379: when the move gives EXDEV, the socket is bound at its path
+    /// with the mode 0600, no staging directory stays, and it answers.
+    #[test]
+    fn bind_private_binds_at_the_path_when_the_move_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("door.sock");
+        MOVE_REFUSED.with(|refused| refused.set(true));
+        let rt = runtime();
+        let listener = rt.block_on(async { bind_private(&path) });
+        MOVE_REFUSED.with(|refused| refused.set(false));
+        let _listener = listener.unwrap();
+        assert_eq!(mode(&path), 0o600);
+        let left: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
+            .collect();
+        assert_eq!(left, ["door.sock"], "no staging directory stays");
+        std::os::unix::net::UnixStream::connect(&path).expect("the socket answers");
+        let again = rt.block_on(async { bind_with_mode(&path) });
+        assert_eq!(again.unwrap_err().kind(), std::io::ErrorKind::AddrInUse);
     }
 
     pub(super) fn after_bind(staged: &std::path::Path, path: &std::path::Path) {

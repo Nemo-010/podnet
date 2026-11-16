@@ -46,7 +46,21 @@ comment of the request.
 
 ## Next steps
 
-0. The release gate (T-358) comes before the next beta (`docs/decisions.md`, 2026-11-15). The help and the manual are on `pod-manual` (T-359, done).
+0. The release gate (T-358) comes before the next beta (`docs/decisions.md`, 2026-11-15). The help and the manual are on `pod-manual` (T-359, done). The lane of step 1 runs with `scripts/lab-lane.sh` (`docs/development.md`, The lane in the
+   profiles of pod-lab):
+
+   1. `git clone --depth 1 --branch v0.56.0 https://github.com/PodUtils/podcrates .work/podcrates-v0.56.0`, then in it
+      `CC_x86_64_unknown_linux_musl=clang cargo build --release -p pod-lab --features cli --target
+      x86_64-unknown-linux-musl` (the toolchain of podcrates needs `rustup target add x86_64-unknown-linux-musl` in
+      that directory).
+   2. Build the release binary of podnet. Copy both binaries to a directory that uid 65534 can read (`.work/lane/`).
+   3. As root, run the lane as uid 65534: `setpriv --reuid=65534 --regid=65534 --clear-groups env HOME=DIR
+      LANE_DIR=DIR2 sh scripts/lab-lane.sh .work/lane/podlab .work/lane/podnet [PROFILE...]` (DIR and DIR2 of uid
+      65534, not in `/tmp`).
+
+   The first run (2026-11-16, T-358): 25 labs hold as uid 65534; the open failures are T-380 (`link-unix` in the
+   Landlock labs) and T-381 (`pod-netns` in `udp-denied`), both fixes of podcrates. The lead writes the COORD issues
+   `(to podcrates)` for them. `docs/lab-profiles/` is the hand-off of the six network profiles to podcrates.
 1. Ask for runs of each new head with a `[gh action] requested` issue after a batch of changes.
 2. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
 3. Go on with the work order of `TODO/PROGRESS.md`. The disk holds one build: run one agent at a time in this checkout,

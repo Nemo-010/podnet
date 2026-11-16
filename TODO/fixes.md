@@ -4030,11 +4030,11 @@ above. The check to satisfy is: no other user can connect, at any instant.
 
 ## Premise
 
-- `crates/podnet-netns/src/listen.rs:127-170` (`bind_private`) calls `UnixListener::bind(path)`, then
+- `crates/podnet-netns/src/listen.rs:127-240` (`bind_private`) calls `UnixListener::bind(path)`, then
   `set_permissions(path, 0o600)`.
 - The callers that bind in a directory that other users can reach: `src/cli/cmd/connect.rs:250`,
   src/warp/proxy.rs:86 at `9c1fc4b`, `crates/podnet-vnet/src/proxy.rs:314`, `crates/podnet-vnet/src/switch.rs:434`,
-  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:250-253`),
+  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:324-327`),
   `crates/podnet-netns/src/tailscale.rs:356` and `crates/podnet-netns/src/frontdoor.rs:59`.
 - `crates/podnet-netns/src/seccomp/accept.rs:46` is not exposed: it calls `private_dir` first
   (`crates/podnet-netns/src/seccomp/accept.rs:43`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:44`).
@@ -6860,6 +6860,37 @@ background and a client (the `--local` blocks of `docs/serve.md`), or blocks tha
 blocks in `live.yml`; (c) the `root` block and the blocks that need a restricted host in the profiles of `pod-lab`
 (step 1).
 
+2026-11-16, step 1, the first run. `podlab` of podcrates `v0.56.0` (release, musl) and the release binary of podnet
+(musl) on this container (uid 0, all capabilities, kernel 6.18, user namespaces allowed, `/dev/net/tun` of mode 0600).
+`scripts/lab-lane.sh PODLAB PODNET [PROFILE...]` runs the lane (`docs/development.md`, The lane in the profiles of
+pod-lab): `--version`, `man --no-pager`, `doctor`, `net shim --forward` with a dynamic Python client and an echo server
+outside the lab (and a negative control with no shim), `link listen` and `link dial` over the unix carrier, `pod
+--backend seccomp` and `--backend netns` around `/bin/true`, `net proxy --listen unix:PATH` with a SOCKS5 greeting.
+
+- `podlab check PROFILE` (the host itself): only `no-kvm` holds; 14 profiles fail (the host allows what they refuse),
+  19 are unseen (no row of `pod-hostprobe` measures them).
+- `podlab run PROFILE -- /bin/true`: as uid 65534, 25 of the 34 labs hold. As root, 24 hold: `nonroot-nocaps` does
+  not (a lab cannot drop root), and each other lab runs as root. The 9 labs that never hold here: `proxy-only`,
+  `arm64-tcg`, `cgroup-v1` and the 6 network profiles of podcrates (their entry 716) (part 2 of `pod-lab`).
+- As uid 65534, in the 25 labs: each `--version`, `man`, `doctor` and `shim-forward` passed (100 of 100). `link-unix`
+  failed in the 5 Landlock labs (`root-unreadable`, `no-kvm`, `proc-masked`, `no-tun`, `no-net-admin`): T-380.
+  `net-proxy-unix` failed there too: T-379, fixed (it passes after the fix). `pod-netns` failed in `udp-denied`: T-381.
+  `link-unix` and `net-proxy-unix` are n.a. in `listen-denied` (the lab refuses `listen(2)` of AF_UNIX; podnet stops
+  with `Permission denied`, and says `bind` for a refused `listen`). The pod backends are n.a. where the lab takes what
+  they need by design: `pod-netns` in `userns-off`, `nonroot-nocaps`, `seccomp-nonewprivs`, `no-proc`, `proc-masked`
+  and `raw-denied` (no TUN for this user and no AF_PACKET); `pod-seccomp` in `no-proc` and `proc-masked`. Each other
+  row passed.
+- As root: the same, except `pod-netns` passes in `userns-off` and `no-proc`, and is n.a. in `no-net-admin` (since
+  Linux 5.12 uid 0 with no `CAP_SETFCAP` cannot map itself).
+- `docs/lab-profiles/`: the six network profiles of podcrates (their entry 716), in the form of `pod-lab` at `93bf133a`, with the
+  way a lab can hold each part and the parts that are assumed.
+
+What remains of step 1: the network labs (part 2 of `pod-lab`: `proxy-only` and the six profiles; the entry 716 of podcrates takes
+`docs/lab-profiles/`); the commands of the lane that need them (`tunnel --quick`, `warp proxy`, `relay`, `send` and
+`receive`, `doctor` against a stand-in proxy); `link` over `icmp` and `pod --allow-raw icmp` in `raw-denied`; a .NET
+client under the shim; a host where `podlab` runs as a user that is not root in CI (`gate.yml`); T-380 and T-381 (fixes
+of podcrates).
+
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 
 **Source:** the owner, 2026-11-15: "it is time everyone shared a single crate for cli help/man".
@@ -7154,3 +7185,128 @@ gh run view 43333498755 -R PodUtils/podnet --json conclusion
 
 2026-11-15, no code commit (the record of the finding). The rerun 43333498755 of `live.yml` passed; the issue was closed
 with that evidence.
+
+# T-379: A unix listener of podnet fails with EXDEV in a Landlock domain
+
+**Source:** T-358 step 1, podlab run no-tun (also root-unreadable, no-kvm, proc-masked, no-net-admin), 2026-11-15.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+In each lab of `pod-lab` that hides a path with Landlock, `podnet net proxy --listen unix:PATH` exits with `podnet:
+binding unix:PATH: Cross-device link (os error 18)`. A Python server binds a unix socket in the same directory with no
+error. Each listener of podnet that calls `podnet_netns::listen::bind_private` has the defect: `net proxy`, `net
+switch`, `warp proxy`, `connect`, `route`, the router, and the control socket of `link`. Sandboxes of agents use
+Landlock, so a user meets it.
+
+## Premise
+
+- Measured on 2026-11-15 with the release binary and `podlab` of podcrates `v0.56.0`, as uid 65534.
+- `bind_private` (`crates/podnet-netns/src/listen.rs`, T-238) binds the socket in a new directory beside the path and
+  moves it to the path with `renameat2`. A Landlock domain that does not handle the right `REFER` refuses each move to
+  another directory with `EXDEV` (the Landlock documentation). The labs of `pod-lab` handle file rights, not `REFER`.
+
+## Approach
+
+1. When the move gives `EXDEV`, bind at the path with the mode 0600 from the bind on: `fchmod(0600)` on the socket
+   before `bind(2)` (the mode of the new file is the mode of the socket less the umask), then `chmod 0600`. The file is
+   never wider than 0600.
+2. A unit test with a seam that makes the move give `EXDEV`.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib listen::
+sh scripts/lab-lane.sh PODLAB target/x86_64-unknown-linux-musl/release/podnet no-tun
+```
+
+## Done
+
+2026-11-15, the commit of this entry. `bind_private` falls back to `bind_with_mode` on `EXDEV`. The test
+`bind_private_binds_at_the_path_when_the_move_is_refused` passes. The lane as uid 65534: `net-proxy-unix` passes in
+root-unreadable, no-kvm, proc-masked, no-tun and no-net-admin (it failed in each before).
+
+# T-380: link listen over the unix carrier fails with EXDEV in a Landlock domain (pod-link)
+
+**Source:** T-358 step 1, podlab run no-tun (also root-unreadable, no-kvm, proc-masked, no-net-admin), 2026-11-15.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+In each lab of `pod-lab` that hides a path with Landlock, `podnet link listen PATH --allow FILE` exits with `podnet: the
+unix carrier: bind PATH: Cross-device link (os error 18)`. The class `bind-denied` of PodUtils/podrunner#170 runs
+podnet under Landlock, and the unix carrier is the way of `link` there.
+
+## Premise
+
+- Measured on 2026-11-15 with the release binary and `podlab` of podcrates `v0.56.0`, as uid 65534.
+- The unix carrier is in the crate `pod-link` of podcrates (`PodUtils/podcrates:crates/pod-link/src/unix.rs`, `bind_private`, at
+  `93bf133a`). It stages the socket in a new directory and moves it with `renameat2`, as podnet did before T-379. A
+  Landlock domain that does not handle `REFER` refuses the move with `EXDEV`.
+
+## Approach
+
+1. podcrates: in `pod-link`, on `EXDEV` of the move, bind at the path with `fchmod(0600)` before `bind(2)`, as
+   `podnet_netns::listen::bind_with_mode` (T-379).
+2. podnet takes the tag; the lane passes `link-unix` in the Landlock profiles.
+
+## Prove
+
+```sh
+sh scripts/lab-lane.sh PODLAB PODNET no-tun no-kvm
+```
+
+## Blocker
+
+podcrates must change `pod-link` (a COORD issue `(to podcrates)` of the lead session, with T-379 as the form of the fix).
+A tag of podcrates with the fix ends the block.
+
+# T-381: The netns backend of podnet pod needs an AF_INET datagram socket (pod-hold)
+
+**Source:** T-358 step 1, podlab run udp-denied, 2026-11-15.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+In the lab `udp-denied` (seccomp refuses `socket(AF_INET or AF_INET6, SOCK_DGRAM)` with `EPERM`), `podnet pod
+--backend netns -- /bin/true` exits 3 with `socket() for the interfaces: Operation not permitted`. The backend sends no
+UDP: it opens the socket only for the ioctls of the interfaces. `--backend auto` goes to the seccomp backend, and its
+reason is wrong: `unshare ok, but lo cannot be set up (no capability)`.
+
+## Premise
+
+- Measured on 2026-11-15 with the release binary and `podlab` of podcrates `v0.56.0`, as uid 65534. The backend passes
+  in the other labs where a user namespace is allowed.
+- `pod-hold` (`PodUtils/podcrates:crates/pod-hold/src/netns/tun.rs`, `control`, at `93bf133a`) opens `socket(AF_INET, SOCK_DGRAM)`.
+  Measured here: `SIOCGIFFLAGS` on an `AF_UNIX` datagram socket works (the kernel sends each interface ioctl of a socket
+  to `dev_ioctl`).
+- The reason text is in `crates/podnet-netns/src/doctor.rs` (`PROBE_NO_LOOPBACK`).
+
+## Approach
+
+1. podcrates: `pod-hold` opens `socket(AF_UNIX, SOCK_DGRAM)` (or a netlink socket) for the interface ioctls, with
+   `AF_INET` as the fallback.
+2. podnet takes the tag. The reason of the probe names the call that failed, not "no capability".
+
+## Prove
+
+```sh
+sh scripts/lab-lane.sh PODLAB PODNET udp-denied
+```
+
+## Blocker
+
+podcrates must change `pod-hold` (a COORD issue `(to podcrates)` of the lead session). A tag of podcrates with the fix
+ends the block.
