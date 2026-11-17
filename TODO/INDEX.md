@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**412 entries: 11 open, 11 partial, 37 blocked, 353 done.**
+**413 entries: 11 open, 12 partial, 37 blocked, 353 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 41 | 45 |
-| P2 | 5 | 5 | 11 | 186 | 207 |
+| P2 | 5 | 6 | 11 | 186 | 208 |
 | P3 | 6 | 4 | 24 | 125 | 159 |
-| **All** | 11 | 11 | 37 | 353 | 412 |
+| **All** | 11 | 12 | 37 | 353 | 413 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -458,3 +458,4 @@ M8 Overlays, M9 Later.
 | [T-411](fixes.md) | P2 | S | M5 | defect | done | live: speed.cloudflare.com answers HTTP 429 to the shared address of WARP, and the rate check fails |
 | [T-412](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.66.0 |
 | [T-413](fixes.md) | P2 | S | M5 | defect | done | live: warp scan gets no answer from a front door once, and the step fails |
+| [T-414](fixes.md) | P2 | S | M5 | defect | partial | live: after a kill of its MASQUE connection, the WARP proxy opens no new session in 60 s |

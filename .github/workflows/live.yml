@@ -1143,7 +1143,9 @@ jobs:
           fi
           # Issue 75: the MASQUE connection is killed (ss -K); the proxy
           # opens a new session, and a new client goes through it.
+          echo "before the kill:"; ss -Htn dst 162.159.198.0/24 || true
           sudo ss -K dst 162.159.198.0/24 dport = 443 || true
+          echo "after the kill:"; ss -Htn dst 162.159.198.0/24 || true
           # Run 41552624692: on some runner kernels ss -K fails ("RTNETLINK
           # answers: Invalid argument") and the connection stays. Then a
           # TCP reset rule closes it, until the proxy sees the dead session.
@@ -1158,12 +1160,20 @@ jobs:
             done
             sudo iptables -D $rule
           fi
+          # T-414 (live 44007046520): after 4 minutes of 429 retries the
+          # proxy logged no new session in 60 s. Then a client request goes
+          # through the proxy, and the step waits 60 s more (a warning).
           i=0
           until grep -q 'a new WARP session is open' warpproxy.log; do
             i=$((i + 1))
-            if [ "$i" -gt 60 ]; then
+            if [ "$i" = 61 ]; then
+              echo "::warning::no new WARP session 60 s after the kill; a client request goes through the proxy (T-414)"
+              ss -Htn dst 162.159.198.0/24 || true
+              curl -sS --max-time 30 -x socks5h://127.0.0.1:40000 -o /dev/null https://www.cloudflare.com/cdn-cgi/trace || true
+            fi
+            if [ "$i" -gt 120 ]; then
               sed -E 's/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|t\.[0-9a-f-]{8,}/<id>/g' warpproxy.log | tail -30
-              echo "no new WARP session after 60 s"
+              echo "no new WARP session after 120 s"
               exit 1
             fi
             sleep 1

@@ -8352,3 +8352,46 @@ shellcheck -S warning scripts/live-batch2.sh
 ## Done
 
 2026-11-17, the commit of this entry. `scripts/live-batch2.sh`, the step "warp scan", as in the Approach.
+
+# T-414: live: after a kill of its MASQUE connection, the WARP proxy opens no new session in 60 s
+
+**Source:** live 44007046520 on 2bd37f6 (2026-11-17), the step "WARP proxy", failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** partial
+
+## Problem
+
+The step kills the TCP connection of the MASQUE session (`ss -K dst 162.159.198.0/24 dport = 443`) and waits 60 s for the
+log line "a new WARP session is open". In live 44007046520 the line did not come, and the log of the proxy had no line
+after its start. Before the kill, speed.cloudflare.com answered 429 to each download (T-411), so the session had no
+traffic for about 4 minutes. In live 44005215136 on 73b3e28 (downloads with 200), the new session opened 0.4 s after the
+kill.
+
+## Premise
+
+- `ss -K` closed the connection: the fallback with the TCP reset rule did not run (the socket was not established
+  after the kill).
+- The proxy is code of `pod-warp` (podcrates); the check is podnet's step.
+- One run is not enough to find the cause: an idle session that the service closed before the kill, a session on
+  another transport, or a reader that does not see the abort.
+
+## Approach
+
+1. The step prints the TCP sockets to the front doors before and after the kill.
+2. When no new session comes in 60 s, a client request goes through the proxy, the step gives a warning (T-414), and
+   waits 60 s more; then it fails with the log of the proxy.
+3. When the warning shows again, write the evidence (the sockets, the log) as a COORD issue to podcrates (`pod-warp`).
+
+## Prove
+
+```sh
+python3 scripts/check-workflows.py
+# live: the step passes; a warning "T-414" names a recovery that needed a client
+```
+
+## Correction
+
+2026-11-17, steps 1 and 2 in `.github/workflows/live.yml`, the step "WARP proxy". Step 3 waits for the next warning.

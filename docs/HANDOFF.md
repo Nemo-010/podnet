@@ -18,7 +18,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
   `scripts/install/` is that of `v0.66.0` (`core.sh`, `core-net.sh`, `pins.py`; `scripts/install/SOURCES`).
 * The newest release is `v0.4.0-beta.14` (T-400, tag at 77ed861; release run 43995458679, publish 43995461740). Its
   `release-proofs.yml` run 44002218263 passed.
-* The record is `TODO/`. `cargo todo check` agrees: 412 entries, 11 open, 11 partial, 37 blocked, 353 done.
+* The record is `TODO/`. `cargo todo check` agrees: 413 entries, 11 open, 12 partial, 37 blocked, 353 done.
 
 ## Unfinished work (not on `main`)
 
@@ -47,6 +47,7 @@ None. The head is the commit of this handoff.
    the case or of podnet).
 1. T-400 is done.
 2. T-406: wait for the answer of podssh on COORD-098 (#604).
+   T-414: when live gives the warning "T-414" again, write the evidence as a COORD issue to podcrates (`pod-warp`).
 3. T-398: the live steps of `ssh-relay` and `warp license` passed (live 44005215136). `net tailscale` stays experimental.
 4. T-358, what remains: the row `way-out` (a quick tunnel in `podlab run --way-out proxy-only`) is a default row now; the lane rows with `podlab run --way-out PROFILE` and `--serve PORT`, WebSocket through the
    proxy, `ipv6-only` on a host with IPv6, the `icmp` rows; the relay and the tunnel as podssh and podrunner call them.
