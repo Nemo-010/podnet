@@ -188,6 +188,41 @@ fn ssh_relay_detach_reconnects_and_ps_shows_the_new_url() {
     );
 }
 
+/// #632: --run-for ends a foreground leg with exit 0, and -q hides the
+/// banner of the relay. The URL line on stdout stays.
+#[test]
+fn ssh_relay_run_for_ends_and_quiet_hides_the_banner() {
+    test_host::need_loopback!();
+    let (address, _count) = fake_relay();
+    let tmp = tempfile::tempdir().unwrap();
+    let run = tmp.path().join("run");
+    let socket = tmp.path().join("origin.sock").display().to_string();
+    let leg = [
+        "ssh-relay",
+        "--server",
+        &address,
+        "--user",
+        "test",
+        "--url-skip",
+        "dash.example.test",
+        "--socket",
+        &socket,
+        "--run-for",
+        "2",
+    ];
+    for quiet in [false, true] {
+        let args: Vec<&str> = quiet.then_some("-q").into_iter().chain(leg).collect();
+        let out = podnet(&run, &args).output().unwrap();
+        let (stdout, stderr) = (
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr),
+        );
+        assert_eq!(out.status.code(), Some(0), "{stderr}");
+        assert!(stdout.contains("example.test"), "{stdout}");
+        assert_eq!(stderr.contains("[relay]"), !quiet, "-q {quiet}: {stderr}");
+    }
+}
+
 #[test]
 fn ssh_relay_with_a_missing_flag_is_a_usage_error() {
     let tmp = tempfile::tempdir().unwrap();

@@ -230,6 +230,9 @@ podnet ssh-relay --server relay.example.net:443 --user podnet \
   connection. `--proxy`, `--egress` and `--resolve` apply as for the other commands ([proxies.md](proxies.md)).
 * `--json` prints each URL as one JSON line: `{"event": "ready" or "reconnected", "url", "remote_port",
   "relay"}`.
+* The banner of the relay goes to stderr, with the prefix `[relay]`. `-q` hides it. The line of the URL on
+  stdout stays.
+* `--run-for SECONDS` stops the command after that time, with exit 0.
 * `--detach`, `--name` and the other options of [background.md](background.md) work. The ready document
   has the URL. `podnet ps` shows the new URL after each reconnect.
 * `podnet doctor --ssh-relay HOST:PORT --ssh-user USER [--connect-proxy HOST:PORT]` tests the relay with no

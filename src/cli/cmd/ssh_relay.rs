@@ -13,7 +13,7 @@ use podnet::relay::supervise::{supervise, Backoff, Event};
 use podnet::relay::{RelayConfig, TunnelHandle, UrlRule};
 
 use crate::cli::opts::DetachArgs;
-use crate::cli::signals::shutdown_signal;
+use crate::cli::signals::sleep_or_signal;
 
 /// The interval of the keepalive request to the relay. A relay that does
 /// not answer more than three requests in a row ends the session, and the
@@ -71,6 +71,9 @@ pub(crate) struct SshRelayArgs {
     /// "reconnected", "url", "remote_port", "relay"}.
     #[arg(long)]
     json: bool,
+    /// Stop after this many seconds.
+    #[arg(long, value_name = "SECONDS")]
+    run_for: Option<u64>,
     #[command(flatten)]
     detach: DetachArgs,
 }
@@ -207,6 +210,8 @@ pub(crate) async fn ssh_relay(args: SshRelayArgs) -> Result<()> {
     let (events, mut received) = tokio::sync::mpsc::unbounded_channel();
     let task = tokio::spawn(supervise(config, Backoff::default(), events));
     let mut first = true;
+    let end = sleep_or_signal(args.run_for);
+    tokio::pin!(end);
     let result = loop {
         tokio::select! {
             event = received.recv() => match event {
@@ -236,7 +241,7 @@ pub(crate) async fn ssh_relay(args: SshRelayArgs) -> Result<()> {
                 None => break Err(anyhow::anyhow!("the supervisor of the relay session ended"))
                     .fault(Fault::Unavailable),
             },
-            _ = shutdown_signal() => break Ok(()),
+            _ = &mut end => break Ok(()),
         }
     };
     task.abort();
