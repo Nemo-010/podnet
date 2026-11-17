@@ -90,10 +90,21 @@ fn main() {
             }
         }
     }
-    let cli = match top_command()
+    let parsed = top_command()
         .try_get_matches_from(&args)
-        .and_then(|matches| Cli::from_arg_matches(&matches))
-    {
+        .and_then(|matches| Cli::from_arg_matches(&matches));
+    // Issue 612: expose stands for another command. main runs that command
+    // with its own argument line: --detach and --name after `--` work.
+    let (argv, parsed) = match parsed {
+        Ok(cli) if matches!(cli.command, Command::Expose(_)) => {
+            match cli::cmd::expose::resolve(&argv, cli) {
+                Ok((inner, cli)) => (inner, Ok(cli)),
+                Err(err) => (argv, Err(err)),
+            }
+        }
+        other => (argv, other),
+    };
+    let cli = match parsed {
         Ok(cli) => cli,
         Err(err) => {
             use clap::error::ErrorKind;
