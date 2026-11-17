@@ -85,16 +85,11 @@ pub fn bind(dir: &Path, name: &str, peer: &str) -> Result<()> {
         .map_err(|e| exit::fault(Fault::OsError, anyhow!("{}: {e}", path.display())))
 }
 
-fn write_private(path: &Path, text: &str) -> std::io::Result<()> {
-    use std::io::Write as _;
-    use std::os::unix::fs::OpenOptionsExt as _;
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
-        .open(path)?;
-    writeln!(file, "{text}")
+/// Write `text` and a newline to `path` with the mode 0600 and a durable
+/// rename: a power cut leaves the old key or the new one, not an empty
+/// file.
+fn write_private(path: &Path, text: &str) -> Result<()> {
+    crate::state::replace_file(path, format!("{text}\n").as_bytes(), 0o600)
 }
 
 #[cfg(test)]

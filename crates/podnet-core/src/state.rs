@@ -342,22 +342,18 @@ pub fn own_file(path: &Path) -> bool {
 /// `path`. A symlink or a file of another user at `path` is replaced, not
 /// followed.
 pub fn replace_file(path: &Path, bytes: &[u8], mode: u32) -> Result<()> {
-    use std::io::Write;
-    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
-    let temp = temp_name(path);
-    let result = (|| -> std::io::Result<()> {
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .mode(mode)
-            .open(&temp)?;
-        file.write_all(bytes)?;
-        file.set_permissions(std::fs::Permissions::from_mode(mode))?;
-        std::fs::rename(&temp, path)
-    })();
-    if let Err(err) = result {
-        let _ = std::fs::remove_file(&temp);
-        return Err(err).with_context(|| format!("writing {}", path.display()));
+    // T-417: pod-core's one durable replace (PodUtils/podnet#437): the file
+    // and its directory are synced, so a power cut leaves the old file or
+    // the new one, not an empty one.
+    use pod_core::files::{replace_private, Commit};
+    match replace_private(path, bytes, mode, false)
+        .with_context(|| format!("writing {}", path.display()))?
+    {
+        Commit::Durable => {}
+        Commit::InstalledUnconfirmed(err) | Commit::InPlace(err) => tracing::warn!(
+            path = %path.display(),
+            "the file is written, but the sync of its directory failed ({err}): a power cut can lose it"
+        ),
     }
     Ok(())
 }

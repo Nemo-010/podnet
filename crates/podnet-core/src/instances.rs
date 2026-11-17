@@ -178,22 +178,13 @@ pub fn read(dir: &Path, name: &str) -> Option<Record> {
     serde_json::from_str(&text).ok()
 }
 
-/// Write the record (mode 0600) with a rename, so a reader never sees half.
+/// Write the record (mode 0600) with a durable rename, so a reader never
+/// sees half ([`crate::state::replace_file`]).
 pub fn write(dir: &Path, record: &Record) -> Result<()> {
-    use std::io::Write as _;
     let path = paths(dir, &record.name)?.record;
-    let tmp = dir.join(format!(".{}.json.{}", record.name, std::process::id()));
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
-        .open(&tmp)
-        .with_context(|| format!("writing {}", tmp.display()))?;
-    file.write_all(serde_json::to_string_pretty(record)?.as_bytes())?;
-    file.write_all(b"\n")?;
-    drop(file);
-    std::fs::rename(&tmp, &path).with_context(|| format!("writing {}", path.display()))
+    let mut text = serde_json::to_string_pretty(record)?;
+    text.push('\n');
+    crate::state::replace_file(&path, text.as_bytes(), 0o600)
 }
 
 /// The variables that hold a secret of podnet. This is the one list: the
@@ -234,24 +225,13 @@ fn own() -> std::sync::MutexGuard<'static, Vec<(u64, u64)>> {
 /// Write the secret variables of `name` to `NAME.secrets` (mode 0600, with a
 /// rename). With no secret, remove the file.
 pub fn write_secrets(dir: &Path, name: &str, secrets: &[(String, String)]) -> Result<()> {
-    use std::io::Write as _;
     let path = paths(dir, name)?.secrets;
     if secrets.is_empty() {
         let _ = std::fs::remove_file(&path);
         return Ok(());
     }
     let text = crate::autostart::env_text(secrets)?;
-    let tmp = dir.join(format!(".{name}.secrets.{}", std::process::id()));
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
-        .open(&tmp)
-        .with_context(|| format!("writing {}", tmp.display()))?;
-    file.write_all(text.as_bytes())?;
-    drop(file);
-    std::fs::rename(&tmp, &path).with_context(|| format!("writing {}", path.display()))
+    crate::state::replace_file(&path, text.as_bytes(), 0o600)
 }
 
 /// The secret variables of `name`; empty when it has none.

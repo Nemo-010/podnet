@@ -1873,3 +1873,46 @@ sh scripts/agent/check.sh
 
 2026-11-17, the commit of this entry. The tag `v0.67.0` (commit `1d7e983`) in each manifest, `Cargo.lock`,
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. `sh scripts/agent/check.sh` passes.
+
+# T-417: One durable replace of a private file: podnet's copies call `pod_core::files::replace_private`
+
+**Source:** PodUtils/podnet#437 (COORD-019, the proposal "one private-file replace with a durable commit"),
+PodUtils/podcrates#218 (COORD-128, v0.67.0: `replace_private`, their entry 192).
+**Category:** chore
+**Milestone:** M3
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet had its own copies of a replace of a private file. `state::replace_file`, `instances::write` and
+`instances::write_secrets` did not sync the file; no copy synced the directory; `link_alias` wrote the key record of a
+peer in place. After a power cut, such a file can come back empty under its name.
+
+## Premise
+
+- `pod_core::files::replace_private(path, body, mode, in_place_fallback)` (v0.67.0) writes a file beside the path,
+  syncs it, renames it, then syncs the directory. Its result tells a durable commit from one whose directory sync failed.
+- The WARP files are `pod-warp`'s own (`pod_warp::files::write_private`). `serve_at::write_private` creates a new file in
+  a new private directory: it is not a replace.
+
+## Approach
+
+1. `state::replace_file` calls `replace_private` with no write in place. A failed directory sync gives one warning.
+2. `instances::write`, `instances::write_secrets`, `autostart::write_private` and `link_alias::write_private` call
+   `state::replace_file` (mode 0600).
+
+## Prove
+
+```sh
+cargo test -p podnet-core state:: instances:: autostart::
+cargo test -p podnet --lib link_alias::
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-17, the commit of this entry. The five copies are gone; each write of a private file of podnet-core and
+`link_alias` goes through `replace_private`. `state::replace_file_does_not_follow_a_symlink` passes on the new code
+(the symlink is replaced, the target keeps its text, no temporary file stays). `sh scripts/agent/check.sh` passes.

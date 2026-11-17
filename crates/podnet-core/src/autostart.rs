@@ -22,7 +22,6 @@
 //! line, and the cron line ends with a marker comment.
 
 use std::io::Write as _;
-use std::os::unix::fs::OpenOptionsExt as _;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -230,19 +229,9 @@ pub fn split_secrets(args: &[String], env: &dyn Fn(&str) -> Option<String>) -> (
     (kept, vars)
 }
 
+/// Write `text` to `path` with the mode 0600 and a durable rename.
 fn write_private(path: &Path, text: &str) -> Result<()> {
-    let tmp = path.with_extension("tmp");
-    let _ = std::fs::remove_file(&tmp);
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(&tmp)
-        .with_context(|| format!("writing {}", tmp.display()))?;
-    file.write_all(text.as_bytes())?;
-    file.sync_all()?;
-    std::fs::rename(&tmp, path).with_context(|| format!("writing {}", path.display()))?;
-    Ok(())
+    crate::state::replace_file(path, text.as_bytes(), 0o600)
 }
 
 /// The text of the env file. A value with a newline is refused.

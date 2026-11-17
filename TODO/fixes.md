@@ -2846,7 +2846,7 @@ A fake relay and a target that writes, shuts down its write half, then reads to 
 
 ## Premise
 
-- `state::replace_file(path, bytes, mode)` writes through a rename, sets the mode and replaces a symlink (`crates/podnet-core/src/state.rs:344-363`).
+- `state::replace_file(path, bytes, mode)` writes through a rename, sets the mode and replaces a symlink (`crates/podnet-core/src/state.rs:344-359`).
 - `read_private` returns `Option` and logs the reason: `load` needs an error with a `Fault::Config` class (`src/relay_reverse.rs` lines 151-188 at `ed79896`).
 - `DirBuilder::mode(0o700)` applies only to a new directory (lines 143-146 at `ed79896`).
 - The test `a_pair_file_is_private_and_the_newest_is_chosen` is at `src/relay_reverse.rs` line 871 at `ed79896`.
@@ -3129,7 +3129,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `crates/podnet-core/src/detach.rs:166-192` (`child_begin` reads the variable). `:536-543` sets 4 detach variables and not this one.
   `crates/podnet-core/src/detach/supervise.rs:120` is the only writer (the supervisor).
-- `crates/podnet-core/src/autostart.rs:178-182` copies each `PODNET_` variable except `PODNET_ERROR_PROGRAM`.
+- `crates/podnet-core/src/autostart.rs:177-181` copies each `PODNET_` variable except `PODNET_ERROR_PROGRAM`.
 - `crates/podnet-core/src/detach.rs:714-721` (`targets()` gives `Vec::new()` for this record).
 - The default start (restart on) runs `--detach-supervise`: the supervisor sets the variable for its own child, so that
   path is right. The defect needs `--no-restart`. I did not run it.
@@ -4226,7 +4226,7 @@ mode. Add a privileged CI test that compares `ip route get` before and after.
   marker line `# podnet warp tun --default-route: DNS through WARP`.
 - The call of `Routes::setup` is in `src/cli/cmd/warp/tun.rs:101`. The name of the instance is
   `TUN_INSTANCE` (`src/warp/up.rs:26`), and `instances::is_alive` answers from the held lock
-  (`crates/podnet-core/src/instances.rs:327`). The detached child holds the lock under that name, so the
+  (`crates/podnet-core/src/instances.rs:307`). The detached child holds the lock under that name, so the
   liveness test must be a lock on a file of its own.
 - No test touches a kernel route table: the unit tests give a closure in place of the route calls
   (`install_all`).
