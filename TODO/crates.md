@@ -1801,3 +1801,37 @@ sh scripts/agent/check.sh
 2026-11-17, the commit of this entry. The tag `v0.65.0` (commit `4122f39`) in each manifest, `Cargo.lock`,
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. `src/relay_reverse.rs`: the message of `NameInUse` and
 the next stored pair for it; `docs/relay.md`. `cargo clippy --workspace --all-targets` is clean.
+
+# T-412: Take podcrates v0.66.0
+
+**Source:** PodUtils/podcrates#216 (COORD-126, 2026-11-17): the tag `v0.66.0` at `b317117`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet takes the crates of podcrates by the tag `v0.65.0`. The tag `v0.66.0` brings the init of a PID namespace that keeps
+no descriptor of the caller (`pod-enter`) and the writes of `pod-devtunnel`. No public API changed.
+
+## Premise
+
+- `adoption/podnet/` at the tag has no new hand-off for podnet. The installer core has the SHA-256 of `v0.63.0`.
+
+## Approach
+
+1. Each `pod-*` dependency names the tag `v0.66.0`; the lock files, `scripts/install/SOURCES` and `issue-sync.yml` follow.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-17, the commit of this entry. The tag `v0.66.0` (commit `b317117`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. `cargo clippy --workspace --all-targets` is clean;
+`sh scripts/agent/check.sh` passes.

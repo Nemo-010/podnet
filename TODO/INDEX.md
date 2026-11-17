@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**410 entries: 12 open, 11 partial, 37 blocked, 350 done.**
+**411 entries: 12 open, 11 partial, 37 blocked, 351 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 2 | 2 | 40 | 44 |
+| P1 | 0 | 2 | 2 | 41 | 45 |
 | P2 | 6 | 5 | 11 | 184 | 206 |
 | P3 | 6 | 4 | 24 | 125 | 159 |
-| **All** | 12 | 11 | 37 | 350 | 410 |
+| **All** | 12 | 11 | 37 | 351 | 411 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -456,3 +456,4 @@ M8 Overlays, M9 Later.
 | [T-409](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.64.0 |
 | [T-410](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.65.0; a node that the relay holds by its lost socket takes the next pair |
 | [T-411](fixes.md) | P2 | S | M5 | defect | done | live: speed.cloudflare.com answers HTTP 429 to the shared address of WARP, and the rate check fails |
+| [T-412](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.66.0 |
