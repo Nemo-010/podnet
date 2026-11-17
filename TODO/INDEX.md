@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**417 entries: 11 open, 13 partial, 37 blocked, 356 done.**
+**417 entries: 11 open, 12 partial, 37 blocked, 357 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 42 | 46 |
 | P2 | 5 | 7 | 11 | 188 | 211 |
-| P3 | 6 | 4 | 24 | 125 | 159 |
-| **All** | 11 | 13 | 37 | 356 | 417 |
+| P3 | 6 | 3 | 24 | 126 | 159 |
+| **All** | 11 | 12 | 37 | 357 | 417 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -287,7 +287,7 @@ M8 Overlays, M9 Later.
 | [T-239](fixes.md) | P2 | M | M5 | defect | done | `install.sh` checks the release tag and reads SHA256SUMS strictly, `podnet update` does the same, and the install tests assert the downloader flags (GitHub #430) |
 | [T-240](fixes.md) | P2 | M | M5 | defect | done | `warp tun --default-route`: keep the resolver backup on disk, restore it after a kill, set the mode of `resolv.conf`, and test the route table with `ip route get` (GitHub #431) |
 | [T-241](fixes.md) | P2 | M | M5 | defect | done | `warp`: register under a lock, save the device before the enrolment step, and fail over the registration POST only when no response came (GitHub #432) |
-| [T-242](services.md) | P3 | M | M6 | feature | partial | Rules: warn when an earlier domain or cidr rule shadows a later one, and fail when the shadowed rule is a `reject` (GitHub #433) |
+| [T-242](services.md) | P3 | M | M6 | feature | done | Rules: warn when an earlier domain or cidr rule shadows a later one, and fail when the shadowed rule is a `reject` (GitHub #433) |
 | [T-243](overlays.md) | P3 | M | M8 | feature | done | `net tailscale`: `--tailnet NAME` refuses to start or to dial when the daemon is in another tailnet, a doctor row shows the status, and the docs name `TS_FORCE_NOISE_443` (GitHub #434) |
 | [T-244](later.md) | P3 | L | M9 | feature | blocked | `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435) |
 | [T-245](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.4`: the dry run, the publish and the release proofs |

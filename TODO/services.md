@@ -2121,7 +2121,7 @@ T-098 has doors and rules with no way to ask "which member takes this flow" with
 
 ## Premise
 
-- `src/warp/rules.rs:30-56` (`Action`: `reject` and `block` both parse), `Table::for_name`
+- `src/warp/rules.rs:55-81` (`Action`: `reject` and `block` both parse), `Table::for_name`
   (:122 at `9c1fc4b`), `Table::for_ip` (:133 at `9c1fc4b`). The router rules do not exist (T-098).
 
 ## Approach
@@ -2424,7 +2424,7 @@ reverse relay" and "File server through the reverse relay".
 **Milestone:** M6
 **Priority:** P3
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -2453,7 +2453,7 @@ rule today) when the shadowed action is `reject` and the flag that allows it is 
 - The pod rules: `select_chain` (`crates/podnet-netns/src/rules.rs:111-148`) is the same loop;
   `domain_matches` (`crates/podnet-netns/src/rules.rs:199-206`): `NAME` matches the name only, `.NAME`
   matches the name and each name under it.
-- `warp proxy --check` is handled in `src/cli/cmd/warp/front.rs:25-41` (the flag `check: bool` is in the
+- `warp proxy --check` is handled in `src/cli/cmd/warp/front.rs:25-47` (the flag `check: bool` is in the
   arguments of the command): it builds the table, prints each rule and exits 0, or 64 for a bad rule.
 - By reading the loop, the example behaves as described. Not run: the timing of a file with 10 000 lines.
 - T-177 (open, `podnet route check`) shows the match for one query and does not lint the table. T-098
@@ -2531,6 +2531,13 @@ the shim tests `shim_datagram_of_another_user_is_dropped` and `the_shim_takes_th
 2026-11-11, dc5d221: the router half has its switch. A door of the router file (T-100) takes
 `allow_shadowed_rules: true`, as `pod --allow-shadowed-rules`: the file then loads with a shadowed `reject`,
 with the warning. Test: `route_door_shadowed_reject_needs_the_key`. Left: the WARP half (after `pod-warp`).
+
+2026-11-17, the commit of this line: the WARP half. `podnet::warp::rules::build` gives `pod-warp`'s `Table::build` the lint
+of podnet (`podnet_netns::rules::shadow::check` over the matchers of the table) in place of `NoLint`. `warp proxy` takes
+`--allow-shadowed-rules`; `--check`, the start and the reload of `--rules-file` use it (a reload with a shadowed `reject`
+keeps the rules before). `docs/warp.md` says so. Tests (`cargo test -p podnet --lib warp::rules::`):
+`warp_shadowed_reject_is_an_error`, `warp_shadowed_rules_with_the_flag_or_another_order_load`,
+`warp_shadowed_reject_in_the_file_names_its_line`. With `NoLint` in place of the lint, 2 of the 3 fail.
 
 
 # T-251: Transfer: the hosted magic-wormhole mailboxes on 443 as the default, with a choice that the code carries

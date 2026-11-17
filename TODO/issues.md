@@ -128,7 +128,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #430 | install.sh and update: tag check, strict SHA256SUMS, install tests that can fail (donor review) | closed | T-239 |
 | #431 | warp tun --default-route: resolver backup on disk, restore after a kill, route table test (donor review) | closed | T-240 |
 | #432 | warp: registration under a lock, save before the enrolment step (donor review) | closed | T-241 |
-| #433 | rules: a shadowed rule warns, a shadowed reject fails (donor review) | open | T-242 |
+| #433 | rules: a shadowed rule warns, a shadowed reject fails (donor review) | closed (T-242: the pod and the router in e7ec95c and dc5d221, warp proxy in the next commit) | T-242 |
 | #434 | net tailscale: --tailnet guard and the TS_FORCE_NOISE_443 hint (donor review) | closed | T-243 |
 | #435 | tunnel --inspect: capture, ring, redaction, replay (donor review) | open (T-244 is blocked on pod-cloudflare) | T-244 |
 | #436 | podnet receive: containment of the received entries (donor review) | closed (the rules of the Correction of T-105 are `src/transfer/land.rs`, d5c38c1; `cargo test --test transfer_land`: 7 passed) | T-105 |

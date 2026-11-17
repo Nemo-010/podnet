@@ -364,6 +364,11 @@ pub(crate) enum WarpCommand {
         /// The action when no rule matches.
         #[arg(long, value_name = "ACTION", default_value = "tunnel")]
         rule_default: String,
+        /// Load the rules when an earlier rule shadows a later reject rule.
+        /// Without it, such a rule is an error (exit 64); a shadowed rule of
+        /// another action gives a warning.
+        #[arg(long)]
+        allow_shadowed_rules: bool,
         /// Check the rules, print them, and exit (0, or 64 for a bad rule).
         #[arg(long)]
         check: bool,

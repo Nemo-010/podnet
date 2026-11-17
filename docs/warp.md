@@ -163,7 +163,10 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   and `localhost` are refused, then `--rule-default` (`tunnel`) applies.
   `--rules-file FILE` adds the rules of FILE (one on each line, `#` starts a
   comment); podnet reads it again when it changes and keeps the rules before
-  when it has an error. `--check` prints the rules and exits. The rules
+  when it has an error. `--check` prints the rules and exits. An earlier
+  rule that matches each target of a later rule of another action shadows
+  it: podnet gives a warning. A shadowed `reject` rule is an error (exit
+  64). `--allow-shadowed-rules` makes it a warning. The rules
   apply to TCP; UDP goes through the tunnel. The health line counts the
   decisions.
 

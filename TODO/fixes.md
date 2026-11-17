@@ -3252,7 +3252,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 - `src/cli/cmd/warp/up.rs:19-29` (the `tun: true` arm matches `..`), `:434-446` (`warp_up_tun_args`), `:238-242` (the
   proxy path pushes `--replace`).
-- `src/cli/cmd/warp/args.rs:391-435` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:529-544` (`Tun` has
+- `src/cli/cmd/warp/args.rs:396-440` (the flags), `:409` (`conflicts_with = "persist"` on `tun`), `:534-549` (`Tun` has
   `DetachArgs`, so `--replace` exists there, and has no `--dns`).
 - `crates/podnet-core/src/detach.rs:511-518` (the refusal text).
 
@@ -4333,7 +4333,7 @@ create call makes the next run send `PATCH` for the same device id and no second
   memory.
 - The call sites with no lock: `src/cli/cmd/warp/client.rs:153`, `src/tunnel.rs:828` (only with
   `--warp-identity PATH`; without it `tunnel` registers a new device on each run and saves nothing),
-  `src/cli/cmd/warp/front.rs:188`, and the WireGuard `load_or_register` (`src/warp/export.rs:75`; the
+  `src/cli/cmd/warp/front.rs:200`, and the WireGuard `load_or_register` (`src/warp/export.rs:75`; the
   callers `src/cli/cmd/warp/client.rs:38` and `src/cli/cmd/warp/client.rs:57`).
 - src/warp/register.rs:67-95 at `9c1fc4b` (`send_api_to`): a status of 500 or more, or a transport error, goes to the
   next API host for each request, the registration POST included (src/warp/register.rs:77 at `9c1fc4b`).

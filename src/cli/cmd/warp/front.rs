@@ -27,12 +27,18 @@ pub(crate) fn before_client(args: &WarpArgs) -> Result<bool> {
             rules,
             rules_file,
             rule_default,
+            allow_shadowed_rules,
             check: true,
             ..
         } => {
             let default = podnet::warp::rules::Action::parse(rule_default).fault(Fault::Usage)?;
-            let table = podnet::warp::rules::build(rules, rules_file.as_deref(), default)
-                .fault(Fault::Usage)?;
+            let table = podnet::warp::rules::build(
+                rules,
+                rules_file.as_deref(),
+                default,
+                *allow_shadowed_rules,
+            )
+            .fault(Fault::Usage)?;
             for rule in &table.rules {
                 println!("rule        {}", rule.spec);
             }
@@ -77,6 +83,7 @@ pub(crate) async fn run(
             rules,
             rules_file,
             rule_default,
+            allow_shadowed_rules,
             listen_identity,
             l4,
             l4_sni,
@@ -88,11 +95,16 @@ pub(crate) async fn run(
             podnet::warp::proxy::set_max_connections(max_connections);
             // Issues 132 and 136: the rules of the destinations.
             let default = podnet::warp::rules::Action::parse(&rule_default).fault(Fault::Usage)?;
-            let table = podnet::warp::rules::build(&rules, rules_file.as_deref(), default)
-                .fault(Fault::Usage)?;
+            let table = podnet::warp::rules::build(
+                &rules,
+                rules_file.as_deref(),
+                default,
+                allow_shadowed_rules,
+            )
+            .fault(Fault::Usage)?;
             podnet::warp::rules::set(table);
             if let Some(file) = rules_file {
-                podnet::warp::rules::watch(rules, file, default);
+                podnet::warp::rules::watch(rules, file, default, allow_shadowed_rules);
             }
             // Issue 146: the credentials of the clients.
             if let (Some(user), Some(file)) = (&proxy_user, &proxy_password_file) {

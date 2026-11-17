@@ -599,7 +599,7 @@ stays open for T-153.
 ## Problem
 
 A rule of `pod -r` selects a proxy and cannot refuse. A default-deny policy needs a dead proxy. The WARP
-rules have `reject` and `block` (`src/warp/rules.rs:30-50`). A datagram send does not read rules.
+rules have `reject` and `block` (`src/warp/rules.rs:55-75`). A datagram send does not read rules.
 
 ## Premise
 

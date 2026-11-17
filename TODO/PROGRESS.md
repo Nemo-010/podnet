@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 417 entries: 11 open, 13 partial, 37 blocked, 356 done.
+`TODO/INDEX.md` holds 417 entries: 11 open, 12 partial, 37 blocked, 357 done.
 
 ## State
 
@@ -47,8 +47,7 @@ not wait for a larger one.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
-   - the donor review (GitHub #429 to #434): done, except #433 and #435: T-242 is partial (its WARP half is an ask to
-     podcrates: `pod-warp` is taken), and T-244 is blocked on `pod-cloudflare`.
+   - the donor review (GitHub #429 to #434): done, except #435: T-244 is blocked on `pod-cloudflare`.
 4. **M2, the splits:** T-039 (moved files: podcrates); T-044 (blocked:
    the rows left go with the takes, T-137); T-045.
 5. **M3, the crates:** T-053, then the prerelease T-054. T-052 is the take of `pod-cloudflare` of
@@ -62,7 +61,6 @@ not wait for a larger one.
    `podnet send --relay-pair NAME`); a piping server is the last way of all (`--piping`). Open:
    T-106 (partial: a text, a file and a directory both ways with the Python magic-wormhole are done; the live
    step of 100 MiB is written and waits for a run of `live`).
-    The donor review adds T-242 (the lint of shadowed rules).
     The owner's rulings of 2026-11-11 add: T-179 (the
     direction split, an option, off by default).
 8. **M7, the pods:** no open entry. The hold of a SYN in `pod-hold` (PodUtils/podcrates#68) can start.
