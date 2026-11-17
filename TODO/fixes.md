@@ -8352,6 +8352,8 @@ shellcheck -S warning scripts/live-batch2.sh
 ## Done
 
 2026-11-17, the commit of this entry. `scripts/live-batch2.sh`, the step "warp scan", as in the Approach.
+Live 44014496432 on 404440d passed the step: 162.159.198.2:443 answered (TLS 16 ms); 162.159.198.1 showed a certificate of
+Let's Encrypt, not the pinned MASQUE key (it is an extra candidate of the script, not a door of `pod-services`).
 
 # T-414: live: after a kill of its MASQUE connection, the WARP proxy opens no new session in 60 s
 
@@ -8395,3 +8397,42 @@ python3 scripts/check-workflows.py
 ## Correction
 
 2026-11-17, steps 1 and 2 in `.github/workflows/live.yml`, the step "WARP proxy". Step 3 waits for the next warning.
+
+# T-415: live: the first request through the WARP proxy gets a reset 5 s after the start
+
+**Source:** live 44019959524 on ba6cce4 (2026-11-17), the step "WARP proxy", failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** partial
+
+## Problem
+
+The step starts `podnet warp proxy --listen tcp://127.0.0.1:40000 --dns 127.0.0.1:15353`, waits until the port
+listens, and runs `curl -x socks5h://127.0.0.1:40000 https://www.cloudflare.com/cdn-cgi/trace`. curl gave `(97) Recv
+failure: Connection reset by peer` 5 s after the start, and the step printed no line of the log of the proxy. The same
+step passed on 404440d (live 44014496432).
+
+## Premise
+
+- Exit 97 is a failure of the proxy handshake: the proxy closed the SOCKS5 connection before its answer.
+- The proxy is code of `pod-warp` (podcrates); the step is podnet's.
+- One run gives no cause: the log of the proxy was not printed.
+
+## Approach
+
+1. When the first request fails, the step prints the last 30 lines of the log of the proxy, gives a warning (T-415),
+   and tries once more after 5 s; then a failure ends the step.
+2. When the warning shows, write the evidence (the log) as a COORD issue to podcrates (`pod-warp`).
+
+## Prove
+
+```sh
+python3 scripts/check-workflows.py
+# live: the step passes; a warning "T-415" gives the log of the failed first request
+```
+
+## Correction
+
+2026-11-17, step 1 in `.github/workflows/live.yml`, the step "WARP proxy". Step 2 waits for the next warning.

@@ -1051,7 +1051,15 @@ jobs:
             fi
             sleep 1
           done
-          out=$(curl -sS --max-time 30 -x socks5h://127.0.0.1:40000 https://www.cloudflare.com/cdn-cgi/trace)
+          # T-415 (live 44019959524): the first request got a reset 5 s
+          # after the start. Print the log of the proxy, and try once more
+          # (a warning).
+          if ! out=$(curl -sS --max-time 30 -x socks5h://127.0.0.1:40000 https://www.cloudflare.com/cdn-cgi/trace); then
+            sed -E 's/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|t\.[0-9a-f-]{8,}/<id>/g' warpproxy.log | tail -30
+            echo "::warning::the first request through the WARP proxy failed; it runs once more in 5 s (T-415)"
+            sleep 5
+            out=$(curl -sS --max-time 30 -x socks5h://127.0.0.1:40000 https://www.cloudflare.com/cdn-cgi/trace)
+          fi
           echo "$out" | grep -E '^(warp|colo|tls)='
           echo "$out" | grep -q '^warp=on'
           # Issue 81: IPv6 through WARP: a host with AAAA records only, and
