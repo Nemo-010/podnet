@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**433 entries: 11 open, 11 partial, 35 blocked, 376 done.**
-**433 entries: 11 open, 11 partial, 35 blocked, 376 done.**
+**436 entries: 11 open, 11 partial, 35 blocked, 379 done.**
+**436 entries: 11 open, 11 partial, 35 blocked, 379 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 46 | 51 |
-| P2 | 3 | 6 | 10 | 198 | 217 |
-| P3 | 7 | 3 | 23 | 131 | 164 |
-| **All** | 11 | 11 | 35 | 376 | 433 |
-| P2 | 3 | 6 | 10 | 198 | 217 |
-| P3 | 7 | 3 | 23 | 131 | 164 |
-| **All** | 11 | 11 | 35 | 376 | 433 |
+| P2 | 3 | 6 | 10 | 200 | 219 |
+| P3 | 7 | 3 | 23 | 132 | 165 |
+| **All** | 11 | 11 | 35 | 379 | 436 |
+| P2 | 3 | 6 | 10 | 200 | 219 |
+| P3 | 7 | 3 | 23 | 132 | 165 |
+| **All** | 11 | 11 | 35 | 379 | 436 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -483,3 +483,6 @@ M8 Overlays, M9 Later.
 | [T-432](fixes.md) | P3 | S | M7 | defect | done | `pod -x direct` prints a false warning (GitHub #621) |
 | [T-433](fixes.md) | P3 | S | M7 | defect | done | `net proxy` and a target outside the virtual network (GitHub #609) |
 | [T-434](fixes.md) | P2 | S | M6 | defect | done | `serve` drops a client that half-closes before the answer (GitHub #613) |
+| [T-435](fixes.md) | P2 | S | M6 | defect | done | `expose ... -- --detach` stays in the foreground (GitHub #612) |
+| [T-436](fixes.md) | P3 | S | M6 | defect | done | A syntax error of the command line names `podnet update --check` (GitHub #616) |
+| [T-437](fixes.md) | P2 | S | M6 | defect | done | A command that ends at once prints the line "runs in the foreground" (GitHub #617) |

@@ -9027,3 +9027,106 @@ cargo test -p podnet --test cli -- serve_local_answers_a_client_that_half_closes
 
 2026-11-17, commit 1bd1a99f. Both tests pass; each fails without the fix (`HTTP/1.0: ""`). `cargo test -p podnet-serve`:
 171 passed.
+
+# T-435: `expose ... -- --detach` stays in the foreground (GitHub #612)
+
+**Source:** GitHub #612 (https://github.com/PodUtils/podnet/issues/612), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M6
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The help of `expose` gives `--detach` as an argument after `--`. `podnet expose ... -- --detach --name X` stayed in the
+foreground, and `podnet ps` showed no X, for each `--via`.
+
+## Premise
+
+- `main` does the step of `--detach` and `--name` with `detach_of(&cli.command)`, which gave none for `expose`; `expose`
+  read its inner command later, in the runtime (`src/cli/cmd/expose.rs`, `src/cli/opts.rs`).
+
+## Approach
+
+1. `expose::resolve` turns `expose` into the command that it stands for (tunnel, relay node or net proxy) right after the
+   parse, before the step of `--detach`. A global option after `--` takes priority over the same option before it.
+
+## Prove
+
+```sh
+cargo test -p podnet --bin podnet -- expose_gives_its_command_line_to_main
+cargo test -p podnet --test cli -- net::expose_detaches_with_the_arguments_after_the_separator
+```
+
+## Done
+
+2026-11-17, commits dfb836e6 and 6ee419ff. `expose 127.0.0.1:9 --via switch --as 10.66.0.2:8080 -- --detach --name X612`
+prints the detached document and exits 0; `podnet ps` lists X612. The CLI test fails without the change of `src/main.rs`
+(the 60 s limit). A detached instance has the name of the inner command by default.
+
+# T-436: A syntax error of the command line names `podnet update --check` (GitHub #616)
+
+**Source:** GitHub #616 (https://github.com/PodUtils/podnet/issues/616), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+After clap's error for a value, an extra positional or a flag of another command, podnet added "podnet VERSION does not
+know 'TOKEN'; a newer release can: podnet update --check".
+
+## Premise
+
+- `usage_hints` (`src/cli/help.rs`) added the line for each unknown argument.
+
+## Approach
+
+1. The line comes only for a flag (`--word` or `-w`) that no command of this binary knows.
+
+## Prove
+
+```sh
+cargo test -p podnet --bin podnet -- only_a_flag_that_no_command_knows_names_the_update
+```
+
+## Done
+
+2026-11-17, commit fd1c13a9. The test covers a value, an extra positional, a flag of another command, `-L`, `-5` and
+`--bogus` (which keeps the line); it fails without the check. The exit code stays 64.
+
+# T-437: A command that ends at once prints the line "runs in the foreground" (GitHub #617)
+
+**Source:** GitHub #617 (https://github.com/PodUtils/podnet/issues/617), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M6
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`serve --hash-password`, `tunnel --hello-world --check` and `serve DIR --check` printed the INFO line "runs in the
+foreground until a stop signal". With `2>&1`, `HASH=$(... --hash-password 2>&1)` held the line before the hash.
+
+## Premise
+
+- `foreground_hint` (`src/cli/argv.rs`) skipped the line only for `--detach`, `--run-for`, `--exit-on-verify` and the help.
+
+## Approach
+
+1. No line for a mode that ends alone: `--check`, `--hash-password`, `--stdio`, `--stop-after` and `--idle-secs`.
+
+## Prove
+
+```sh
+cargo test -p podnet --bin podnet -- a_mode_that_ends_alone_gets_no_foreground_line
+```
+
+## Done
+
+2026-11-17, commit 9e279378. The test also checks that `serve www`, `tunnel --hello-world` and `connect -L` keep the
+line; it fails with the old `src/cli/argv.rs`.
