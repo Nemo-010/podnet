@@ -685,5 +685,4 @@ pub fn load(name: &str, dir: &Path) -> Result<(Vec<String>, Vars)> {
 }
 
 #[cfg(test)]
-#[path = "autostart_tests.rs"]
 mod tests;
