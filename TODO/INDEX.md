@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**432 entries: 11 open, 12 partial, 35 blocked, 374 done.**
-**432 entries: 11 open, 12 partial, 35 blocked, 374 done.**
+**433 entries: 11 open, 11 partial, 35 blocked, 376 done.**
+**433 entries: 11 open, 11 partial, 35 blocked, 376 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 46 | 51 |
-| P2 | 3 | 6 | 10 | 197 | 216 |
-| P3 | 7 | 4 | 23 | 130 | 164 |
-| **All** | 11 | 12 | 35 | 374 | 432 |
-| P2 | 3 | 6 | 10 | 197 | 216 |
-| P3 | 7 | 4 | 23 | 130 | 164 |
-| **All** | 11 | 12 | 35 | 374 | 432 |
+| P2 | 3 | 6 | 10 | 198 | 217 |
+| P3 | 7 | 3 | 23 | 131 | 164 |
+| **All** | 11 | 11 | 35 | 376 | 433 |
+| P2 | 3 | 6 | 10 | 198 | 217 |
+| P3 | 7 | 3 | 23 | 131 | 164 |
+| **All** | 11 | 11 | 35 | 376 | 433 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -477,8 +477,9 @@ M8 Overlays, M9 Later.
 | [T-426](fixes.md) | P3 | S | M6 | docs | done | The unlock flow of a PIN is not documented (GitHub #618) |
 | [T-427](fixes.md) | P2 | S | M6 | defect | done | `route` writes `router-usage.json` to the global state directory, not to `state_dir` (GitHub #619) |
 | [T-428](fixes.md) | P2 | S | M6 | docs | partial | The release binaries have no optional link carrier, and the notes do not say it (GitHub #620) |
-| [T-429](fixes.md) | P3 | S | M6 | defect | partial | Small output faults of the QA round (GitHub #622) |
+| [T-429](fixes.md) | P3 | S | M6 | defect | done | Small output faults of the QA round (GitHub #622) |
 | [T-430](fixes.md) | P1 | S | M7 | defect | done | `pod -x` with a dead upstream: a non-blocking connect() looks connected, then hangs (GitHub #610) |
 | [T-431](fixes.md) | P2 | S | M7 | docs | done | `pod -r 'cidr:...=reject'` does not refuse a name (GitHub #611) |
 | [T-432](fixes.md) | P3 | S | M7 | defect | done | `pod -x direct` prints a false warning (GitHub #621) |
 | [T-433](fixes.md) | P3 | S | M7 | defect | done | `net proxy` and a target outside the virtual network (GitHub #609) |
+| [T-434](fixes.md) | P2 | S | M6 | defect | done | `serve` drops a client that half-closes before the answer (GitHub #613) |

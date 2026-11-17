@@ -8807,7 +8807,7 @@ each target of the release set.
 **Milestone:** M6
 **Priority:** P3
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -8838,9 +8838,13 @@ entry, the text of `ssh-keygen` in the passwd shim, and no carrier hint for `lin
 cargo test -p podnet-core --lib exit::
 ```
 
-## Correction
+## Done
 
-2026-11-17, the commit of this line: items 5, 6 and 7. Item 8 waits for the link work. `text_names_each_cause_once` passes; it also shows that
+2026-11-17: items 5, 6 and 7 in bb8a1209 (`text_names_each_cause_once`). Item 8 in ee5e2ad5:
+`carriers::check_address` refuses an address of another carrier on the `unix` carrier (exit 64) and names the
+carrier (`a_network_address_on_the_unix_carrier_names_the_carrier`, and the CLI test
+`a_network_address_on_the_unix_carrier_exits_64_and_names_the_carrier`); before, `link listen 127.0.0.1:18084` made a
+socket file of that name. `text_names_each_cause_once` passes; it also shows that
 `{err:#}` named the cause two times.
 
 # T-430: `pod -x` with a dead upstream: a non-blocking connect() looks connected, then hangs (GitHub #610)
@@ -8982,3 +8986,44 @@ printf '\005\001\000' # the greeting of the report, then CONNECT 140.82.112.6:44
 ## Done
 
 2026-11-17: verified with the debug build: the same reply bytes (`05 01`) and the 502 of HTTP CONNECT.
+
+# T-434: `serve` drops a client that half-closes before the answer (GitHub #613)
+
+**Source:** GitHub #613 (https://github.com/PodUtils/podnet/issues/613), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M6
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`printf 'GET / ...' | podnet link dial ...` to a listener with `--to unix:SOCK` gave no answer; with stdin kept open, the
+answer came. The report names `link dial`.
+
+## Premise
+
+- Measured: the link is correct. On the end of stdin the dialer sends the close of its half (`Frame::Close` of
+  `pod-link`, the reads go on), and the listener half-closes the target and sends the rest of its answer
+  (`tests/link_raw.rs`). With a Python HTTP server as the target, 100 of 100 runs got the answer.
+- The fault is in `podnet serve` as the target: `axum::serve` keeps the default of hyper, `half_close(false)`, so hyper
+  drops a connection that reads the end of the request stream before its answer is ready. A WebSocket of
+  `connect --stdio` or `relay connect` has no half close, so the target never saw the end there.
+
+## Approach
+
+1. `podnet_serve::road::serve`: `axum::serve` with `http1().half_close(true)`. `serve --local`, `share --local`, the local
+   road and the private socket of a road take it.
+2. `docs/serve.md` and `docs/link.md` say how a half close goes.
+
+## Prove
+
+```sh
+cargo test -p podnet-serve --lib -- local_road_answers_a_client_that_half_closes
+cargo test -p podnet --test cli -- serve_local_answers_a_client_that_half_closes
+```
+
+## Done
+
+2026-11-17, commit 1bd1a99f. Both tests pass; each fails without the fix (`HTTP/1.0: ""`). `cargo test -p podnet-serve`:
+171 passed.
