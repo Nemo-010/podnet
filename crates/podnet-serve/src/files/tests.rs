@@ -313,3 +313,24 @@ async fn a_listing_in_json() {
         .unwrap()
         .starts_with("text/html"));
 }
+
+/// #629: with --tar, the HTML listing links to `?tar`, and the link gives
+/// the tar stream. With no --tar, the listing has no such link.
+#[tokio::test]
+async fn a_listing_with_tar_links_to_the_tar() {
+    let (_base, root) = listing_tree();
+    let router = router(&FilesConfig {
+        list: true,
+        tar: true,
+        ..FilesConfig::new(&root)
+    })
+    .unwrap();
+    let (status, body) = get(&router, "/sub%20dir/").await;
+    assert_eq!(status, 200, "{body}");
+    assert!(body.contains("href=\"?tar\""), "{body}");
+    let (status, body) = get(&router, "/sub%20dir/?tar").await;
+    assert_eq!(status, 200);
+    assert!(body.starts_with("sub dir/"), "{body:?}");
+    let (_, body) = get(&listed(&root), "/sub%20dir/").await;
+    assert!(!body.contains("?tar"), "{body}");
+}

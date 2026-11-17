@@ -104,6 +104,8 @@ archive (`application/x-tar`, `PATH.tar`). The archive has the same rules:
 no dot name, no link out of `--dir`, no FIFO, socket or device. A link to a
 directory is not followed. A name that does not fit in ustar (more than 255
 bytes) is left out with a warning. Without `--tar`, `?tar` has no effect.
+With `--list --tar`, the HTML listing of each directory has a link to
+`?tar`.
 
 ```sh
 podnet serve --dir ./public --tar --local 127.0.0.1:8080
