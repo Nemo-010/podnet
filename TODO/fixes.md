@@ -2799,7 +2799,7 @@ A test: a pair with an empty stop token stops no instance, exits 69 and keeps th
 
 ## Problem
 
-`session` ends when the local read returns 0 (`src/relay_reverse.rs` line 632 at `1a1e729`, select at lines 654-657 at `1a1e729`) and sends `close` at once (line 659 at `1a1e729`). The operator side keeps the session open after its input ends (`EOF_IDLE`, lines 535 and 623 at `1a1e729`). A target that shuts down its write side and still reads loses the rest of the input of the operator. The operator exits 0 (a close with code 1000 is success, line 655 at `1a1e729`). The forward leg has the right shape (`crates/podnet-serve/src/relay.rs:273-307`).
+`session` ends when the local read returns 0 (`src/relay_reverse.rs` line 632 at `1a1e729`, select at lines 654-657 at `1a1e729`) and sends `close` at once (line 659 at `1a1e729`). The operator side keeps the session open after its input ends (`EOF_IDLE`, lines 535 and 623 at `1a1e729`). A target that shuts down its write side and still reads loses the rest of the input of the operator. The operator exits 0 (a close with code 1000 is success, line 655 at `1a1e729`). The forward leg has the right shape (`crates/podnet-serve/src/relay.rs:279-313`).
 
 ## Premise
 
@@ -8436,3 +8436,44 @@ python3 scripts/check-workflows.py
 ## Correction
 
 2026-11-17, step 1 in `.github/workflows/live.yml`, the step "WARP proxy". Step 2 waits for the next warning.
+
+# T-418: ssh-relay asks for a remote forward on 0.0.0.0, and localhost.run reads it as a custom domain
+
+**Source:** live 44025607469 on 7fe60e0 (2026-11-17), the step "A unix socket through a public SSH relay" (T-398).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+With the fact `remote-port` = 80 of podcrates v0.67.0 (COORD-100, #607), localhost.run took the forward, but its banner
+said: "SSH key is required for custom domains but no SSH key was sent", and it published no URL. The step then passed
+on pinggy. `podnet ssh-relay` asked for the remote forward with the bind address `0.0.0.0`
+(`crates/podnet-serve/src/relay.rs`).
+
+## Premise
+
+- OpenSSH sends the bind address `localhost` for `ssh -R PORT:HOST:HOSTPORT` with no bind address. The documents of
+  localhost.run (`ssh -R 80:localhost:8080 nokey@localhost.run`) and of pinggy (`ssh -R0:localhost:8000 a.pinggy.io`)
+  use that form.
+- localhost.run reads another bind address as the custom domain of the tunnel.
+
+## Approach
+
+1. The remote forward asks for the bind address `localhost` (`FORWARD_BIND`).
+2. The fake relay of the tests refuses another bind address, as localhost.run does.
+
+## Prove
+
+```sh
+cargo test -p podnet-serve --lib relay::
+# live: the step "A unix socket through a public SSH relay" passes on localhost-run
+```
+
+## Done
+
+2026-11-17, the commit of this entry. With the fake that refuses another address and the old `0.0.0.0`,
+`the_supervisor_reconnects_and_announces_the_new_url` and `the_supervisor_sees_a_connection_that_the_relay_ends` fail;
+with `localhost`, the 37 tests of `relay::` pass. The next live run shows localhost.run.

@@ -405,10 +405,15 @@ mod fake {
 
         async fn tcpip_forward(
             &mut self,
-            _: &str,
+            address: &str,
             port: &mut u32,
             _: &mut Session,
         ) -> anyhow::Result<bool> {
+            // T-418: localhost.run reads another bind address as a custom
+            // domain and refuses it with no key. The fake refuses it too.
+            if address != "localhost" {
+                return Ok(false);
+            }
             *port = 40000 + self.number as u32;
             Ok(true)
         }

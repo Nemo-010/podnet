@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**416 entries: 11 open, 13 partial, 37 blocked, 355 done.**
+**417 entries: 11 open, 13 partial, 37 blocked, 356 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 42 | 46 |
-| P2 | 5 | 7 | 11 | 187 | 210 |
+| P2 | 5 | 7 | 11 | 188 | 211 |
 | P3 | 6 | 4 | 24 | 125 | 159 |
-| **All** | 11 | 13 | 37 | 355 | 416 |
+| **All** | 11 | 13 | 37 | 356 | 417 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -462,3 +462,4 @@ M8 Overlays, M9 Later.
 | [T-415](fixes.md) | P2 | S | M5 | defect | partial | live: the first request through the WARP proxy gets a reset 5 s after the start |
 | [T-416](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.67.0 |
 | [T-417](crates.md) | P2 | S | M3 | chore | done | One durable replace of a private file: podnet's copies call `pod_core::files::replace_private` |
+| [T-418](fixes.md) | P2 | S | M5 | defect | done | ssh-relay asks for a remote forward on 0.0.0.0, and localhost.run reads it as a custom domain |

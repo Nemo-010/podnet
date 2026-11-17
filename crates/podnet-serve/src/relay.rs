@@ -42,6 +42,12 @@ pub mod facts;
 pub mod probe;
 pub mod supervise;
 
+/// The bind address of the remote forward: the one that OpenSSH sends for
+/// `ssh -R PORT:HOST:HOSTPORT` with no bind address (T-418). localhost.run
+/// reads another address (`0.0.0.0`) as a custom domain and refuses a
+/// session with no key.
+const FORWARD_BIND: &str = "localhost";
+
 pub use facts::{Banner, UrlRule};
 
 /// Default relay, reachable on port 443 through the CONNECT proxy: the
@@ -554,7 +560,7 @@ pub async fn open(config: &RelayConfig) -> Result<Live, RelayError> {
     // port: the relay decides the number and, with it, the public URL.
     let asked = u32::from(config.remote_port.unwrap_or(0));
     let assigned = handle
-        .tcpip_forward("0.0.0.0", asked)
+        .tcpip_forward(FORWARD_BIND, asked)
         .await
         .map_err(|e| RelayError::Ssh(format!("remote forward refused: {e}")))?;
     // The reply names a port only for a request of port 0.
