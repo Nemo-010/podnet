@@ -210,7 +210,7 @@ jobs:
           target/release/podnet net doctor | grep -E '^UDP egress .* fail +refused'
           sh scripts/live-run.sh udpreject target/release/podnet demo --exit-on-verify
           grep 'the UDP probe was refused' udpreject.err
-          grep -q 'leg=http2' udpreject.err
+          grep -q -E 'leg=http2|the edge leg http2 won' udpreject.err
       # Each connection of podnet goes through a local CONNECT proxy, which
       # counts its targets.
       - name: Quick tunnel through a local CONNECT proxy
@@ -425,8 +425,8 @@ jobs:
           jq -e '.legs[] | select(.leg == "quic") | .status != "ok"' doctor-drop.json
           sh scripts/live-run.sh race timeout 240 target/release/podnet demo --exit-on-verify --warp-identity "$RUNNER_TEMP/tunnel-warp.json" ||
             { tail -40 race.err; exit 1; }
-          grep 'the leg won the race' race.err
-          grep -q 'leg=quic+warp' race.err
+          grep -E 'the leg won the race|the edge leg .* won' race.err
+          grep -q -E 'leg=quic\+warp|the edge leg quic\+warp won' race.err
       # The WebSocket-to-TCP relay (--transport relay): UDP and TCP 7844 are
       # dropped on the host, so the HTTP/2 leg must go in a WebSocket to the
       # relay on TCP 443. podnet mints the relay token itself; no log has it.
@@ -441,7 +441,7 @@ jobs:
           grep -q 'http2+relay' relay-check.out
           sh scripts/live-run.sh relay timeout 240 target/release/podnet demo --exit-on-verify --transport relay ||
             { tail -40 relay.err; exit 1; }
-          grep -q 'leg=http2+relay' relay.err
+          grep -q -E 'leg=http2\+relay|the edge leg http2\+relay won' relay.err
           grep -q 'registered over HTTP/2' relay.err
           ! grep -E 'ephm1\.' relay.out relay.err
       # Issue 88: SSH into this runner through the reverse relay: a pair, a
@@ -732,7 +732,7 @@ jobs:
           test "$rc2" = 0
           # The other host was not asked: a failure of the first host would
           # log "podnet tries the next host".
-          ! grep -q 'tries the next host' second-reg.err second-del.err
+          ! grep -q -E 'tries the next host|the next host is tried' second-reg.err second-del.err
       # Issue 102: an unavailable path exits 69 in each command: warp tun
       # with no CAP_NET_ADMIN (no root here), and warp proxy whose only
       # listener is refused (a program holds the port).

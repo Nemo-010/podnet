@@ -9482,3 +9482,44 @@ cargo test -p podnet -- serve_add_user_writes_the_users_file
 
 2026-11-17, commit 905972fd. Reproduced on the code before the change. The test (`tests/cli/serve.rs::serve_add_user_writes_the_users_file`, unit tests in `src/cli/cmd/serve_users.rs`) passes, and it fails on the
 code before the change. The topic document, the help and the llms files say it.
+
+# T-449: live: four checks read the log lines of the tunnel before the take of `pod-cloudflare`
+
+**Source:** live 44092810296 on db8597c (2026-11-17), the step of the UDP probe, failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The tunnel of the step registered on the leg `http2` and verified its URL; `grep -q 'leg=http2' udpreject.err` failed. The
+crate logs `the edge leg http2 won after N ms`, with no field `leg=`. Three more checks read the old lines (`the leg won
+the race`, `leg=quic+warp`, `leg=http2+relay`), and the check `! grep -q 'tries the next host'` read a line that
+`pod-warp` writes as `the next host is tried`: that check passed for each output.
+
+## Premise
+
+- T-423 took `pod-cloudflare`: the log lines of the tunnel are the crate's. The take did not search `live.yml` for the
+  texts of the old lines.
+
+## Approach
+
+1. Each of the five checks takes the old and the new line (`grep -E`), so it reads the output of both versions.
+2. At each take of a crate, search `.github/workflows/live.yml`, `scripts/live*.sh` and `scripts/lab-lane.sh` for each
+   text of a log line that moved, and check that each text is still in the source.
+
+## Prove
+
+```sh
+python3 scripts/check-workflows.py
+# live: the steps of the UDP probe, the race, the relay and the second API host pass
+```
+
+## Done
+
+2026-11-17, the commit of this entry. The new line of the run (`the edge leg http2 won after 413 ms`) and the line of
+the run of the race (`the edge leg quic+warp won after 38111 ms`) match the new checks. The other texts of the tunnel that
+`live.yml` reads (`no proxy carries UDP`, `registered over HTTP/2`, `the UDP probe was refused`, `moved to a new leg`,
+`lost its leg`, `NAME: stopping`) are in the source.

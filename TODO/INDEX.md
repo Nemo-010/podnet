@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**447 entries: 11 open, 11 partial, 35 blocked, 390 done.**
-**447 entries: 11 open, 11 partial, 35 blocked, 390 done.**
+**448 entries: 11 open, 11 partial, 35 blocked, 391 done.**
+**448 entries: 11 open, 11 partial, 35 blocked, 391 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 2 | 2 | 46 | 51 |
+| P1 | 1 | 2 | 2 | 47 | 52 |
 | P2 | 3 | 6 | 10 | 200 | 219 |
 | P3 | 7 | 3 | 23 | 143 | 176 |
-| **All** | 11 | 11 | 35 | 390 | 447 |
+| **All** | 11 | 11 | 35 | 391 | 448 |
 | P2 | 3 | 6 | 10 | 200 | 219 |
 | P3 | 7 | 3 | 23 | 143 | 176 |
-| **All** | 11 | 11 | 35 | 390 | 447 |
+| **All** | 11 | 11 | 35 | 391 | 448 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -497,3 +497,4 @@ M8 Overlays, M9 Later.
 | [T-446](fixes.md) | P3 | S | M6 | feature | done | `relay node` has no `--json` (GitHub #631) |
 | [T-447](fixes.md) | P3 | S | M6 | feature | done | `ssh-relay` has no `--run-for`, and `-q` prints the banner (GitHub #632) |
 | [T-448](fixes.md) | P3 | S | M6 | feature | done | No way to add a user to the users file of `serve` (GitHub #633) |
+| [T-449](fixes.md) | P1 | S | M5 | defect | done | live: four checks read the log lines of the tunnel before the take of `pod-cloudflare` |
