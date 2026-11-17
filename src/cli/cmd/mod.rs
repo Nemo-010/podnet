@@ -22,6 +22,7 @@ pub(crate) mod run;
 pub(crate) mod serve;
 mod serve_at;
 mod serve_relay;
+mod serve_users;
 pub(crate) mod share;
 pub(crate) mod ssh_relay;
 pub(crate) mod transfer;

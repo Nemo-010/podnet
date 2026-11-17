@@ -153,11 +153,16 @@ challenge. A read user that sends a change gets 403.
 stdin and prints its hash (`pbkdf2-sha256$ITERATIONS$SALT$KEY`, PBKDF2 with
 HMAC-SHA256, hex):
 
+`podnet serve --add-user USER:ROLE --users FILE` reads a password from the
+first line of stdin and adds the line `USER:ROLE:HASH` to `FILE`. A new
+`FILE` gets mode 0600. An old `FILE` must be private, as for `--users`. A
+user that is in `FILE` already is refused (exit 64): `--replace-user`
+replaces its line.
+
 ```sh
 printf '%s\n' "$PASSWORD" | podnet serve --hash-password
 # pbkdf2-sha256$210000$...$...
-install -m 600 /dev/null users
-echo "alice:read:$(printf '%s\n' "$PASSWORD" | podnet serve --hash-password)" >> users
+printf '%s\n' "$PASSWORD" | podnet serve --add-user alice:read --users users
 podnet serve --dir ./public --list --users users --local 127.0.0.1:8080
 curl -fsS -u alice http://127.0.0.1:8080/
 ```

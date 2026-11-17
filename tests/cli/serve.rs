@@ -560,3 +560,74 @@ fn share_local_serves_a_directory() {
     let out = podnet(&["share", "--port", "1", "--local", &addr]);
     assert_eq!(out.status.code(), Some(64), "{}", stderr(&out));
 }
+
+/// #633: --add-user USER:ROLE --users FILE adds a line with the hash of the
+/// password of stdin. A new file gets mode 0600. A user in the file is
+/// refused (64), and --replace-user replaces its line.
+#[test]
+fn serve_add_user_writes_the_users_file() {
+    use std::io::Write as _;
+    use std::os::unix::fs::PermissionsExt as _;
+    let base = tempfile::tempdir().unwrap();
+    let users = base.path().join("users");
+    let add = |spec: &str, password: &str, more: &[&str]| {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_podnet"))
+            .args([
+                "serve",
+                "--add-user",
+                spec,
+                "--users",
+                users.to_str().unwrap(),
+            ])
+            .args(more)
+            .env_remove("PODNET_ERROR_PROGRAM")
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let _ = child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(format!("{password}\n").as_bytes());
+        child.wait_with_output().unwrap()
+    };
+    let out = add("alice:read", "pw-one", &[]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let mode = std::fs::metadata(&users).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600);
+    let out = add("bob:write", "pw-two", &[]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let text = std::fs::read_to_string(&users).unwrap();
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines.len(), 2, "{text}");
+    assert!(lines[0].starts_with("alice:read:pbkdf2-sha256$"), "{text}");
+    assert!(lines[1].starts_with("bob:write:pbkdf2-sha256$"), "{text}");
+    let out = add("alice:write", "pw-three", &[]);
+    assert_eq!(out.status.code(), Some(64), "{}", stderr(&out));
+    assert!(stderr(&out).contains("--replace-user"), "{}", stderr(&out));
+    assert_eq!(std::fs::read_to_string(&users).unwrap(), text);
+    let out = add("alice:write", "pw-three", &["--replace-user"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let text = std::fs::read_to_string(&users).unwrap();
+    assert!(
+        text.lines().next().unwrap().starts_with("alice:write:"),
+        "{text}"
+    );
+    assert_eq!(text.lines().count(), 2, "{text}");
+    // The file serves: the users of the file are valid.
+    let sock = base.path().join("s.sock");
+    let out = podnet(&[
+        "serve",
+        "--dir",
+        base.path().to_str().unwrap(),
+        "--users",
+        users.to_str().unwrap(),
+        "--local",
+        &format!("unix:{}", sock.display()),
+        "--run-for",
+        "1",
+    ]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+}
