@@ -237,6 +237,11 @@ see it. Use a unix socket for it (`-L unix:///path`).
   does not wait: `getsockopt(SO_ERROR)` during the dial waits for the end of
   the dial. It gives 0 or `ECONNREFUSED` one time, and 0 after that. A
   `read` or `write` after a failed nonblocking dial does not give the error.
+* When the host refuses writes to the memory of the program, the supervisor
+  cannot write the value of `SO_ERROR`. Then a `connect` of a nonblocking
+  socket waits for the end of the dial, as a blocking `connect` does, and
+  gives 0 or `ECONNREFUSED` (issue 610). Before, it gave `EINPROGRESS`,
+  `SO_ERROR` gave 0, and the program waited for bytes that did not come.
 * `bind` of a TCP socket keeps the address, with an ephemeral port for
   port 0; a second `bind` gives `EINVAL`. `listen` with no `bind` binds the
   unspecified address and an ephemeral port. `shutdown` of a TCP socket

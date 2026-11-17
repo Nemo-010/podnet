@@ -123,18 +123,26 @@ pub(crate) struct Route<'a> {
 
 /// The `connect` call. A datagram socket gets its answer now. A stream
 /// socket gets its answer when its dial ends.
+///
+/// Issue 610: when the pod cannot write the memory of the program, it
+/// cannot put the error of a failed dial into the `SO_ERROR` value of the
+/// program. Then the kernel answers `SO_ERROR` with 0 for the socket pair,
+/// and the program sees a connected socket that gives no bytes. Thus a
+/// nonblocking `connect` then waits for the end of the dial, as a blocking
+/// one does, and gets the result of the dial in its return value.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn handle_connect(
     lfd: RawFd,
     id: u64,
     a: [u64; 6],
-    mem: RawFd,
+    (mem, mem_writable): (RawFd, bool),
     (map, key, pid): (&mut HashMap<Key, Sock>, Key, u32),
     dns: &mut FakeDns,
     dials: &mut Dials,
     route: &Route<'_>,
 ) -> Result<()> {
     let fd = a[0] as i32;
+    let nonblocking = mem_writable && is_nonblocking(pid, fd);
     let is_datagram = matches!(map.get(&key), Some(Sock::Datagram(_)));
     match map.get(&key) {
         None => return notif_continue(lfd, id),
@@ -144,7 +152,7 @@ pub(crate) fn handle_connect(
     if dials.in_progress(key) {
         // A dial of this socket is in progress: a blocking call waits for
         // it, and a nonblocking call gets EALREADY, as in the kernel.
-        return match dials.state.join(key, id, is_nonblocking(pid, fd)) {
+        return match dials.state.join(key, id, nonblocking) {
             Some(Joined::Already) => notif_respond(lfd, id, -1, libc::EALREADY),
             _ => Ok(()),
         };
@@ -170,7 +178,7 @@ pub(crate) fn handle_connect(
     if port == DNS_PORT {
         // T-383: the fake DNS answers a TCP connect to port 53 (DNS over
         // TCP), as it answers a datagram to port 53.
-        return connect_fake_dns(lfd, (id, pid, fd), (key, ip), dials, route);
+        return connect_fake_dns(lfd, (id, pid, fd, nonblocking), (key, ip), dials, route);
     }
     let target = match (dns.name_for_ip_synced(ip), ip) {
         (Some(name), _) => format!("{name}:{port}"),
@@ -196,7 +204,7 @@ pub(crate) fn handle_connect(
         crate::rules::note_refusal("connect", &target, picked.rule_name(), route.verbose);
         return notif_respond(lfd, id, -1, libc::ECONNREFUSED);
     }
-    let started = dials.state.start(key, id, is_nonblocking(pid, fd));
+    let started = dials.state.start(key, id, nonblocking);
     let tx = dials.tx.clone();
     let mut done = Dialed {
         key,
@@ -260,7 +268,7 @@ pub(crate) fn handle_connect(
 /// `EINPROGRESS` first, as in the kernel.
 fn connect_fake_dns(
     lfd: RawFd,
-    (id, pid, fd): (u64, u32, i32),
+    (id, pid, fd, nonblocking): (u64, u32, i32, bool),
     (key, ip): (Key, IpAddr),
     dials: &mut Dials,
     route: &Route<'_>,
@@ -272,7 +280,7 @@ fn connect_fake_dns(
             SocketAddr::new(ip, DNS_PORT)
         );
     }
-    let started = dials.state.start(key, id, is_nonblocking(pid, fd));
+    let started = dials.state.start(key, id, nonblocking);
     let done = Dialed {
         key,
         caller: Caller { id, pid, fd },

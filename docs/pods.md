@@ -63,6 +63,8 @@ makes a chain, in the order given. Without `-x`, the upstream comes from `$ALL_P
 * `socks5://unix:/path` and `http://unix:/path` (also `socks5h+unix:/path` and `http+unix:/path`): a proxy
   on a unix socket.
 * `tailscale:/path/to/tailscaled.sock`: a tailnet ([networks.md](networks.md)).
+* `direct`: no proxy. The pod dials each target from this process. `-x direct` and `--egress direct` are
+  the same.
 * `wg:FILE` is not a hop of a pod. Run `podnet route` with a `wg:FILE` network, and give its door to `-x`.
 * `netbird:[PORT]` through `--egress` (a SOCKS5 hop on `127.0.0.1:PORT`; [networks.md](networks.md)).
 * `--serve LISTEN` runs no program. It serves SOCKS5, HTTP CONNECT and UDP ASSOCIATE on `unix:/path` or
@@ -70,6 +72,11 @@ makes a chain, in the order given. Without `-x`, the upstream comes from `$ALL_P
   [proxies.md](proxies.md), over the chain and the rules. UDP ASSOCIATE and UDP in the stream go
   through the first upstream, which must be SOCKS5. BIND gets `0x07`. `--early-reply` answers a CONNECT
   before the dial (see [proxies.md](proxies.md), "Early reply").
+
+At the start, the pod connects to each upstream (a 2 s limit). An upstream that does not answer gives the
+line `warning: the upstream ... does not answer (...); each connect() of the program through it fails with
+ECONNREFUSED`. The program still runs. Each TCP `connect` through that upstream fails with `ECONNREFUSED`;
+it does not wait for the time limit of the program. `direct` gets no line.
 
 By default the program does not get `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY` and `NO_PROXY`.
 `--keep-proxy-env` keeps them.
