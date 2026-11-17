@@ -287,8 +287,14 @@ pub async fn run_node_with<H: Handler>(
         pair = back;
         warnings.abort();
         let expired = pair.left() < Duration::from_secs(5);
+        // T-406: a name that the relay holds (409) also takes the next
+        // stored pair: its name is new at the relay.
+        let held = result
+            .as_ref()
+            .err()
+            .is_some_and(|e| format!("{e:#}").contains("the relay holds the name"));
         let next = match follow {
-            Some(dir) if result.is_err() && expired => pairfile::next(dir, &pair.inner),
+            Some(dir) if result.is_err() && (expired || held) => pairfile::next(dir, &pair.inner),
             _ => None,
         };
         let Some(next) = next else {
@@ -299,7 +305,8 @@ pub async fn run_node_with<H: Handler>(
             old = %pair.name,
             new = %next.name,
             expires = %pod_core::clock::utc_minutes(next.expires / 1000),
-            "the pair expired; the node takes the next stored pair"
+            reason = if held { "the relay holds the name (409)" } else { "the pair expired" },
+            "the node takes the next stored pair"
         );
         pair = next;
     }
@@ -378,9 +385,12 @@ async fn node<H: Handler>(
             Fault::Config,
             format!("the relay refused the node token of {name}: the pair is stopped or the token is wrong; make a new pair (podnet relay pair)"),
         ),
+        // T-406: 409 for the name, by another node or by the lost socket
+        // of this node that the relay still holds (pod-relay ends the node
+        // after `lost_hold`).
         Exit::NameInUse => (
             Fault::Unavailable,
-            format!("another node holds the name {name} at the relay (409)"),
+            format!("the relay holds the name {name} (409): another node, or the lost socket of this node; make a new pair (podnet relay pair) or use another relay"),
         ),
         Exit::Unusable(why) => (
             Fault::Config,

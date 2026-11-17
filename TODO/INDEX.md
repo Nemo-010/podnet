@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**408 entries: 12 open, 11 partial, 37 blocked, 348 done.**
+**410 entries: 12 open, 11 partial, 37 blocked, 350 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 2 | 2 | 38 | 42 |
+| P1 | 0 | 2 | 2 | 40 | 44 |
 | P2 | 6 | 5 | 11 | 184 | 206 |
 | P3 | 6 | 4 | 24 | 125 | 159 |
-| **All** | 12 | 11 | 37 | 348 | 408 |
+| **All** | 12 | 11 | 37 | 350 | 410 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -453,4 +453,6 @@ M8 Overlays, M9 Later.
 | [T-406](fixes.md) | P2 | S | M5 | defect | blocked | live: the relay keeps a lost socket of a node for minutes after a reset (409), and SSH through it hangs |
 | [T-407](fixes.md) | P2 | S | M5 | defect | done | podnet connect resets a local connection when one WebSocket dial fails |
 | [T-408](fixes.md) | P2 | S | M5 | defect | done | a detached tunnel stops at 60 s while the check of its new public name may take 180 s |
+| [T-409](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.64.0 |
+| [T-410](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.65.0; a node that the relay holds by its lost socket takes the next pair |
 | [T-411](fixes.md) | P2 | S | M5 | defect | done | live: speed.cloudflare.com answers HTTP 429 to the shared address of WARP, and the rate check fails |

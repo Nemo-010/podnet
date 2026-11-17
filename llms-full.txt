@@ -13553,7 +13553,10 @@ podnet relay stop NAME
   ran), or refuses the node token (a 401 or 403 at the upgrade of the node
   socket), the node exits 78 and is not started again. A Close 1008 that
   names the token does not stop the node: it opens the socket again. When
-  another node holds the name for 30 s, the node exits 69.
+  another node holds the name for 30 s, the node exits 69. When the relay
+  still holds the lost socket of this node (409) for 60 s, the node stops
+  on that route too (T-406): with a pair directory it takes the next stored
+  pair, else it exits 69 and says to make a new pair or to use another relay.
 * `podnet relay connect NAME` waits for `ready`, then copies stdin and stdout.
   A name that is not a valid pair name exits 64.
   A refused session exits 69 with the cause from the node. A refused token

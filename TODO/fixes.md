@@ -8173,7 +8173,12 @@ socket"), for the 150 s of the step. The SSH client of the operator reached the 
 
 ## Blocker
 
-The relay server and `pod-relay` of PodUtils/podcrates.
+The relay server and `pod-relay` of PodUtils/podcrates. Ask 1 waits for the relay role of podssh.
+
+## Correction
+
+2026-11-17: ask 2 is done in `pod-relay` v0.65.0 (their entry 805, `lost_hold`, 60 s); podnet takes it in T-410. Ask 1
+(the relay drops a dead socket at once) is for the relay role of podssh (PodUtils/podcrates#214).
 
 # T-407: podnet connect resets a local connection when one WebSocket dial fails
 

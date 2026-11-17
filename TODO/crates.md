@@ -1762,3 +1762,42 @@ sh scripts/agent/check.sh
 2026-11-16, the commit of this entry. The tags, the two lock files, `scripts/install/SOURCES` (the same SHA-256) and
 `issue-sync.yml` (`6a965ef1`, `podcrates_ref: v0.64.0`). `cargo clippy --workspace --all-targets` is clean;
 `sh scripts/agent/check.sh` passes.
+
+# T-410: Take podcrates v0.65.0; a node that the relay holds by its lost socket takes the next pair
+
+**Source:** PodUtils/podcrates#215 (COORD-125, 2026-11-17): the tag `v0.65.0` at `4122f39`, with the answer to ask 2 of
+COORD-098 (#604, T-406).
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The tag `v0.65.0` brings `Settings::lost_hold` of `pod-relay` (their entry 805): after a loss, a node that the relay
+answers 409 for its own socket for 60 s ends with `Exit::NameInUse` and one line. "Take it: on `NameInUse`, take a new
+pair or another relay of the pool." podnet said "another node holds the name" for each `NameInUse`.
+
+## Premise
+
+- `adoption/podnet/` at the tag has no new hand-off for podnet. The installer core has the SHA-256 of `v0.63.0`.
+- `run_node_with` of `src/relay_reverse.rs` takes the next stored pair (a pair directory) only at the expiry of a pair.
+
+## Approach
+
+1. Each `pod-*` dependency names the tag `v0.65.0`; the lock files, `scripts/install/SOURCES` and `issue-sync.yml` follow.
+2. `NameInUse` says "the relay holds the name (409): another node, or the lost socket of this node; make a new pair or use
+   another relay". With a pair directory, the node takes the next stored pair, as at an expiry.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-17, the commit of this entry. The tag `v0.65.0` (commit `4122f39`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. `src/relay_reverse.rs`: the message of `NameInUse` and
+the next stored pair for it; `docs/relay.md`. `cargo clippy --workspace --all-targets` is clean.
