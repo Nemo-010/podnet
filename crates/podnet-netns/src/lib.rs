@@ -502,39 +502,62 @@ fn with_res_option(env: &mut Vec<std::ffi::CString>, option: &str, same: &[&str]
 /// still runs (it may open no connection), but each connection that it
 /// opens fails; before, a dead upstream gave no line at all.
 fn warn_unreachable(proxies: &[upstream::Proxy]) {
+    for line in proxies.iter().filter_map(unreachable_line) {
+        warn(&line);
+    }
+}
+
+/// The warning for an upstream that does not answer a connect in 2 s, else
+/// `None`. Issue 621: `direct` is no upstream to dial, so it gets no line.
+/// Issue 610: the line gives what the program sees, `ECONNREFUSED`.
+fn unreachable_line(proxy: &upstream::Proxy) -> Option<String> {
     use std::net::ToSocketAddrs;
     let limit = std::time::Duration::from_secs(2);
-    for proxy in proxies {
-        let (shown, result) = match &proxy.unix_path {
-            Some(path) => (
-                format!("unix:{path}"),
-                std::os::unix::net::UnixStream::connect(path).map(drop),
-            ),
-            None => {
-                let shown = format!("{}:{}", proxy.host, proxy.port);
-                let result = (proxy.host.as_str(), proxy.port)
-                    .to_socket_addrs()
-                    .and_then(|mut addrs| {
-                        addrs.next().ok_or_else(|| {
-                            std::io::Error::new(std::io::ErrorKind::NotFound, "no address")
-                        })
-                    })
-                    .and_then(|addr| std::net::TcpStream::connect_timeout(&addr, limit).map(drop));
-                (shown, result)
-            }
-        };
-        if let Err(err) = result {
-            warn(&format!(
-                "warning: the upstream {shown} does not answer ({err}); the connect() of each connection of the program is refused"
-            ));
-        }
+    if proxy.kind == upstream::ProxyKind::Direct {
+        return None;
     }
+    let (shown, result) = match &proxy.unix_path {
+        Some(path) => (
+            format!("unix:{path}"),
+            std::os::unix::net::UnixStream::connect(path).map(drop),
+        ),
+        None => {
+            let shown = format!("{}:{}", proxy.host, proxy.port);
+            let result = (proxy.host.as_str(), proxy.port)
+                .to_socket_addrs()
+                .and_then(|mut addrs| {
+                    addrs.next().ok_or_else(|| {
+                        std::io::Error::new(std::io::ErrorKind::NotFound, "no address")
+                    })
+                })
+                .and_then(|addr| std::net::TcpStream::connect_timeout(&addr, limit).map(drop));
+            (shown, result)
+        }
+    };
+    let err = result.err()?;
+    Some(format!(
+        "warning: the upstream {shown} does not answer ({err}); each connect() of the program through it fails with ECONNREFUSED"
+    ))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{with_res_option, with_single_request};
+    use super::{unreachable_line, with_res_option, with_single_request};
     use crate::prelude::*;
+
+    // Issue 621: -x direct dials no upstream, so it gets no warning. Issue
+    // 610: a dead upstream gets a line that names ECONNREFUSED.
+    #[test]
+    fn only_a_dead_upstream_gets_the_warning() {
+        let direct = crate::upstream::Proxy::parse("direct").unwrap();
+        assert_eq!(unreachable_line(&direct), None);
+        let dir = std::env::temp_dir().join(format!("podnet-netns-dead-{}", std::process::id()));
+        let spec = format!("socks5h+unix:{}", dir.join("no-such.sock").display());
+        let dead = crate::upstream::Proxy::parse(&spec).unwrap();
+        let line = unreachable_line(&dead).expect("a line for a dead upstream");
+        assert!(line.contains("does not answer"), "{line}");
+        assert!(line.contains("fails with ECONNREFUSED"), "{line}");
+    }
 
     fn res_options(env: &[std::ffi::CString]) -> Vec<String> {
         env.iter()

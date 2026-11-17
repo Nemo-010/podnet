@@ -479,6 +479,39 @@ fn so_error_gives_the_error_of_a_failed_connect() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Issue 610: the pod cannot write the memory of the program (the hook
+/// `none`), and the upstream is dead. The nonblocking connect waits for the
+/// dial and fails with ECONNREFUSED. Before, it got EINPROGRESS, and
+/// SO_ERROR gave 0: the program saw a connected socket that gave no bytes.
+#[test]
+fn a_dead_upstream_refuses_a_nonblocking_connect_without_memory_writes() {
+    if !have_compiler() || !seccomp_available() {
+        eprintln!("skipping: no compiler or no SECCOMP_RET_USER_NOTIF");
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("podnet-netns-deadup-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let program = build_program(&dir, "soerror-nomem", SO_ERROR_CLIENT, false);
+    let output = pod_command()
+        .args(["--backend", "seccomp", "-x"])
+        .arg(format!("unix:{}", dir.join("nobody.sock").display()))
+        .arg("--")
+        .arg(&program)
+        .env("PODNET_NETNS_TEST_MEM", "none")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stdout.contains(&format!("CONNECT:-1:{}\n", libc::ECONNREFUSED)),
+        "{stdout:?} {stderr:?}"
+    );
+    // The warning says what the program sees.
+    assert!(stderr.contains("does not answer"), "{stderr:?}");
+    assert!(stderr.contains("ECONNREFUSED"), "{stderr:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// A client that reads the stream to its end and prints the byte count.
 const COUNT_CLIENT: &str = r#"
 #include <stdio.h>

@@ -218,6 +218,7 @@ pub(crate) async fn supervise_seccomp(
             crate::socket::handle_socket(lfd, id, a, &mut map, &writes_tx, verbose)
         } else if nr == libc::SYS_connect as i32 {
             let entry = (&mut *map, key, req_pid);
+            let mem = (mem, mem_writable);
             crate::connect::handle_connect(lfd, id, a, mem, entry, &mut dns, &mut dials, &route)
         } else if nr == libc::SYS_sendto as i32 {
             handle_sendto(lfd, id, a, mem, (&mut map, key), &mut dns, &egress).await
