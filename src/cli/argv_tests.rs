@@ -31,6 +31,39 @@ fn a_foreground_server_with_no_terminal_gets_one_line() {
     assert!(foreground_hint(Some("relay node"), &tunnel, false, true).is_some());
 }
 
+/// Issue 617: a mode that ends alone (a check, a hash, one stream) gets no
+/// line; the same command that stays up gets it.
+#[test]
+fn a_mode_that_ends_alone_gets_no_foreground_line() {
+    let argv = |s: &str| s.split_whitespace().map(String::from).collect::<Vec<_>>();
+    for (command, line) in [
+        ("serve", "podnet serve --hash-password"),
+        ("tunnel", "podnet tunnel --hello-world --check"),
+        ("serve", "podnet serve www --check"),
+        ("share", "podnet share --mode download --file f --check"),
+        ("connect", "podnet connect wss://h/x --stdio"),
+        (
+            "share",
+            "podnet share --mode download --file f --stop-after",
+        ),
+    ] {
+        assert!(
+            foreground_hint(Some(command), &argv(line), false, true).is_none(),
+            "{line}"
+        );
+    }
+    for (command, line) in [
+        ("serve", "podnet serve www"),
+        ("tunnel", "podnet tunnel --hello-world"),
+        ("connect", "podnet connect wss://h/x -L 127.0.0.1:2222"),
+    ] {
+        assert!(
+            foreground_hint(Some(command), &argv(line), false, true).is_some(),
+            "{line}"
+        );
+    }
+}
+
 /// E9: the arguments of cloudflared for a tunnel.
 #[test]
 fn cloudflared_arguments_work() {
