@@ -340,7 +340,40 @@ fn serve_local_checks_users_and_the_pin() {
         body.contains("6-digit code") && !body.contains("alpha"),
         "{body}"
     );
+    // #628: the ready line names the unlock path, and the form of the
+    // unlock (password and next) sets the cookie of the PIN.
+    let unlock = doc["unlock"].as_str().unwrap_or_else(|| panic!("{doc}"));
+    let form = format!("password={pin}&next=/a.txt");
+    let (status, head, _) = http_send(
+        std::os::unix::net::UnixStream::connect(&sock).unwrap(),
+        "POST",
+        unlock,
+        &["Content-Type: application/x-www-form-urlencoded"],
+        form.as_bytes(),
+    );
+    assert!(
+        status.contains(" 303 ") || status.contains(" 302 "),
+        "{head}"
+    );
+    assert!(head.contains("podnet_pin="), "{head}");
     stop(child);
+
+    // #628: the text output says how to unlock.
+    let out = podnet(&[
+        "serve",
+        "--dir",
+        dir_arg,
+        "--local",
+        &addr,
+        "--pin",
+        "--run-for",
+        "1",
+    ]);
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        text.contains("podnet: unlock") && text.contains("/__podnet/unlock"),
+        "{text}"
+    );
 
     // --anon-read alone has no meaning.
     let out = podnet(&["serve", "--dir", dir_arg, "--local", &addr, "--anon-read"]);
@@ -496,6 +529,33 @@ fn share_local_serves_a_directory() {
     };
     assert_eq!(status.code(), Some(0), "{status:?}");
     assert!(!sock.exists());
+    // #628: with --password, the ready line and the text name the unlock.
+    let out = podnet(&[
+        "share",
+        "--file",
+        dir.to_str().unwrap(),
+        "--local",
+        &addr,
+        "--password",
+        "--json",
+        "--run-for",
+        "1",
+    ]);
+    let line = String::from_utf8_lossy(&out.stdout);
+    let doc: serde_json::Value = serde_json::from_str(line.lines().next().unwrap()).unwrap();
+    assert_eq!(doc["unlock"], "/__podnet/unlock", "{doc}");
+    let out = podnet(&[
+        "share",
+        "--file",
+        dir.to_str().unwrap(),
+        "--local",
+        &addr,
+        "--password",
+        "--run-for",
+        "1",
+    ]);
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(text.contains("podnet: unlock"), "{text}");
     // Proxy mode needs the tunnel.
     let out = podnet(&["share", "--port", "1", "--local", &addr]);
     assert_eq!(out.status.code(), Some(64), "{}", stderr(&out));

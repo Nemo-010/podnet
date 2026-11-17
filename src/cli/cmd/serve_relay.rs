@@ -46,6 +46,7 @@ pub(super) async fn serve_relay(
             "relay": pair.relay,
             "dir": shown,
             "pin": pin,
+            "unlock": super::unlock_key(pin),
         });
         println!("{}", podnet::status::stamped(doc));
     } else {
@@ -55,6 +56,7 @@ pub(super) async fn serve_relay(
         );
         if let Some(pin) = pin {
             println!("podnet: PIN    {pin}");
+            println!("podnet: unlock {}", super::unlock_hint("/"));
         }
         println!(
             "The operator: podnet relay connect {} --listen tcp://127.0.0.1:8080",
@@ -63,7 +65,11 @@ pub(super) async fn serve_relay(
     }
     // T-236: --detach returns when the node is connected (run_node calls
     // ready), not before: a visitor before that gets "node offline".
-    podnet::detach::ready_when_reachable(serde_json::json!({ "pair": pair.name, "pin": pin }));
+    podnet::detach::ready_when_reachable(serde_json::json!({
+        "pair": pair.name,
+        "pin": pin,
+        "unlock": super::unlock_key(pin),
+    }));
     let (server, _file) = local.split();
     tokio::select! {
         result = reverse::run_node(follow, pair, &target) => result,

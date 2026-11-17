@@ -378,6 +378,7 @@ async fn serve_local(args: &ServeArgs, locals: Vec<Local>, pin: Option<&str>) ->
             "listens": listens,
             "dir": args.dir().display().to_string(),
             "pin": pin,
+            "unlock": super::unlock_key(pin),
         });
         println!("{}", podnet::status::stamped(doc));
     } else {
@@ -390,6 +391,7 @@ async fn serve_local(args: &ServeArgs, locals: Vec<Local>, pin: Option<&str>) ->
         }
         if let Some(pin) = pin {
             println!("podnet: PIN    {pin}");
+            println!("podnet: unlock {}", super::unlock_hint("/"));
         }
     }
     // A QR code of a unix socket has no use.
@@ -401,6 +403,7 @@ async fn serve_local(args: &ServeArgs, locals: Vec<Local>, pin: Option<&str>) ->
         "listen": listen,
         "listens": listens,
         "pin": pin,
+        "unlock": super::unlock_key(pin),
     }));
     let mut servers = tokio::task::JoinSet::new();
     let mut files = Vec::new();

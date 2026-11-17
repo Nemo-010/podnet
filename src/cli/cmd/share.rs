@@ -260,12 +260,17 @@ async fn share_local(args: &ShareArgs, config: ShareConfig, local: &str) -> Resu
             "listen": local.listen,
             "path": config.url_path(),
             "pin": pin,
+            "unlock": super::unlock_key(pin),
         });
         println!("{}", podnet::status::stamped(doc));
     } else {
         println!("  podnet: session  {session}  (local, no tunnel)");
         if let Some(pin) = pin {
             println!("  podnet: PIN      {pin}");
+            println!(
+                "  podnet: unlock   {}",
+                super::unlock_hint(&config.url_path())
+            );
         }
     }
     if show.qr && session.starts_with("http://") {
@@ -275,6 +280,7 @@ async fn share_local(args: &ShareArgs, config: ShareConfig, local: &str) -> Resu
         "url": session,
         "listen": local.listen,
         "pin": pin,
+        "unlock": super::unlock_key(pin),
     }));
     let deadline = deadline_of(args.common.run_for);
     tokio::select! {

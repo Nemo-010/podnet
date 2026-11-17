@@ -114,6 +114,7 @@ pub(crate) async fn serve_peer(
     );
     if let Some(pin) = pin {
         println!("podnet: PIN    {pin}");
+        println!("podnet: unlock {}", super::unlock_hint("/"));
     }
     tokio::select! {
         _ = held.lost() => Err(exit::fault(
@@ -162,6 +163,7 @@ pub(crate) async fn serve_at(
     );
     if let Some(pin) = pin {
         println!("podnet: PIN    {pin}");
+        println!("podnet: unlock {}", super::unlock_hint("/"));
     }
     tokio::select! {
         done = listen(args) => done,

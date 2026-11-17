@@ -137,7 +137,10 @@ the tunnel and the relay):
   write role.
 * `--pin`: the files are locked with a 6-digit PIN, as `share --password`.
   podnet prints the PIN (`pin` in the `--json` line). With no users, the
-  PIN gives the write role.
+  PIN gives the write role. The line `podnet: unlock` (`unlock` in the
+  `--json` line and in the ready document: `/__podnet/unlock`) tells how a
+  client opens the site: POST the form fields `password=PIN` and
+  `next=PATH` to `/__podnet/unlock`. The answer sets the cookie `podnet_pin`.
 * `--anon-read`: a GET or HEAD needs no user and no PIN. A change still
   needs a write user (or the PIN).
 
@@ -239,7 +242,8 @@ podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
   exist).
 * The public path is `/s/<token>/`. The token has 32 random bytes, and a
   path with another token answers 404.
-* `--password` adds a 6-digit PIN. The host shows the PIN. The PIN check uses
+* `--password` adds a 6-digit PIN. The host shows the PIN, and the line
+  `podnet: unlock` (`unlock` in the `--json` line), as for `serve --pin`. The PIN check uses
   a constant-time compare. After 10 wrong codes, no code opens the session:
   start a new one. Requests at the same time get at most 10 compares in
   total. A correct code sets the count of wrong codes to 0. After the
