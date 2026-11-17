@@ -241,6 +241,11 @@ jobs:
           python3 -I scripts/ci/probe-hosted.py http://127.0.0.1:18081
           sort "$RUNNER_TEMP/hosted.log" | uniq -c
           ! grep -q '^denied ' "$RUNNER_TEMP/hosted.log"
+      # T-398: a unix socket through a public SSH relay. The relays are
+      # services of other parties: the script tries each one in order.
+      - name: A unix socket through a public SSH relay
+        timeout-minutes: 8
+        run: sh scripts/live-ssh-relay.sh target/release/podnet
       # The rate of a GET and a POST on the HTTP path, through podnet connect,
       # and through a WebSocket client in Python (issue 51).
       - name: Throughput of the HTTP path and of a --forward WebSocket
@@ -711,9 +716,16 @@ jobs:
           tail -2 second-rotate.err
           python3 -c "import sys; sys.stdout.buffer.write(bytes.fromhex('abcd01000001000000000000') + b'\x07example\x03com\x00\x00\x01\x00\x01')" |
             timeout 60 target/release/podnet warp --identity "$ident" nc -u 1.1.1.1 53 | head -c 2 | od -An -tx1 | tee nc-rotate.txt || true
+          # T-398: a key that is not a WARP+ key, from stdin. The API refuses
+          # it (HTTP 4xx): exit 64, and the device stays as it was. A limit
+          # of the API (429) is exit 69.
+          rc4=0; echo 00000000-00000000-00000000 |
+            timeout 60 target/release/podnet warp --identity "$ident" license - 2> second-license.err || rc4=$?
+          tail -2 second-license.err
           rc2=0; timeout 60 target/release/podnet warp --identity "$ident" delete 2> second-del.err || rc2=$?
-          echo "status: exit $rc; rotate: exit $rc3; delete: exit $rc2"
+          echo "status: exit $rc; rotate: exit $rc3; license: exit $rc4; delete: exit $rc2"
           test "$rc3" = 0
+          test "$rc4" = 64 || { test "$rc4" = 69 && grep -q 429 second-license.err; }
           grep -q 'ab cd' nc-rotate.txt
           grep -E '^(type|account)' second-status.out || true
           test "$rc" = 0

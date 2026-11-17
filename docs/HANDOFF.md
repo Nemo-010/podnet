@@ -48,7 +48,7 @@ None. The head is the commit of this handoff.
 1. T-400: when `release-proofs.yml` 44002218263 passes, write the Done section of T-400 (dry run 43991044357, release
    43995458679, publish 43995461740, proofs 44002218263) and set it to done.
 2. T-406: wait for the answer of podssh on COORD-098 (#604).
-3. T-398: scenarios for the 3 commands left (see its Correction).
+3. T-398: read the new live steps of `ssh-relay` and `warp license` (its fifth part). `net tailscale` stays experimental.
 4. T-358, what remains: the row `way-out` (a quick tunnel in `podlab run --way-out proxy-only`) is a default row now; the lane rows with `podlab run --way-out PROFILE` and `--serve PORT`, WebSocket through the
    proxy, `ipv6-only` on a host with IPv6, the `icmp` rows; the relay and the tunnel as podssh and podrunner call them.
 5. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).

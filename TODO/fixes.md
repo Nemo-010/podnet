@@ -7966,6 +7966,15 @@ the unit runs `podnet autostart run` (`VIA` of `scripts/gate-scenarios.py`: a co
 program, with the text that the step must hold). 3 commands stay experimental: `net tailscale` (a `tailscaled` in a
 tailnet), `ssh-relay` (an SSH relay of another party) and `warp license` (a WARP+ key).
 
+2026-11-17, the fifth part (not run yet: the next `live`). A new live step "A unix socket through a public SSH relay"
+(`scripts/live-ssh-relay.sh`): an HTTP origin listens on a unix socket, `podnet ssh-relay --service S --json` publishes
+it, and curl must get the body of the origin through the URL. The script tries `localhost-run`, `pinggy`, `serveo` and
+`tunnl-gg` in order and passes on the first that serves the origin (the relays are services of other parties). The
+step "WARP API through its second host" runs `warp license -` with a key that is not a WARP+ key on stdin: the API
+refuses it, exit 64 (exit 69 with HTTP 429 is a limit of the API). The proxy of a cloud session refuses SSH, so the
+step is not run here. 1 command stays experimental: `net tailscale` (it needs a `tailscaled` in a tailnet and an auth
+key; no secret of the repository gives one).
+
 # T-399: live: the WebSocket client of a --url origin dials a name that has no IPv4 answer yet
 
 **Source:** live 43898114234 on c591bab (2026-11-16), failed.
