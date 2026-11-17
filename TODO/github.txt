@@ -282,7 +282,7 @@
 581 issue closed
 582 issue open
 583 issue closed
-584 issue open
+584 issue closed
 585 issue open
 586 issue open
 587 issue open

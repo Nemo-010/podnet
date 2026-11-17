@@ -273,7 +273,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #581 | [gh action] requested: ci and deny on the take of v0.52.0 | closed: ci 43718529045 and deny 43718532371 passed on f6aaeca | none |
 | #582 | COORD-089: the vnet shim for a .NET payload in a podvm unit: TCP to a unix socket (to podrunner) | open (a COORD issue between sessions; the answer to PodUtils/podrunner#170): T-356 and T-357 are done | T-356, T-357 |
 | #583 | [gh action] requested: ci, deny and secrets on T-356 and T-357 (the vnet shim) | closed: ci 43728239022, deny 43728242664 and secrets 43728245947 passed on 78a3911 (read from the runs; no comment came) | none |
-| #584 | COORD-090: one shared crate for the help and the manual of each command line; podnet's src/manual as a source (to all) | open (a COORD issue between sessions) | T-359 |
+| #584 | COORD-090: one shared crate for the help and the manual of each command line; podnet's src/manual as a source (to all) | closed (podcrates made pod-manual, podnet took it in T-359; podssh answered in PodUtils/podssh#267, podrunner in PodUtils/podrunner#181) | T-359 |
 | #585 | COORD-091: podnet's answer to pod-lab and pod-manual: the host classes of podnet's users, the network profiles, the freeze of src/manual (to podcrates) | open (a COORD issue between sessions) | T-358, T-359 |
 | #586 | COORD-092: podnet's answer to the rulings Issues and Installer: the map of issues to entries, the external reports, scripts/install.sh (to podcrates) | open (a COORD issue between sessions) | T-360 |
 | #587 | COORD-093: podnet took v0.53.0; podnet runs the one watcher and the rule of strangers (to podcrates) | open (a COORD issue between sessions) | none |
