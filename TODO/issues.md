@@ -298,11 +298,15 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #606 | live: two runs in a row failed | open (live 43912914825 attempt 2: T-407; live 43918102449: the relay, T-406; live 43926742960: T-408; live 43983078556: T-411) | T-406, T-407, T-408, T-411 |
 | #607 | COORD-100: pod-services: localhost-run needs the fact remote-port = 80 (to podcrates) | closed (podcrates v0.67.0 has the fact, taken in 71924ec (T-416); podnet asks for the bind address localhost in 3d85179 (T-418); live 44031540675: localhost-run served the origin at the first try) | T-418 |
 | #608 | COORD-101: pod-tls: Trust::Default does not read the CA file of the Context; a fix in the frozen src/ws.rs (to podcrates) | open (a COORD issue between sessions) | T-421 |
+| #609 | podnet net proxy: a real target gets SOCKS5 success, then EOF | closed (outside the team: verified, not a defect: the reply is 0x01, general failure; T-433) | T-433 |
+| #610 | podnet pod: a dead or refusing upstream proxy hangs the program instead of failing the connect | closed (outside the team: verified, labelled `confirmed`; T-430) | T-430 |
+| #611 | podnet pod: a reject rule returns a successful connect() and then hangs | closed (outside the team: verified, labelled `confirmed`; T-431, T-430) | T-431 |
 | #614 | podnet git init: an existing bare repository is reported as "not a repository" | closed (outside the team: verified, labelled `confirmed`; T-424) | T-424 |
 | #615 | podnet warp ssh-config: the printed GIT_SSH_COMMAND is over-escaped and not copy-pasteable | closed (outside the team: verified, labelled `confirmed`; T-425) | T-425 |
 | #618 | podnet serve --pin: the client unlock flow is not documented | closed (outside the team: verified, labelled `confirmed`; T-426) | T-426 |
 | #619 | podnet route: clarify which state directory holds router-usage.json | closed (outside the team: verified, labelled `confirmed`; T-427) | T-427 |
 | #620 | Release binary: all network link carriers are off (only unix and memory) | open (outside the team: verified, labelled `confirmed`; T-428 partial) | T-428 |
+| #621 | podnet pod -x direct: a false "upstream :0" warning, and -x does not accept direct | closed (outside the team: verified, labelled `confirmed`; T-432) | T-432 |
 | #622 | Minor output nits: duplicate headers, double spaces, missing schema, duplicated error | open (outside the team: verified, labelled `confirmed`; T-429 done, item 8 with the link work) | T-429 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

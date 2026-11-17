@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**427 entries: 12 open, 13 partial, 36 blocked, 366 done.**
+**431 entries: 12 open, 13 partial, 36 blocked, 370 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 2 | 2 | 44 | 49 |
-| P2 | 5 | 7 | 10 | 193 | 215 |
-| P3 | 6 | 4 | 24 | 128 | 162 |
-| **All** | 12 | 13 | 36 | 366 | 427 |
+| P1 | 1 | 2 | 2 | 45 | 50 |
+| P2 | 5 | 7 | 10 | 194 | 216 |
+| P3 | 6 | 4 | 24 | 130 | 164 |
+| **All** | 12 | 13 | 36 | 370 | 431 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -473,3 +473,7 @@ M8 Overlays, M9 Later.
 | [T-427](fixes.md) | P2 | S | M6 | defect | done | `route` writes `router-usage.json` to the global state directory, not to `state_dir` (GitHub #619) |
 | [T-428](fixes.md) | P2 | S | M6 | docs | partial | The release binaries have no optional link carrier, and the notes do not say it (GitHub #620) |
 | [T-429](fixes.md) | P3 | S | M6 | defect | partial | Small output faults of the QA round (GitHub #622) |
+| [T-430](fixes.md) | P1 | S | M7 | defect | done | `pod -x` with a dead upstream: a non-blocking connect() looks connected, then hangs (GitHub #610) |
+| [T-431](fixes.md) | P2 | S | M7 | docs | done | `pod -r 'cidr:...=reject'` does not refuse a name (GitHub #611) |
+| [T-432](fixes.md) | P3 | S | M7 | defect | done | `pod -x direct` prints a false warning (GitHub #621) |
+| [T-433](fixes.md) | P3 | S | M7 | defect | done | `net proxy` and a target outside the virtual network (GitHub #609) |

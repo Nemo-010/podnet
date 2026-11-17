@@ -8842,3 +8842,143 @@ cargo test -p podnet-core --lib exit::
 
 2026-11-17, the commit of this line: items 5, 6 and 7. Item 8 waits for the link work. `text_names_each_cause_once` passes; it also shows that
 `{err:#}` named the cause two times.
+
+# T-430: `pod -x` with a dead upstream: a non-blocking connect() looks connected, then hangs (GitHub #610)
+
+**Source:** GitHub #610 (https://github.com/PodUtils/podnet/issues/610), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M7
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+With the seccomp backend and an upstream that does not answer (`-x socks5h+unix:/tmp/no-such.sock`,
+`-x socks5h://127.0.0.1:9`), `curl` waited for its own time limit, and the warning said that each connect() is refused.
+
+## Premise
+
+- Reproduced where podnet cannot write the memory of the program (the test hook `PODNET_NETNS_TEST_MEM=none`; the host
+  of the report has no `AF_INET` bind and no netns). A non-blocking connect got `EINPROGRESS`
+  (`crates/podnet-netns/src/connect.rs`), and `getsockopt(SO_ERROR)` went to the kernel, which gave 0 for the socket
+  pair: the program read a connected socket that never got a byte.
+
+## Approach
+
+1. On such a host, a non-blocking connect waits for the end of the dial and gives 0 or `ECONNREFUSED`. It can block
+   for the time of the dial (at most 30 s).
+2. The warning says what happens: each connect() of the program through the upstream fails with `ECONNREFUSED`.
+3. `docs/pods.md` and `crates/podnet-netns/README.md` say both.
+
+## Prove
+
+```sh
+cargo test -p podnet --test pod_seccomp -- a_dead_upstream_refuses_a_nonblocking_connect_without_memory_writes
+```
+
+## Done
+
+2026-11-17, commit 8a0b0f19. Before: `connect_ex 0 after 0.003` and `curl -m 5` waited 5 s; after: `connect_ex 111`, and
+curl ends in 0.05 s with exit 7. The test passes; with the fix reverted it fails (`CONNECT:-1:115`, `SOERROR0:0:0`).
+`cargo test -p podnet-netns`: 151 passed; `--test pod_seccomp`: 44 passed.
+
+# T-431: `pod -r 'cidr:...=reject'` does not refuse a name (GitHub #611)
+
+**Source:** GitHub #611 (https://github.com/PodUtils/podnet/issues/611), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** docs
+**Milestone:** M7
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+With `-r 'cidr:140.82.0.0/16=reject'`, a connect to `api.github.com` gave `connect_ex 0`, then a hang.
+`--default-action reject` gave 111.
+
+## Premise
+
+- Measured: a connect to the address `140.82.112.6` gives 111 (`refused by the rule cidr:...`). A `cidr:` rule matches
+  addresses only. The fake DNS of the pod answers a name with an address of its own and does not look up the real one,
+  so a `cidr:` rule cannot match `api.github.com`. The flow went to the dead upstream of the report: the hang is T-430.
+
+## Approach
+
+1. `docs/pods.md`: a `cidr:` rule does not match a name; a `domain:` rule does.
+
+## Prove
+
+```sh
+grep -n 'does not match a name' docs/pods.md
+```
+
+## Done
+
+2026-11-17, commit eff5dcea. After T-430 the command of the report gives 111.
+
+# T-432: `pod -x direct` prints a false warning (GitHub #621)
+
+**Source:** GitHub #621 (https://github.com/PodUtils/podnet/issues/621), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M7
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet pod -x direct -- curl ...` printed `the upstream :0 does not answer ...`, then the program worked.
+
+## Premise
+
+- The check of each upstream at the start (`crates/podnet-netns/src/lib.rs`) also dialled `direct`, which has no host
+  and port 0. `docs/pods.md` makes `-x` and `--egress` one option, and `--egress direct` becomes `-x direct`.
+
+## Approach
+
+1. The check skips `direct`. `docs/pods.md` lists `direct` as an upstream.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib -- only_a_dead_upstream_gets_the_warning
+```
+
+## Done
+
+2026-11-17, commit 8a0b0f19. No warning for `-x direct`; the test passes and fails with the fix reverted.
+
+# T-433: `net proxy` and a target outside the virtual network (GitHub #609)
+
+**Source:** GitHub #609 (https://github.com/PodUtils/podnet/issues/609), Nemo-010 (outside: verified, not a defect).
+**Category:** defect
+**Milestone:** M7
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The report says that a SOCKS5 CONNECT to `140.82.112.6:443` through `podnet net proxy` gets success (`0x00`), then EOF.
+
+## Premise
+
+- The reply of the report is `05 01 00 01 ...`: its second byte is `0x01`, the SOCKS5 answer "general failure", not
+  success. An HTTP CONNECT gets `502 Bad Gateway`: `140.82.112.6:443 is outside the subnet of the stack`.
+- `net proxy` is a door into the virtual network (`docs/networks.md`, `docs/virtual-network.md`); a real target goes out
+  through `--forward` or the egress of the process. The timeout of `pod -x` through it was T-430.
+
+## Approach
+
+1. No change of the code. The issue closes with the reason.
+
+## Prove
+
+```sh
+printf '\005\001\000' # the greeting of the report, then CONNECT 140.82.112.6:443: the reply is 05 01
+```
+
+## Done
+
+2026-11-17: verified with the debug build: the same reply bytes (`05 01`) and the 502 of HTTP CONNECT.
