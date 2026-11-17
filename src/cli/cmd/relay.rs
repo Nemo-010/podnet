@@ -58,6 +58,12 @@ pub(crate) enum RelayCommand {
         /// of `link listen --allow`).
         #[arg(long, value_name = "FILE", requires = "seal")]
         allow: Option<PathBuf>,
+        /// Print the ready document as one JSON line on stdout when the
+        /// node is connected to the relay: pair, relay, target, expires and
+        /// expires_in. The node stays in the foreground. --detach prints
+        /// the same document, with or without --json.
+        #[arg(long)]
+        json: bool,
         #[command(flatten)]
         detach: DetachArgs,
     },
@@ -167,8 +173,17 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
             resume,
             seal,
             allow,
+            json,
             ..
         } => {
+            if json {
+                // #631: the ready document in the foreground.
+                podnet::detach::foreground::on_ready(|doc| {
+                    let mut doc = doc.clone();
+                    doc["event"] = "ready".into();
+                    println!("{}", podnet::status::stamped(doc));
+                });
+            }
             let target = reverse::Target::parse(&to)
                 .map_err(|e| anyhow::anyhow!("--to {e}"))
                 .fault(Fault::Usage)?;

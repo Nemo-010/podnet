@@ -44,6 +44,10 @@ podnet relay stop NAME
   still holds the lost socket of this node (409) for 60 s, the node stops
   on that route too (T-406): with a pair directory it takes the next stored
   pair, else it exits 69 and says to make a new pair or to use another relay.
+* `podnet relay node --json` prints one JSON line on stdout when the node is
+  connected to the relay: `event` (`ready`), `pair`, `relay`, `target`,
+  `expires` and `expires_in`. The node stays in the foreground. `--detach`
+  prints the same document and returns.
 * `podnet relay connect NAME` waits for `ready`, then copies stdin and stdout.
   A name that is not a valid pair name exits 64.
   A refused session exits 69 with the cause from the node. A refused token
