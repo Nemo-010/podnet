@@ -93,6 +93,7 @@ docs/serve.md e326129602 skip two shells and a typed password: PASSWORD is a pla
 docs/serve.md 872babe603 skip two shells: a foreground server, then a client; needs users and report.pdf
 docs/serve.md 5f6d28a04a live git serve opens a quick tunnel or the relay; NAME is a placeholder
 docs/serve.md 588daaa46a live share opens a quick tunnel
+docs/serve.md 527bfb7800 live the unlock of a PIN: needs a running serve or share with a PIN; $PIN, $ORIGIN and $URL are placeholders
 
 docs/target-environment.md 3aa821689c live WARP through a SOCKS5 proxy at 127.0.0.1:9050
 docs/target-environment.md 56640f12db live WARP through a proxy; PORT is a placeholder

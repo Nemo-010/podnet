@@ -11670,7 +11670,8 @@ the tunnel and the relay):
   0600. An empty line and a line that starts with `#` are skipped.
 * `--auth-user USER --auth-password-file FILE`: one more user, with the
   write role.
-* `--pin`: the files are locked with a 6-digit PIN, as `share --password`.
+* `--pin`: the files are locked with a 6-digit PIN, as `share --password`
+  (the unlock flow is under `podnet share`).
   podnet prints the PIN (`pin` in the `--json` line). With no users, the
   PIN gives the write role.
 * `--anon-read`: a GET or HEAD needs no user and no PIN. A change still
@@ -11739,6 +11740,9 @@ podnet git serve --root ./repos --ingress relay --pair NAME \
 podnet git urls --root ./repos          # the clone URLs and the host key
 ```
 
+- `git init` prints the directory of the bare repository. A second `git init`
+  of an existing bare repository passes and changes nothing. Another file or
+  directory at the path is refused (exit 64).
 - A fetch needs the read role: `--anon-read`, or a user of `--users`. A
   push needs the write role: `--push-user`, a write user of `--users`, or
   a key of `--authorized-keys` (ed25519 and ECDSA only).
@@ -11779,6 +11783,18 @@ podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
   start a new one. Requests at the same time get at most 10 compares in
   total. A correct code sets the count of wrong codes to 0. After the
   unlock, the browser goes back to a path of the same site only.
+* A client unlocks with one POST of a form to `/__podnet/unlock` of the
+  same site, with the fields `password` (the PIN) and `next` (the path to
+  go to). The answer is 303 with the cookie `podnet_pin`. Each later
+  request sends the cookie. The PIN is not HTTP Basic, and not a header.
+  The same flow opens `serve --pin`:
+
+  ```sh
+  curl -c jar -d "password=$PIN&next=/" "$ORIGIN/__podnet/unlock"
+  curl -b jar "$URL"                                   # the files
+  curl -b jar -T file.txt "$URL/file.txt"              # an upload (--upload)
+  ```
+
 * The unlock cookie has `HttpOnly`, `Secure` and `SameSite=Lax`: open the
   session with `https://` (a browser does not keep a `Secure` cookie of
   plain http). An unlock POST from another site (`Sec-Fetch-Site`, or an
@@ -12475,6 +12491,8 @@ makes a chain, in the order given. Without `-x`, the upstream comes from `$ALL_P
 * `socks5://unix:/path` and `http://unix:/path` (also `socks5h+unix:/path` and `http+unix:/path`): a proxy
   on a unix socket.
 * `tailscale:/path/to/tailscaled.sock`: a tailnet ([networks.md](networks.md)).
+* `direct`: no proxy. The pod dials each target from this process. `-x direct` and `--egress direct` are
+  the same.
 * `wg:FILE` is not a hop of a pod. Run `podnet route` with a `wg:FILE` network, and give its door to `-x`.
 * `netbird:[PORT]` through `--egress` (a SOCKS5 hop on `127.0.0.1:PORT`; [networks.md](networks.md)).
 * `--serve LISTEN` runs no program. It serves SOCKS5, HTTP CONNECT and UDP ASSOCIATE on `unix:/path` or
@@ -12482,6 +12500,11 @@ makes a chain, in the order given. Without `-x`, the upstream comes from `$ALL_P
   [proxies.md](proxies.md), over the chain and the rules. UDP ASSOCIATE and UDP in the stream go
   through the first upstream, which must be SOCKS5. BIND gets `0x07`. `--early-reply` answers a CONNECT
   before the dial (see [proxies.md](proxies.md), "Early reply").
+
+At the start, the pod connects to each upstream (a 2 s limit). An upstream that does not answer gives the
+line `warning: the upstream ... does not answer (...); each connect() of the program through it fails with
+ECONNREFUSED`. The program still runs. Each TCP `connect` through that upstream fails with `ECONNREFUSED`;
+it does not wait for the time limit of the program. `direct` gets no line.
 
 By default the program does not get `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY` and `NO_PROXY`.
 `--keep-proxy-env` keeps them.
@@ -12498,7 +12521,9 @@ podnet pod -x socks5://127.0.0.1:1080 \
 ```
 
 * `domain:NAME=WAY` matches a name. `domain:.NAME=WAY` matches the name and each name under it.
-* `cidr:ADDR/PREFIX=WAY` matches an address.
+* `cidr:ADDR/PREFIX=WAY` matches an address. It does not match a name: the fake DNS of the pod answers a
+  name, and the pod does not look up its real address. Thus `cidr:140.82.0.0/16=reject` does not refuse
+  `curl https://api.example.com/`, which connects by name. Use a `domain:` rule for a name.
 * `port:N=WAY` and `port:N-M=WAY` match these ports of each host. `tcp:HOST:PORT=WAY` matches one host and one
   port. `HOST` is a name, an IPv4 address or `[IPv6]`. A name matches the same name only: no lookup. These
   rules match a TCP connect only. A datagram has no port for the rules, so it takes the next rule that
@@ -12909,8 +12934,9 @@ authentication, and opens the channels.
 ## A user with no passwd entry
 
 On a host where `/etc/passwd` has no entry for your uid, `getpwuid` fails.
-Then `ssh` stops, and `ssh-keygen` exits 0 and writes no key. `podnet net
-doctor` shows the row `passwd entry for this uid`. `podnet net passwd-shim`
+Then `ssh` stops, and `ssh-keygen` writes no key (some builds exit 0, some
+exit 255 with `No user exists for uid N`). `podnet net doctor` shows the row
+`passwd entry for this uid`. `podnet net passwd-shim`
 writes a passwd file and the preload `fakepwd.so`, and prints `LD_PRELOAD`
 (before an old value) and `SANDHOME_PASSWD`:
 
@@ -13251,8 +13277,8 @@ doors:
   over the rate is dropped.
 * At the quota, a new flow gets "the quota of the door is used for this period" (a policy refusal). With `close`,
   each open flow ends at its next read or write. A UDP datagram is dropped.
-* The usage of each door with a quota is in `router-usage.json` of the state directory (mode 0600), by the `listen` of
-  the door. podnet writes it each 10 s while bytes pass, and at the end. A restart in the same period keeps the usage.
+* The usage of each door with a quota is in `router-usage.json` (mode 0600), by the `listen` of the door: in the
+  `state_dir` of the router file, else in the state directory of podnet (`PODNET_STATE_DIR`, `podnet man environment`). podnet writes it each 10 s while bytes pass, and at the end. A restart in the same period keeps the usage.
 * The status of the door has `limits`: `rate`, `quota`, `period`, `on_exhaust`, `used`, `period_end` (UNIX time,
   or `null`) and `exhausted`. The metrics add `podnet_route_door_rate_bytes`, `podnet_route_door_quota_bytes`,
   `podnet_route_door_quota_used_bytes` and `podnet_route_door_period_end_seconds` for the doors that have them.
@@ -15752,7 +15778,7 @@ fail that check. The steps:
 | Condition | What podnet does | Mark | Code or test |
 | --- | --- | --- | --- |
 | `HOME` is not set | The state directory is `podnet-<uid>` in the temporary directory, never the current directory | measured (test) | `crates/podnet-core/src/state.rs`; `tests/cli/startup.rs` `an_empty_environment_works` |
-| The uid has no passwd entry | podnet reads the home from `HOME` only and does not call `getpwuid`. A client (`ssh`, `git`) fails, and `ssh-keygen` exits 0 and writes no key. `podnet net doctor` shows it (`passwd entry for this uid`). `podnet net passwd-shim` gives the preload `fakepwd.so` and `SANDHOME_PASSWD` for each client | inferred; the probe and the shim: measured (test) | `crates/podnet-core/src/state.rs`; `crates/podnet-vnet/src/tailscale_ssh.rs`; `crates/podnet-vnet/src/doctor.rs` `passwd_probe_names_the_shim`; `tests/cli/net.rs` `passwd_shim_prints_the_preload` |
+| The uid has no passwd entry | podnet reads the home from `HOME` only and does not call `getpwuid`. A client (`ssh`, `git`) fails, and `ssh-keygen` writes no key (it exits 0 or 255, by its build). `podnet net doctor` shows it (`passwd entry for this uid`). `podnet net passwd-shim` gives the preload `fakepwd.so` and `SANDHOME_PASSWD` for each client | inferred; the probe and the shim: measured (test) | `crates/podnet-core/src/state.rs`; `crates/podnet-vnet/src/tailscale_ssh.rs`; `crates/podnet-vnet/src/doctor.rs` `passwd_probe_names_the_shim`; `tests/cli/net.rs` `passwd_shim_prints_the_preload` |
 | The temporary directory is `noexec` | A shim goes to the first directory that is writable and not `noexec` | inferred | `crates/podnet-core/src/state.rs` `exec_dir` |
 | A shim directory in `/tmp` exists already (another user made it) | podnet uses the directory only when it belongs to this user, is not a symlink, and other users cannot write it; else it tries the next directory. A cached library is used only when it is a file of this user that other users cannot write | measured (test) | `crates/podnet-core/src/state.rs` `exec_dir_refuses_a_directory_open_to_others`; `crates/podnet-vnet/src/shim.rs` `a_planted_library_is_not_used_from_the_cache` |
 | The state directory is read-only | podnet tries the next directory of the chain; a WARP registration does not start when no directory can be written | measured (test) | `crates/podnet-core/src/state.rs`; `src/warp/mod.rs` `register_or_load` |
