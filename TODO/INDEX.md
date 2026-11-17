@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**411 entries: 12 open, 11 partial, 37 blocked, 351 done.**
+**411 entries: 11 open, 11 partial, 37 blocked, 352 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 41 | 45 |
-| P2 | 6 | 5 | 11 | 184 | 206 |
+| P2 | 5 | 5 | 11 | 185 | 206 |
 | P3 | 6 | 4 | 24 | 125 | 159 |
-| **All** | 12 | 11 | 37 | 351 | 411 |
+| **All** | 11 | 11 | 37 | 352 | 411 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -444,7 +444,7 @@ M8 Overlays, M9 Later.
 | [T-397](fixes.md) | P2 | S | M5 | defect | done | live: two quick tunnels over WARP within a minute register two devices, and WARP answers HTTP 429 |
 | [T-398](fixes.md) | P2 | M | M5 | chore | partial | The release gate: a scenario for each experimental command |
 | [T-399](fixes.md) | P2 | S | M5 | defect | done | live: the WebSocket client of a --url origin dials a name that has no IPv4 answer yet |
-| [T-400](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.14`: the gate, the dry run, the publish and the release proofs |
+| [T-400](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.14`: the gate, the dry run, the publish and the release proofs |
 | [T-401](fixes.md) | P2 | S | M5 | defect | done | --detach and autostart stop on a host with no /proc: podnet cannot find its own file |
 | [T-402](fixes.md) | P2 | M | M5 | defect | done | a quick tunnel over quic+warp does not recover when its MASQUE session closes |
 | [T-403](later.md) | P3 | M | M9 | feature | done | link: an exec service with the exit status and stderr of its program (`exec-status:`, `link dial --status`) (GitHub #600) |

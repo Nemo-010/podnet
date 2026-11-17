@@ -17,8 +17,8 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue). The installer core in
   `scripts/install/` is that of `v0.66.0` (`core.sh`, `core-net.sh`, `pins.py`; `scripts/install/SOURCES`).
 * The newest release is `v0.4.0-beta.14` (T-400, tag at 77ed861; release run 43995458679, publish 43995461740). Its
-  `release-proofs.yml` run is 44002218263; when it passes, set T-400 to done.
-* The record is `TODO/`. `cargo todo check` agrees: 411 entries, 12 open, 11 partial, 37 blocked, 351 done.
+  `release-proofs.yml` run 44002218263 passed.
+* The record is `TODO/`. `cargo todo check` agrees: 411 entries, 11 open, 11 partial, 37 blocked, 352 done.
 
 ## Unfinished work (not on `main`)
 
@@ -45,8 +45,7 @@ None. The head is the commit of this handoff.
 
 0. Read the runs of "CI" above. Fix each failure first (a new lane case that fails on the GitHub runner is a defect of
    the case or of podnet).
-1. T-400: when `release-proofs.yml` 44002218263 passes, write the Done section of T-400 (dry run 43991044357, release
-   43995458679, publish 43995461740, proofs 44002218263) and set it to done.
+1. T-400 is done.
 2. T-406: wait for the answer of podssh on COORD-098 (#604).
 3. T-398: read the new live steps of `ssh-relay` and `warp license` (its fifth part). `net tailscale` stays experimental.
 4. T-358, what remains: the row `way-out` (a quick tunnel in `podlab run --way-out proxy-only`) is a default row now; the lane rows with `podlab run --way-out PROFILE` and `--serve PORT`, WebSocket through the

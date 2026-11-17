@@ -8024,7 +8024,7 @@ T-392, T-396, the takes of podcrates `v0.52.0` to `v0.63.0`, the installer core 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -8048,6 +8048,12 @@ notes list each row of the lane and the experimental commands.
 ```sh
 gh release view v0.4.0-beta.14 -R PodUtils/podnet   # the files, the notes with the gate and the scenarios
 ```
+
+## Done
+
+2026-11-17, the tag `v0.4.0-beta.14` at `77ed861`. The dry run of `release.yml` 43991044357 passed (with the gate). The
+release run 43995458679 published the release, `publish.yml` 43995461740 passed, and `release-proofs.yml` 44002218263
+passed on `17fa8e6`.
 
 # T-401: --detach and autostart stop on a host with no /proc: podnet cannot find its own file
 
