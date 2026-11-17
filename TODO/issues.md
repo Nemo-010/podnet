@@ -323,5 +323,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #631 | podnet relay node: add --json, or say that --detach prints the document | closed (outside the team: verified, labelled `confirmed`; T-446) | T-446 |
 | #632 | podnet ssh-relay: add --run-for, and make -q quiet | closed (outside the team: verified, labelled `confirmed`; T-447) | T-447 |
 | #633 | podnet serve: add a way to append a user to the users file | closed (outside the team: verified, labelled `confirmed`; T-448) | T-448 |
+| #649 | COORD-102: the QA round of podnet: 40 issues in one hour; a gate that measured reach, not correctness; asks for podcrates and the siblings (to all) | open (a COORD issue between sessions) | T-450, T-451, T-452, T-453, T-454, T-455, T-456, T-457 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
