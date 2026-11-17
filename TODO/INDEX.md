@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**418 entries: 12 open, 12 partial, 37 blocked, 357 done.**
+**419 entries: 11 open, 12 partial, 36 blocked, 360 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 2 | 2 | 42 | 46 |
-| P2 | 6 | 7 | 11 | 188 | 212 |
+| P1 | 0 | 2 | 2 | 43 | 47 |
+| P2 | 5 | 7 | 10 | 190 | 212 |
 | P3 | 6 | 3 | 24 | 126 | 159 |
-| **All** | 12 | 12 | 37 | 357 | 418 |
+| **All** | 11 | 12 | 36 | 360 | 419 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -370,7 +370,7 @@ M8 Overlays, M9 Later.
 | [T-323](fixes.md) | P2 | S | M5 | defect | done | live: the WebSocket step leaves its echo server, and waits 30 s for the DNS of a new name (GitHub #511) |
 | [T-324](fixes.md) | P3 | S | M5 | defect | done | doctor: the test of a refused direct dial holds its port |
 | [T-325](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.8`: the dry run, the publish and the release proofs |
-| [T-326](fixes.md) | P2 | S | M5 | chore | blocked | Remove the ignore of RUSTSEC-2023-0071 when russh takes `rsa` 0.10.0 |
+| [T-326](fixes.md) | P2 | S | M5 | chore | done | Remove the ignore of RUSTSEC-2023-0071 when russh takes `rsa` 0.10.0 |
 | [T-327](services.md) | P3 | M | M6 | feature | done | Router: add and remove a door and a network while the router runs (N-1) |
 | [T-328](services.md) | P3 | S | M6 | feature | done | Router: rules by port, also on the loopback (N-2) |
 | [T-329](services.md) | P3 | M | M6 | feature | done | `podnet exit --stdio`: a SOCKS5 exit on stdin and stdout (N-3) |
@@ -463,4 +463,5 @@ M8 Overlays, M9 Later.
 | [T-416](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.67.0 |
 | [T-417](crates.md) | P2 | S | M3 | chore | done | One durable replace of a private file: podnet's copies call `pod_core::files::replace_private` |
 | [T-418](fixes.md) | P2 | S | M5 | defect | done | ssh-relay asks for a remote forward on 0.0.0.0, and localhost.run reads it as a custom domain |
-| [T-419](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.15`: the gate, the dry run, the publish and the release proofs |
+| [T-419](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.15`: the gate, the dry run, the publish and the release proofs |
+| [T-420](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.68.0 |

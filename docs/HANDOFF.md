@@ -13,12 +13,11 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`; add
   `rustfmt`, `clippy` and the target `x86_64-unknown-linux-musl` in a new container).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.67.0` (T-416), with `pod-warp`: `src/warp/` is glue
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.68.0` (T-420), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue). The installer core in
-  `scripts/install/` is that of `v0.67.0` (`core.sh`, `core-net.sh`, `pins.py`; `scripts/install/SOURCES`).
-* The newest release is `v0.4.0-beta.14` (T-400, tag at 77ed861; release run 43995458679, publish 43995461740). Its
-  `release-proofs.yml` run 44002218263 passed.
-* The record is `TODO/`. `cargo todo check` agrees: 418 entries, 12 open, 12 partial, 37 blocked, 357 done.
+  `scripts/install/` is that of `v0.68.0` (`core.sh`, `core-net.sh`, `pins.py`; `scripts/install/SOURCES`).
+* The newest release is `v0.4.0-beta.15` (T-419, tag at `4a8c52a`).
+* The record is `TODO/`. `cargo todo check` agrees: 419 entries, 11 open, 12 partial, 36 blocked, 360 done.
 
 ## Unfinished work (not on `main`)
 
@@ -43,9 +42,7 @@ None. The head is the commit of this handoff.
 
 ## Next steps
 
-0. T-419: `v0.4.0-beta.15` is set (the version and `docs/releases/v0.4.0-beta.15.md`). When `ci` and `live` pass on its
-   commit: the dry run of `release.yml`, then `publish=v0.4.0-beta.15`, then `release-proofs.yml`.
-   Then set T-419 to done with its runs.
+0. T-419 is done: `v0.4.0-beta.15` is out (tag at `4a8c52a`).
 1. Read the runs of "CI" above. Fix each failure first (a new lane case that fails on the GitHub runner is a defect of
    the case or of podnet).
 2. T-406: wait for the answer of podssh on COORD-098 (#604).
@@ -60,7 +57,7 @@ None. The head is the commit of this handoff.
    After a change of a document, run `cargo test --bin podnet write_the_llms_files -- --ignored`. Issues #484 to #501
    are deferred by the owner: leave them open and unlabelled.
 
-Run the lane here: `sh scripts/get-podlab.sh v0.67.0 .work/podlab-v0.67.0`; build podnet; copy the binary and the
+Run the lane here: `sh scripts/get-podlab.sh v0.68.0 .work/podlab-v0.68.0`; build podnet; copy the binary and the
 podlab asset to a directory that uid 65534 can read (for example `/var/tmp/lane/`, not in `/tmp` or HOME); then as
 root: `setpriv --reuid=65534 --regid=65534 --clear-groups env -i PATH=/usr/bin:/bin HOME=OTHERDIR LANE_DIR=DIR/out sh
 scripts/lab-lane.sh PODLAB DIR/podnet [PROFILE...]`.

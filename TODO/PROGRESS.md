@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 418 entries: 12 open, 12 partial, 37 blocked, 357 done.
+`TODO/INDEX.md` holds 419 entries: 11 open, 12 partial, 36 blocked, 360 done.
 
 ## State
 
@@ -71,7 +71,7 @@ not wait for a larger one.
     `pod-acme` (wave 4).
 10b. **Networks over the new crates (podcrates v0.33.0):** T-321 (`turn://`, `pod-turn`).
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
-    (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`), T-326 (a release of `russh` that takes `rsa` 0.10.0); T-163 is
+    (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`); T-163 is
     partial (its edge leg waits for `pod-cloudflare`); and the link entries T-294, T-295.
 12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** the open entries of `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. The carriers ws, h2, quic, udp, dns, icmp and the poll carriers are done (the glue of `pod-link` v0.40.0), and the record layer of E6; the seccomp rule of a raw socket in a pod is done (`pod --allow-raw icmp`); the ARQ is done (`podnet::link_arq`). The mesh keeps the two next hops of one round in a diamond. The S3 carrier is done (`pod_link::s3` of v0.46.0, proven against the stand-in of `pod-link` of v0.47.0). Go on with the services T-294 and T-295 (blocked on `pod-egress`), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-294 and T-295 (`pod-egress`, T-127); the portable build was removed by the owner (2026-11-16). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
 13. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and

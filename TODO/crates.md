@@ -1916,3 +1916,42 @@ sh scripts/agent/check.sh
 2026-11-17, the commit of this entry. The five copies are gone; each write of a private file of podnet-core and
 `link_alias` goes through `replace_private`. `state::replace_file_does_not_follow_a_symlink` passes on the new code
 (the symlink is replaced, the target keeps its text, no temporary file stays). `sh scripts/agent/check.sh` passes.
+
+# T-420: Take podcrates v0.68.0
+
+**Source:** PodUtils/podcrates#219 (COORD-129, 2026-11-17): the tag `v0.68.0` at `4efa604`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet takes the crates of podcrates by the tag `v0.67.0`. The tag `v0.68.0` brings webpki-roots 1.0.12 and `rsa` 0.10
+in `pod-tls` (their entries 840 and 841), the liveness offer of a relay, and the headers of Cloudflare Access in
+`pod-ws`. New fields have defaults; no public API breaks.
+
+## Premise
+
+- `adoption/podnet/` at the tag has no hand-off for podnet: the trial of `pod-cloudflare` waits for the next tag.
+- The tag asks each consumer for `cargo update -p webpki-roots` and a russh that takes `rsa` 0.10.0 (russh 0.65.2).
+
+## Approach
+
+1. Each `pod-*` dependency names the tag `v0.68.0` and the version `0.68.0`; the lock files, `scripts/install/SOURCES`
+   and `issue-sync.yml` follow.
+2. `cargo update -p webpki-roots` and `cargo update -p russh --precise 0.65.2` in both lock files (T-326).
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+cargo deny --locked check advisories bans sources   # the deny workflow
+```
+
+## Done
+
+2026-11-17, the commit of this entry. The tag `v0.68.0` (commit `4efa604`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`; the installer core has the same SHA-256.
+webpki-roots 1.0.11 -> 1.0.12, russh 0.65.1 -> 0.65.2, `rsa` 0.10.0-rc.18 -> 0.10.0. `sh scripts/agent/check.sh` passes.

@@ -5426,7 +5426,7 @@ RUSTSEC-2023-0071; the first `deny` run 43295725441 failed on it). On 97687dc: `
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -5459,9 +5459,17 @@ No fixed version is reachable, and podnet does not make RSA keys.
 cargo deny --locked check advisories bans sources
 ```
 
-## Blocker
+## Correction
 
-Each russh release up to 0.65.1 pins `rsa = "=0.10.0-rc.18"`. A russh release that takes `rsa` 0.10.0 ends the block.
+2026-11-17: the block ended. Each russh release up to 0.65.1 pinned `rsa = "=0.10.0-rc.18"`; russh 0.65.2 takes `rsa`
+0.10.0.
+
+## Done
+
+2026-11-17, the commit of this entry (with the take of podcrates `v0.68.0`, T-420). russh 0.65.2 takes `rsa` 0.10.0
+(`cargo update -p russh --precise 0.65.2`: `rsa` 0.10.0-rc.18 -> 0.10.0, `pkcs1` 0.8.0-rc.4 -> 0.8.0, `ssh-key`
+0.7.0-rc.11 -> 0.7.0-rc.12). The advisory names `>= 0.10.0` patched. `deny.toml` has `ignore = []`. The proof is the
+`deny` workflow of the push (`cargo deny` is not installed in this container).
 
 # T-331: Publish `v0.4.0-beta.9`: the dry run, the publish and the release proofs
 
@@ -8488,7 +8496,7 @@ through the relay (try 1)`.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -8511,3 +8519,10 @@ The fixes and features of the batch are on `main` (ci and live passed on `324817
 ```sh
 gh release view v0.4.0-beta.15 -R PodUtils/podnet   # the files, the notes with the gate and the scenarios
 ```
+
+## Done
+
+2026-11-17, the tag `v0.4.0-beta.15` at `4a8c52a`. ci 44046524678 and live 44046524676 passed on it. The dry run of
+`release.yml` 44048483522 passed (with the gate). The release run 44053595040 published the release (17 files),
+`publish.yml` 44053599483 passed, and `release-proofs.yml` 44056728232 passed.
+
