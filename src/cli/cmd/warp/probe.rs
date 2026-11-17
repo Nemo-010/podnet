@@ -8,6 +8,14 @@ use podnet::exit::{Fault, ResultExt};
 use super::{WarpArgs, WarpCommand};
 use crate::cli::cmd::tunnel::split_host_port;
 
+/// The hint of `warp scan` for the front door `best` (#627): a command that
+/// runs as printed. The flag is an option of each WARP subcommand.
+pub(super) fn scan_hint(best: &str) -> String {
+    format!(
+        "podnet warp up --masque-endpoint {best}  (or warp proxy, run, tun, probe with the same flag)"
+    )
+}
+
 /// The probe subcommands of `podnet warp`.
 pub(crate) async fn run(args: WarpArgs, client: podnet::warp::WarpClient) -> Result<()> {
     match args.command {
@@ -57,7 +65,7 @@ pub(crate) async fn run(args: WarpArgs, client: podnet::warp::WarpClient) -> Res
                     }
                 }
                 if let Some((best, _)) = results.iter().find(|(_, r)| r.is_ok()) {
-                    println!("use         podnet warp --masque-endpoint {best} ...");
+                    println!("use         {}", scan_hint(&best.to_string()));
                 }
             }
             if ok == 0 {

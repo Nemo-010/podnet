@@ -1,7 +1,7 @@
 use super::account::plain_value;
 use super::args::non_empty_key;
 use super::client::identity_pairs;
-use super::probe::parse_door;
+use super::probe::{parse_door, scan_hint};
 use super::up::{warp_up_args, warp_up_tun_args};
 use super::WarpCommand;
 use crate::cli::{Cli, Command};
@@ -129,4 +129,13 @@ fn warp_license_and_status_fields() {
     assert_eq!(podnet::warp::identity::warp_plus_label(&free), "no");
     let plus = serde_json::json!({"account_type": "limited", "premium_data": 10});
     assert_eq!(podnet::warp::identity::warp_plus_label(&plus), "yes");
+}
+
+// #627: the hint of warp scan is a command that parses as printed.
+#[test]
+fn the_scan_hint_is_a_command() {
+    let hint = scan_hint("162.159.198.2:443");
+    let command = hint.split("  (").next().unwrap();
+    let parsed = Cli::try_parse_from(command.split_whitespace());
+    assert!(parsed.is_ok(), "{command}: {:?}", parsed.err());
 }
