@@ -997,8 +997,8 @@ the relay (`tcp.ssh.relay.ajam.dev`) breaks the relay commands with no warning.
 
 ## Premise
 
-- `tools/check-upstream.py` and `src/cloudflare/cloudflared-pin.txt` watch the copied parts of
-  cloudflared each week (`.github/workflows/upstream.yml`).
+- `PodUtils/podnet@7fe60e0:tools/check-upstream.py` and `PodUtils/podnet@7fe60e0:src/cloudflare/cloudflared-pin.txt` watch the copied parts of
+  cloudflared each week (`PodUtils/podnet@7fe60e0:.github/workflows/upstream.yml`).
 - podssh watches the relay contract against pinned facts
   (`Azathothas/podssh:scripts/check-relay-spec.py`).
 - `CLAUDE.md` says: read GitHub through the services of `https://web.pkgforge.dev/llms.txt`.
@@ -1006,12 +1006,12 @@ the relay (`tcp.ssh.relay.ajam.dev`) breaks the relay commands with no warning.
 ## Approach
 
 1. Write a pin file beside each podssh copy: the source path, the podssh commit and the SHA-256.
-2. Write a watch script from `tools/check-upstream.py`. It reads podssh `main` through
+2. Write a watch script from `PodUtils/podnet@7fe60e0:tools/check-upstream.py`. It reads podssh `main` through
    `forge.web.pkgforge.dev` and names each source that changed. A changed file becomes an entry,
    not a copy. `--plant-sum` must fail.
 3. Write the facts of the relay paths that podnet uses (`/v1/pair`, `/v1/node`, `/v1/connect`,
    the mint and the limits) and check them against `https://tcp.ssh.relay.ajam.dev/llms-full.txt`.
-4. Run both in `.github/workflows/upstream.yml`.
+4. Run both in `PodUtils/podnet@7fe60e0:.github/workflows/upstream.yml`.
 
 ## Decision
 
@@ -1574,7 +1574,7 @@ or a chain member that ends a leg.
 ## Premise
 
 - It contradicts T-096: "One flow uses one uplink". Adopting it changes that contract (owner; see Decision).
-- `crates/podnet-core/src/race.rs:54` is the per-leg primitive; `src/warp/forward.rs` ends one leg and re-dials the other.
+- `PodUtils/podnet@7fe60e0:crates/podnet-core/src/race.rs:54` is the per-leg primitive; `src/warp/forward.rs` ends one leg and re-dials the other.
 
 ## Approach
 
@@ -1647,7 +1647,7 @@ Left, with the reason.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -1662,18 +1662,18 @@ it to the origin and records a new exchange that names the first.
 ## Premise
 
 - Implement from the description, not from the donor source (MPL-2.0). Describe the behaviour only.
-- The code is in `src/proxy.rs`: `forward_http` (`src/proxy.rs:284`), `proxy_bidi` (`src/proxy.rs:354`),
-  `forward_tcp` (`src/proxy.rs:389`), `build_request_head` (`src/proxy.rs:842`), `read_response_head`
-  (`src/proxy.rs:1013`), `copy_futures_to_tokio_n` (`src/proxy.rs:1065`), `copy_tokio_to_futures_n`
-  (`src/proxy.rs:1108`), `copy_tokio_to_futures_eof` (`src/proxy.rs:1135`), `copy_chunked_to_futures`
-  (`src/proxy.rs:1160`). Each helper takes `metrics: &Metrics`, so a sink beside it sees each body byte.
+- The code is in `PodUtils/podnet@7fe60e0:src/proxy.rs`: `forward_http` (`PodUtils/podnet@7fe60e0:src/proxy.rs:284`), `proxy_bidi` (`PodUtils/podnet@7fe60e0:src/proxy.rs:354`),
+  `forward_tcp` (`PodUtils/podnet@7fe60e0:src/proxy.rs:389`), `build_request_head` (`PodUtils/podnet@7fe60e0:src/proxy.rs:842`), `read_response_head`
+  (`PodUtils/podnet@7fe60e0:src/proxy.rs:1013`), `copy_futures_to_tokio_n` (`PodUtils/podnet@7fe60e0:src/proxy.rs:1065`), `copy_tokio_to_futures_n`
+  (`PodUtils/podnet@7fe60e0:src/proxy.rs:1108`), `copy_tokio_to_futures_eof` (`PodUtils/podnet@7fe60e0:src/proxy.rs:1135`), `copy_chunked_to_futures`
+  (`PodUtils/podnet@7fe60e0:src/proxy.rs:1160`). Each helper takes `metrics: &Metrics`, so a sink beside it sees each body byte.
 - One stream carries one request, and the framing code already decodes the response: no request parser is
   needed. `forward_tcp` answers an HTTP request to a raw TCP origin with 501: do not capture there.
-- The dial is `origin::dial::dial` (`src/proxy.rs:308`, `src/proxy.rs:410`, `src/ws.rs:112`). `Origin::connect`
+- The dial is `origin::dial::dial` (`PodUtils/podnet@7fe60e0:src/proxy.rs:308`, `PodUtils/podnet@7fe60e0:src/proxy.rs:410`, `PodUtils/podnet@7fe60e0:src/ws.rs:112`). `Origin::connect`
   (`crates/podnet-serve/src/origin/mod.rs`) has no caller outside its own module (a grep of `src`, `crates`
   and `tests`), so a decorator on it would see no traffic.
 - No capture and no request log exist in the tunnel path (a grep for `inspect`).
-- The socket: `claim_socket_path` (`crates/podnet-core/src/net.rs:21`), the check of the peer uid with
+- The socket: `claim_socket_path` (`crates/podnet-core/src/net.rs:20`), the check of the peer uid with
   `SO_PEERCRED` (`crates/podnet-vnet/src/switch.rs:264-270`), and `instances::lookup_dir`
   (`crates/podnet-core/src/instances.rs:81`).
 - `src/proxy.rs` and `src/tunnel.rs` go to `pod-cloudflare` (T-052). Podnet does not develop a new feature
@@ -1700,7 +1700,7 @@ it to the origin and records a new exchange that names the first.
 4. Redaction by default: replace the value of `authorization`, `proxy-authorization`, `cookie`,
    `set-cookie` and each header whose name contains `token`, `secret` or `key` with `[redacted]` in the
    stored copy; the forward keeps the real value. `--inspect-raw` keeps the values and prints one warning
-   line at the start. A request refused by the credential of the tunnel (`src/proxy.rs:134-156`) is not
+   line at the start. A request refused by the credential of the tunnel (`PodUtils/podnet@7fe60e0:src/proxy.rs:134-156`) is not
    captured.
 5. Access: `inspect.sock` in a private directory of the run directory, mode 0600, with the check of the peer
    uid. Commands: `podnet tunnel inspect ls [--json]`, `show ID`, `replay ID`, `clear`. `replay` sends the
@@ -1728,15 +1728,15 @@ line `ffffffffffffffff` and closes: the exchange ends with an error as today, wi
 holds the partial record marked `incomplete`. Another uid cannot connect to `inspect.sock`, and its mode is
 0600.
 
-## Blocker
-
-The session of `PodUtils/podcrates` (the crate `pod-cloudflare`, T-052): `src/proxy.rs` moves there, and
-podnet does not develop new features in that code. The entry is unblocked when podnet takes `pod-cloudflare`
-and the crate holds `forward_http`.
-
 ## Start condition
 
 Podnet holds `pod-cloudflare`, and the crate holds `forward_http`.
+
+## Correction
+
+2026-11-17: the start condition holds. podnet took `pod-cloudflare` (T-423), and the crate holds `forward_http`. The
+block of the session of podcrates ended. The capture sink of step 2 sits in the copy helpers of the crate: step 7
+(the COORD issue to podcrates) is the first step of the work.
 
 # T-248: Router: a guest-wire router that ends guest TCP on smoltcp
 

@@ -17,7 +17,7 @@ use podnet::{Service, Transport, Tunnel};
 
 /// The `lib.rs` example: a quick tunnel around an HTTP origin.
 async fn quick_tunnel_example() -> anyhow::Result<()> {
-    let handle = Tunnel::quick()
+    let handle = Tunnel::quick(podnet::tunnel::host()?)
         .service(Service::parse("http://127.0.0.1:8080")?)
         .build()?
         .start()
@@ -30,7 +30,7 @@ async fn quick_tunnel_example() -> anyhow::Result<()> {
 /// The same, with the transport chosen explicitly.
 async fn explicit_transport_example() -> anyhow::Result<()> {
     for transport in [Transport::Auto, Transport::Direct, Transport::Warp] {
-        let handle = Tunnel::quick()
+        let handle = Tunnel::quick(podnet::tunnel::host()?)
             .service(Service::parse("http://127.0.0.1:8080")?)
             .transport(transport)
             .build()?

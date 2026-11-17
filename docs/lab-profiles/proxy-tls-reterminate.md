@@ -50,7 +50,7 @@ server for another), a time in `ssh-port-silent`, and `podnet` in `source`.
   `tests/tls.rs`). With no extra root, the check of the certificate fails
   and the error names the issuer (`src/doctor/tls_check.rs`, `issuer_of`).
   Inferred, not measured on a real re-terminating proxy.
-* The edge (`h2_sni()`, `src/cloudflare/`, `src/edge_h2.rs`) and MASQUE need
+* The edge (`h2_sni()` of `pod-cloudflare`) and MASQUE need
   the Cloudflare chain (MASQUE also a client certificate). Through a proxy
   that re-terminates them, they cannot work (`docs/target-environment.md`,
   Other host conditions: inferred).

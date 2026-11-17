@@ -7,7 +7,7 @@ pub use podnet_core::report::*;
 
 /// The line that podnet prints for the error `err`: masked and clean.
 pub fn error_line(err: &anyhow::Error) -> String {
-    let mut line = format!("podnet: {}", clean(&mask(&format!("{err:#}"))));
+    let mut line = format!("podnet: {}", clean(&mask(&chain_text(err))));
     if let Some(hint) = pod_tls::clock_hint(&format!("{err:#} {err:?}")) {
         line.push_str("\npodnet: ");
         line.push_str(&hint);
@@ -26,9 +26,51 @@ pub fn error_line(err: &anyhow::Error) -> String {
     line
 }
 
+/// The text of `err` and of each cause, joined with `: `, as `{:#}`
+/// gives it. A cause whose text is in the line already is not named again:
+/// a failure of a crate of podcrates holds the text of its causes
+/// (`pod_core::Failure::chain`).
+pub fn chain_text(err: &anyhow::Error) -> String {
+    let mut out = String::new();
+    for cause in err.chain() {
+        let text = cause.to_string();
+        if out.is_empty() {
+            out = text;
+        } else if !out.contains(&text) {
+            out.push_str(": ");
+            out.push_str(&text);
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A failure of a crate that holds the text of its cause is not said
+    /// twice.
+    #[test]
+    fn a_cause_is_said_once() {
+        let inner = pod_core::Failure::new(
+            pod_core::Stage::Network,
+            pod_core::Class::Unavailable,
+            "reset",
+        );
+        let outer = pod_core::Failure::caused(
+            pod_core::Stage::Network,
+            pod_core::Class::Unavailable,
+            "POST https://x/tunnel: reset",
+            inner,
+        );
+        let err = anyhow::Error::new(outer).context("provisioning quick tunnel");
+        assert_eq!(
+            chain_text(&err),
+            "provisioning quick tunnel: POST https://x/tunnel: reset"
+        );
+        let plain = anyhow::anyhow!("a").context("b");
+        assert_eq!(chain_text(&plain), format!("{plain:#}"));
+    }
 
     // Issue 178: a 502 of the proxy names the destination, not the proxy.
     #[test]

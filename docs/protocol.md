@@ -57,8 +57,8 @@ The edge addresses come from the SRV record
   sent as the SNI, the handshake completes key derivation and then stops.
 * The edge certificate chains to Cloudflare roots that are not in public
   trust stores. The roots are the fact `roots` of the edge of `pod-services`
-  (PodUtils/podcrates), the certificates of `src/cloudflare/cf-edge-roots.pem`
-  (from `tlsconfig/cloudflare_ca.go`). Without them, TLS fails with
+  (PodUtils/podcrates), the certificates of `cloudflare/cf-edge-roots.pem` of
+  `pod-cloudflare` (from `tlsconfig/cloudflare_ca.go`). Without them, TLS fails with
   `UnknownIssuer`.
 * Port 443 of the edge does not serve the tunnel service: TLS there is
   TLS 1.2, and its chain does not end at the edge roots (section 6). So
@@ -135,8 +135,8 @@ connection. IPv4 addresses stay before IPv6 addresses.
 * Limits: the HTTP/2 handshake after TLS has a time limit of 10 seconds.
   The edge can open 256 streams at the same time, as on QUIC.
 
-`tools/check-header-oracle.sh` compares the header encoding of `podnet` with the
-Go function `SerializeHeaders` of cloudflared.
+`tools/check-header-oracle.sh` of `pod-cloudflare` compares the header encoding
+with the Go function `SerializeHeaders` of cloudflared.
 
 ### 3.3 Leg order
 
@@ -247,8 +247,9 @@ A visitor stream starts with a 6-byte signature (`0A 36 CD 12 A1 3E`), the
 
 `podnet` answers with the same preamble and a capnp `ConnectResponse` (`error`,
 `metadata`). After that, the stream is a byte pipe. The schemas are in
-`src/cloudflare/schemas/`. `src/cloudflare/capnp.rs` implements the Cap'n
-Proto encoding and `src/cloudflare/rpc.rs` the RPC subset (section 3.1).
+`cloudflare/schemas/` of `pod-cloudflare`. Its `cloudflare/capnp.rs` implements
+the Cap'n Proto encoding and its `cloudflare/rpc.rs` the RPC subset (section
+3.1).
 
 In the response metadata, the status is the entry `HttpStatus`. Each header
 must be an entry `HttpHeader:<Name>`. The edge drops a key without the prefix.

@@ -515,7 +515,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- `src/ws.rs` has `serve_websocket` (`src/ws.rs:95`), `dial` (`src/ws.rs:151`) and `bridge`. It is the thin wrapper of `pod-ws` (taken at 5eace6e). `pod-ws` has the client, the server (`PodUtils/podcrates:crates/pod-ws/src/server.rs`), the limits and the bridge.
+- `PodUtils/podnet@7fe60e0:src/ws.rs` has `serve_websocket` (`PodUtils/podnet@7fe60e0:src/ws.rs:95`), `dial` (`PodUtils/podnet@7fe60e0:src/ws.rs:151`) and `bridge`. It is the thin wrapper of `pod-ws` (taken at 5eace6e). `pod-ws` has the client, the server (`PodUtils/podcrates:crates/pod-ws/src/server.rs`), the limits and the bridge.
 - The relay uses the client in `src/ws_relay.rs` (frozen: it goes to `pod-relay`).
 - No carrier wraps a WebSocket session as a link carrier.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
@@ -567,7 +567,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- `src/edge_h2.rs` speaks HTTP/2 to one service: `serve_connection` (`src/edge_h2.rs:419`), `connect` (`src/edge_h2.rs:580`), `body_reader` and `body_writer` (`:855`, `:883`). It does not speak to a peer.
+- `PodUtils/podnet@7fe60e0:src/edge_h2.rs` speaks HTTP/2 to one service: `serve_connection` (`PodUtils/podnet@7fe60e0:src/edge_h2.rs:419`), `connect` (`PodUtils/podnet@7fe60e0:src/edge_h2.rs:580`), `body_reader` and `body_writer` (`PodUtils/podnet@7fe60e0:src/edge_h2.rs:855`, `PodUtils/podnet@7fe60e0:src/edge_h2.rs:883`). It does not speak to a peer.
 - `h2` 0.4 is a direct dependency (`Cargo.toml`).
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
 
@@ -866,7 +866,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- No in-process duplex carrier exists. `src/edge_h2.rs:855` uses `tokio::io::DuplexStream` for a body, not as a carrier.
+- No in-process duplex carrier exists. `PodUtils/podnet@7fe60e0:src/edge_h2.rs:855` uses `tokio::io::DuplexStream` for a body, not as a carrier.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
 
 ## Approach
@@ -2006,7 +2006,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- The proxy exists in `src/proxy.rs` (`serve_stream`, `src/proxy.rs:43`) and in the front door of `crates/podnet-netns/src/frontdoor.rs`. A peer-scoped name target does not exist.
+- The proxy exists in `PodUtils/podnet@7fe60e0:src/proxy.rs` (`serve_stream`, `PodUtils/podnet@7fe60e0:src/proxy.rs:43`) and in the front door of `crates/podnet-netns/src/frontdoor.rs`. A peer-scoped name target does not exist.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
 
 ## Approach

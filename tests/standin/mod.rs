@@ -1,104 +1,37 @@
-//! Test support (T-316): a stand-in of the quick-tunnel service and of the
-//! Cloudflare edge, so that a test runs the quick tunnel with no call to
-//! Cloudflare.
-//!
-//! * [`api`]: `POST /tunnel` on the loopback, with a 429 mode.
-//! * [`edge`]: TLS on TCP, HTTP/2, `registerConnection`, visitor streams.
-//! * [`front`]: an HTTP server that maps the `Host` of a visitor to a tunnel.
-//! * [`ca`]: a test CA, made at run time. podnet trusts it through
-//!   `SSL_CERT_FILE`, which podnet already reads. No hook is in the code of
-//!   podnet.
-//! * [`proxy`]: a CONNECT proxy that keeps the authorities.
-//!
-//! The stand-in tests podnet against the protocol as podnet reads it. It
-//! does not show that the real edge accepts a change (`docs/research/podnet/
-//! cf-edge-standins.md`, section 7). It has no QUIC leg yet.
-//!
-//! Include it in a test file with `mod standin;`. Each test that uses it
-//! starts with `test_host::need_loopback!()`.
+//! The stand-in of the quick-tunnel service and of the edge is
+//! pod-cloudflare's (feature `standin`). This file runs the binary of podnet
+//! against it: the stand-in API as `--service-url`, its edge in
+//! `PODNET_EDGE`, its CA in `SSL_CERT_FILE`.
 
 #![allow(dead_code, unused_imports)]
 
-pub mod api;
-pub mod ca;
-pub mod edge;
-pub mod front;
-pub mod proxy;
-
 use std::io::{BufRead as _, Read as _, Write as _};
-use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-pub use api::Answer;
-pub use edge::Reply;
+pub use pod_cloudflare::standin::{Answer, Reply, Standin};
 
-/// The stand-ins, on the loopback, and the directory of a test.
-pub struct Standin {
-    runtime: Option<tokio::runtime::Runtime>,
-    pub api: Arc<api::Api>,
-    pub api_url: String,
-    pub edge: Arc<edge::Edge>,
-    pub edge_addr: SocketAddr,
-    pub front_addr: SocketAddr,
-    pub dir: tempfile::TempDir,
-    pub ca_file: PathBuf,
+/// The commands of podnet against a stand-in.
+pub trait Cli {
+    /// The run directory of the detached instances of a test.
+    fn run_dir(&self) -> PathBuf;
+    /// The binary of podnet with `args`, against the stand-in: no proxy
+    /// variable, no UDP, the edge and the CA of the stand-in.
+    fn podnet(&self, args: &[&str]) -> Command;
+    /// `podnet tunnel` with `args`, on the stand-in API, HTTP/2, direct,
+    /// with no check of the URL.
+    fn tunnel(&self, args: &[&str]) -> Command;
 }
 
-impl Standin {
-    pub fn start() -> Standin {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(2)
-            .enable_all()
-            .build()
-            .expect("a runtime for the stand-in");
-        let dir = tempfile::tempdir().expect("a directory");
-        let ca = ca::Ca::new();
-        let ca_file = dir.path().join("standin-ca.pem");
-        std::fs::write(&ca_file, &ca.pem).unwrap();
-        let api = api::Api::new();
-        let edge = edge::Edge::new(api.clone());
-        let (api_addr, edge_addr, front_addr) = runtime.block_on(async {
-            let api_addr = api::serve(api.clone()).await;
-            let (listener, edge_addr) = edge::listen().await;
-            let names = [podnet::cloudflare::h2_sni(), podnet::cloudflare::quic_sni()];
-            edge::serve(edge.clone(), listener, ca.server_config(&names));
-            let front_addr = front::serve(edge.clone()).await;
-            (api_addr, edge_addr, front_addr)
-        });
-        Standin {
-            runtime: Some(runtime),
-            api,
-            api_url: format!("http://{api_addr}"),
-            edge,
-            edge_addr,
-            front_addr,
-            dir,
-            ca_file,
-        }
-    }
-
-    /// Run a future of the stand-in to its end.
-    pub fn block_on<F: std::future::Future>(&self, future: F) -> F::Output {
-        self.runtime.as_ref().unwrap().block_on(future)
-    }
-
-    /// A CONNECT proxy on the loopback.
-    pub fn proxy(&self) -> (SocketAddr, proxy::Log) {
-        self.block_on(proxy::serve())
-    }
-
-    /// The directory of `podnet ps` and `podnet stop` for this test.
-    pub fn run_dir(&self) -> PathBuf {
+impl Cli for Standin {
+    fn run_dir(&self) -> PathBuf {
         self.dir.path().join("run")
     }
 
-    /// `podnet ARGS` against the stand-ins: the service, the edge, the test
-    /// CA, and no proxy from the environment of the test.
-    pub fn podnet(&self, args: &[&str]) -> Command {
+    fn podnet(&self, args: &[&str]) -> Command {
         let mut command = Command::new(env!("CARGO_BIN_EXE_podnet"));
         command.args(args);
         for name in [
@@ -125,10 +58,7 @@ impl Standin {
         command
     }
 
-    /// `podnet tunnel` with the flags of the HTTP/2 leg against the
-    /// stand-ins: `ARGS` follow. No verify: the public name is not in the
-    /// DNS.
-    pub fn tunnel(&self, args: &[&str]) -> Command {
+    fn tunnel(&self, args: &[&str]) -> Command {
         let mut all = vec![
             "tunnel",
             "--service-url",
@@ -141,49 +71,6 @@ impl Standin {
         ];
         all.extend_from_slice(args);
         self.podnet(&all)
-    }
-
-    /// A request from a visitor, through the front. `host` is the `Host`.
-    /// Gives the status, the headers and the body.
-    pub fn visit(
-        &self,
-        host: &str,
-        path: &str,
-        headers: &[(&str, &str)],
-    ) -> (u16, Vec<(String, String)>, String) {
-        let mut stream = std::net::TcpStream::connect(self.front_addr).expect("the front");
-        stream
-            .set_read_timeout(Some(Duration::from_secs(20)))
-            .unwrap();
-        let mut request = format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n");
-        for (name, value) in headers {
-            request.push_str(&format!("{name}: {value}\r\n"));
-        }
-        request.push_str("\r\n");
-        stream.write_all(request.as_bytes()).unwrap();
-        let mut raw = Vec::new();
-        stream.read_to_end(&mut raw).unwrap();
-        let text = String::from_utf8_lossy(&raw).to_string();
-        let (head, body) = text.split_once("\r\n\r\n").unwrap_or((&text, ""));
-        let mut lines = head.lines();
-        let status = lines
-            .next()
-            .and_then(|l| l.split_whitespace().nth(1))
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(0);
-        let headers = lines
-            .filter_map(|l| l.split_once(':'))
-            .map(|(n, v)| (n.trim().to_string(), v.trim().to_string()))
-            .collect();
-        (status, headers, body.to_string())
-    }
-}
-
-impl Drop for Standin {
-    fn drop(&mut self) {
-        if let Some(runtime) = self.runtime.take() {
-            runtime.shutdown_background();
-        }
     }
 }
 

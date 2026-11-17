@@ -34,8 +34,8 @@ cargo test --workspace -- --list 2>/dev/null | grep -c ': test$'
 ## Problem
 
 Nine files are over 800 lines only because of their test module: `src/config.rs`,
-`src/cloudflare/http2.rs`, `crates/podnet-vnet/src/switch.rs`, `src/warp/up.rs`,
-`crates/podnet-netns/src/upstream.rs`, `src/ws_relay.rs`, `src/cloudflare/capnp.rs`,
+`PodUtils/podnet@7fe60e0:src/cloudflare/http2.rs`, `crates/podnet-vnet/src/switch.rs`, `src/warp/up.rs`,
+`crates/podnet-netns/src/upstream.rs`, `src/ws_relay.rs`, `PodUtils/podnet@7fe60e0:src/cloudflare/capnp.rs`,
 `src/warp/register.rs` and `src/quicktunnel.rs`.
 
 ## Premise
@@ -67,7 +67,7 @@ T-008 and T-009 are done.
 
 ## Correction
 
-2026-11-05, The named modules `src/config.rs`, `src/cloudflare/http2.rs`, `src/cloudflare/capnp.rs`, `src/quicktunnel.rs`, `src/warp/up.rs`, `src/warp/register.rs` and `src/ws_relay.rs` move to PodUtils/podcrates (`pod-cloudflare`, `pod-warp` and `pod-relay`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `crates/podnet-vnet/src/switch.rs` and `crates/podnet-netns/src/upstream.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
+2026-11-05, The named modules `src/config.rs`, `PodUtils/podnet@7fe60e0:src/cloudflare/http2.rs`, `PodUtils/podnet@7fe60e0:src/cloudflare/capnp.rs`, `src/quicktunnel.rs`, `src/warp/up.rs`, `src/warp/register.rs` and `src/ws_relay.rs` move to PodUtils/podcrates (`pod-cloudflare`, `pod-warp` and `pod-relay`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `crates/podnet-vnet/src/switch.rs` and `crates/podnet-netns/src/upstream.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
 
 ## Done
 
@@ -772,7 +772,7 @@ after. check.sh passes. CI: at the merge.
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -806,6 +806,11 @@ T-008 and T-009 are done.
 ## Correction
 
 2026-11-05, The named modules `src/edge_h2.rs` and `src/tunnel.rs` move to PodUtils/podcrates (`pod-cloudflare`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. No file of this entry stays in podnet. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
+
+## Done
+
+2026-11-17, by the move of T-052 (T-423): `src/tunnel.rs` has 299 lines and `src/edge_h2.rs` 3; the edge
+code is in `pod-cloudflare`.
 
 # T-040: Split the seccomp backend and the netns backend of the pod crate
 
@@ -959,7 +964,7 @@ to `rpc::Refused`; `report` uses `quicktunnel::retry_of`; `detach` uses `update:
    connectors move to the origin module, with a `pub use` in `net`.
 2. Change the doc link of `crates/podnet-core/src/util/mod.rs`.
 3. Move `MAX_HEADERS` to `crates/podnet-core/src/util/http.rs`. `src/proxy.rs` re-exports it.
-4. Tag the hop at the error site in `src/cloudflare/rpc.rs`, or move a marker type `Refused` to
+4. Tag the hop at the error site in `PodUtils/podnet@7fe60e0:src/cloudflare/rpc.rs`, or move a marker type `Refused` to
    `crates/podnet-core/src/hop.rs`.
 5. Move a type `Refusal` (status, code, retry_after_s) to the core. `src/quicktunnel.rs` attaches
    it to its error. `crates/podnet-core/src/report.rs` reads it by downcast.
@@ -993,7 +998,7 @@ the start. Cut only the references that stay in podnet.
 `src/update.rs`), b87ba27 and 22b00a2 (`net -> ingress`: `dial`, `origin_label`, the TLS connectors
 and `note_unverified` in `crates/podnet-serve/src/origin/dial.rs`; the tests stay in `crates/podnet-core/src/net.rs`), 42a9c93
 (`util -> feature`: the doc names `StaticResponse` as text), ffddf71 (`hop -> cloudflare`: the type
-`Refused` in `crates/podnet-core/src/hop.rs`, a `pub use` in `src/cloudflare/rpc.rs`) and c154ccf
+`Refused` in `crates/podnet-core/src/hop.rs`, a `pub use` in `PodUtils/podnet@7fe60e0:src/cloudflare/rpc.rs`) and c154ccf
 (`report -> quicktunnel`: the type `Refusal` in `crates/podnet-core/src/report.rs`; the binary gives
 `quicktunnel::retry_of` to `report::read_refusals_with`; a `pub use` in `src/quicktunnel.rs`).
 The rows of `fetch` and `relay_reverse` were not in `scripts/layers-allow.txt` at the start
@@ -1131,7 +1136,7 @@ references that stay in podnet (for example `ShareLink` and `RULE_KEYS`).
 **Milestone:** M2
 **Priority:** P2
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1182,7 +1187,7 @@ the files by take:
 - T-049 (`pod-relay`): `src/relay_reverse.rs` (891), `src/ws_relay.rs` (994).
 - T-050 (`pod-warp`): `src/warp/ip.rs` (1680), `src/warp/mod.rs` (1002), `src/warp/proxy.rs` (1870),
   `src/warp/register.rs` (855), `src/warp/session.rs` (1211), `src/warp/up.rs` (817).
-- T-052 (`pod-cloudflare`): `src/cloudflare/capnp.rs` (944), `src/cloudflare/http2.rs` (1123),
+- T-052 (`pod-cloudflare`): `PodUtils/podnet@7fe60e0:src/cloudflare/capnp.rs` (944), `PodUtils/podnet@7fe60e0:src/cloudflare/http2.rs` (1123),
   `src/config.rs` (1206), `src/edge_h2.rs` (1608), `src/proxy.rs` (2034), `src/quicktunnel.rs` (850),
   `src/tunnel.rs` (1404).
 
@@ -1196,3 +1201,8 @@ and the take of `pod-ws` (T-137). Each is a reference inside a frozen file.
 `check-layers`: 0 faults). The largest file is `src/proxy.rs` (2034 lines). No file is split and no
 allowlist row is removed: each row waits for a take (the Correction). The entry stays `partial` until
 T-049, T-050 and T-052 have moved the files.
+
+2026-11-17, with the take of `pod-cloudflare` (T-423). The tests of `src/warp/up.rs` moved to `src/warp/up/tests.rs`
+(576 and 242 lines). `src/warp/quic.rs` takes the edge roots and the QUIC transport from `pod_cloudflare` itself, not
+from podnet's module `cloudflare`. `scripts/size-allow.txt` and `scripts/layers-allow.txt` have no entry:
+`python3 scripts/check-size.py` (0 allowlisted, 0 faults) and `python3 scripts/check-layers.py` (0 faults).

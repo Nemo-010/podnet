@@ -176,8 +176,10 @@ impl TunnelOpts {
                 podnet::ws_relay::Relay::from_env(Some(&self.relay)).fault(Fault::Usage)?,
             );
         }
-        config.warp_identity = self.warp_identity.clone();
-        config.masque_endpoint = self.masque_endpoint;
+        podnet::tunnel::set_warp(podnet::tunnel::WarpOptions {
+            identity: self.warp_identity.clone(),
+            masque_endpoint: self.masque_endpoint,
+        });
         config.verify = !self.no_verify;
         config.failover = podnet::race::Failover::parse(&self.leg_failover)?;
         Ok(config)

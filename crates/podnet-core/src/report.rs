@@ -332,18 +332,8 @@ impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for TeeStderr {
 }
 
 /// The refusal of a provision in an error chain (issue 210): what a
-/// supervisor needs, as fields, not as text.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Refusal {
-    /// The HTTP status.
-    pub status: u16,
-    /// The Cloudflare error code of the body (`error code: 1015`).
-    pub code: Option<u32>,
-    /// The `Retry-After` of the answer, in seconds.
-    pub retry_after_s: Option<u64>,
-    /// True for 429 and 5xx: a later try can work.
-    pub retryable: bool,
-}
+/// supervisor needs, as fields, not as text. pod-cloudflare gives it.
+pub use pod_cloudflare::quicktunnel::Refusal;
 
 /// The function that finds a [`Refusal`] in an error chain. The binary
 /// sets it (the quick tunnel of the Cloudflare adapter).
@@ -499,6 +489,7 @@ pub fn log_filter(level: &str) -> String {
         "pod_e2e",
         "pod_wormhole",
         "pod_extract",
+        "pod_cloudflare",
         "pod_manual",
     ]
     .map(|target| format!("{target}={level}"))

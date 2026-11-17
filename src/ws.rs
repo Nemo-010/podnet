@@ -16,57 +16,24 @@
 //! (`ws_relay.rs`) keeps a bridge of tokio-tungstenite ([`bridge`]) until
 //! `pod-relay`.
 
-use crate::cloudflare::stream as cqstream;
 use anyhow::{bail, Context, Result};
 use futures::{SinkExt as _, StreamExt as _};
-use pod_ws::{ConnectError, Limits};
+use pod_ws::ConnectError;
 use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
-use tokio_util::compat::{FuturesAsyncReadCompatExt, FuturesAsyncWriteCompatExt};
 
-use crate::ingress::{ForwardTarget, OriginOptions, Service};
 use crate::metrics::Metrics;
 use crate::net::BoxedIo;
-use crate::proxy::{header_value, write_response_meta, EdgeReader, EdgeWriter};
 
 /// The client WebSocket of podnet, as `pod-ws` gives it.
 pub type Session = pod_ws::RelaySession<pod_ws::url::Stream>;
 
-/// Default path for a `--forward` WebSocket endpoint.
-pub const DEFAULT_PATH: &str = "/__podnet/ws";
-
-/// The path of the first `--forward` rule of `ingress` (issue 203).
-/// `None` also when the `path:` of the rule is a regular expression with a
-/// special character: it names no one URL (issue 269).
-pub fn forward_path(ingress: &crate::ingress::Ingress) -> Option<String> {
-    let rule = ingress
-        .rules
-        .iter()
-        .find(|rule| matches!(rule.service, Service::Forward(_)))?;
-    match &rule.path {
-        None => Some(DEFAULT_PATH.to_string()),
-        Some(pattern) => pattern.literal_path(),
-    }
-}
-
-/// The wss:// URL of the forward endpoint at `path` of the public URL `url`.
-pub fn forward_url(url: &str, path: &str) -> Option<String> {
-    let rest = url
-        .strip_prefix("https://")
-        .map(|r| ("wss", r))
-        .or_else(|| url.strip_prefix("http://").map(|r| ("ws", r)))?;
-    let host = rest.1.split('/').next()?;
-    let path = if path.starts_with('/') {
-        path.to_string()
-    } else {
-        format!("/{path}")
-    };
-    Some(format!("{}://{host}{path}", rest.0))
-}
-
 /// Compute `Sec-WebSocket-Accept` for a client's `Sec-WebSocket-Key`.
 pub use pod_ws::handshake::accept_key;
+
+/// The edge side of a forward: pod-cloudflare's.
+pub use pod_cloudflare::ws::{forward_path, forward_url, serve_websocket, DEFAULT_PATH};
 
 /// The way out of a WebSocket of podnet: its dial (the egress layer:
 /// `--proxy`, NO_PROXY, `--resolve`, the system resolver and DoH), its TLS
@@ -77,66 +44,6 @@ pub fn way() -> pod_ws::Way {
         crate::egress::egress(None),
         format!("podnet/{}", env!("CARGO_PKG_VERSION")),
     )
-}
-
-/// The byte counts of a bridge, in podnet's metrics.
-struct Counted<'a>(&'a Metrics);
-
-impl pod_ws::Tally for Counted<'_> {
-    fn add_in(&self, bytes: u64) {
-        self.0.add_in(bytes);
-    }
-    fn add_out(&self, bytes: u64) {
-        self.0.add_out(bytes);
-    }
-}
-
-/// Serve one inbound WebSocket upgrade from the edge, bridging it to `target`.
-pub async fn serve_websocket(
-    target: &ForwardTarget,
-    request: &cqstream::ConnectRequest,
-    reader: EdgeReader,
-    mut writer: EdgeWriter,
-    metrics: &Metrics,
-) -> Result<()> {
-    let Some(key) = header_value(request, "sec-websocket-key") else {
-        return write_response_meta(&mut writer, 400, &plain("missing Sec-WebSocket-Key")).await;
-    };
-
-    // Dial first: the visitor gets 101 only for a target that answers
-    // (issue 273), else 502.
-    let service = match target {
-        ForwardTarget::Tcp(addr) => Service::Tcp(addr.clone()),
-        ForwardTarget::Unix(path) => Service::Unix(path.clone()),
-    };
-    let io = match crate::origin::dial::dial(&service, &OriginOptions::default()).await {
-        Ok(io) => io,
-        Err(err) => {
-            const TEXT: &str = "podnet: the forward target does not answer\n";
-            write_response_meta(&mut writer, 502, &plain(TEXT)).await?;
-            futures::io::AsyncWriteExt::write_all(&mut writer, TEXT.as_bytes()).await?;
-            futures::io::AsyncWriteExt::close(&mut writer).await?;
-            return Err(err)
-                .with_context(|| format!("dialing forward target {}", target.describe()));
-        }
-    };
-
-    let headers = vec![
-        ("Upgrade".to_string(), "websocket".to_string()),
-        ("Connection".to_string(), "Upgrade".to_string()),
-        ("Sec-WebSocket-Accept".to_string(), accept_key(key)),
-    ];
-    write_response_meta(&mut writer, 101, &headers).await?;
-
-    // The edge stream is a QUIC bidi pair; join it into one socket for the
-    // WebSocket codec. `into_inner` recovers the noq halves from the
-    // futures-io wrappers used by the request framing.
-    let socket = tokio::io::join(reader.compat(), writer.compat_write());
-    let session =
-        pod_ws::server::session(socket, Vec::new(), None).with_limits(Limits::TUNGSTENITE);
-    pod_ws::bridge(session, io, &Counted(metrics))
-        .await
-        .context("the bridge of the forward WebSocket")
 }
 
 /// The time for each step (TCP, TLS, the upgrade) of a client WebSocket.
@@ -245,7 +152,7 @@ async fn dial_again(url: &str, authorization: Option<&str>) -> Result<Session> {
 
 /// Pump bytes both ways between a WebSocket of [`dial`] and a raw stream.
 pub async fn bridge_session(session: Session, io: BoxedIo, metrics: &Metrics) -> Result<()> {
-    pod_ws::bridge(session, io, &Counted(metrics))
+    pod_ws::bridge(session, io, metrics)
         .await
         .context("websocket bridge")
 }
@@ -341,16 +248,6 @@ where
     to_ws
 }
 
-fn plain(message: &str) -> Vec<(String, String)> {
-    vec![
-        (
-            "Content-Type".to_string(),
-            "text/plain; charset=utf-8".to_string(),
-        ),
-        ("Content-Length".to_string(), message.len().to_string()),
-    ]
-}
-
 /// A local listener specification for `podnet connect`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LocalSpec {
@@ -398,42 +295,6 @@ impl LocalSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// Issue 273: a forward target that does not answer gives 502, not
-    /// 101 and then a closed WebSocket.
-    #[tokio::test]
-    async fn a_target_that_does_not_answer_gives_502() {
-        crate::test_host::need_loopback!();
-        let closed = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        let addr = closed.local_addr().unwrap();
-        drop(closed);
-        let request = cqstream::ConnectRequest {
-            dest: "https://x/__podnet/ws".into(),
-            conn_type: cqstream::ConnectionType::Websocket,
-            metadata: vec![(
-                "HttpHeader:Sec-Websocket-Key".into(),
-                "dGhlIHNhbXBsZSBub25jZQ==".into(),
-            )],
-        };
-        let (near, far) = tokio::io::duplex(1 << 16);
-        let reader: EdgeReader = Box::pin(futures::io::empty());
-        let writer: EdgeWriter = Box::pin(
-            tokio_util::compat::TokioAsyncWriteCompatExt::compat_write(near),
-        );
-        let target = ForwardTarget::Tcp(addr.to_string());
-        let result = serve_websocket(&target, &request, reader, writer, &Metrics::new()).await;
-        assert!(result.is_err());
-        let mut far = tokio_util::compat::TokioAsyncReadCompatExt::compat(far);
-        let (_, meta) = cqstream::read_connect_response(&mut far).await.unwrap();
-        assert!(
-            meta.contains(&("HttpStatus".to_string(), "502".to_string())),
-            "{meta:?}"
-        );
-        assert!(
-            !meta.iter().any(|(k, _)| k.contains("Sec-WebSocket-Accept")),
-            "{meta:?}"
-        );
-    }
 
     /// T-407: a dial that the far end refuses once with HTTP 503 is tried
     /// again; HTTP 403 is final.
@@ -521,32 +382,5 @@ mod tests {
         );
         assert!(LocalSpec::parse("http://x").is_err());
         assert!(LocalSpec::parse("tcp://nope").is_err());
-    }
-}
-
-#[cfg(test)]
-mod forward_tests {
-    use super::*;
-
-    // Issue 203: the forward endpoint of a public URL.
-    #[test]
-    fn the_forward_url_of_a_public_url() {
-        assert_eq!(
-            forward_url("https://a-b.trycloudflare.com", DEFAULT_PATH).as_deref(),
-            Some("wss://a-b.trycloudflare.com/__podnet/ws")
-        );
-        assert_eq!(
-            forward_url("https://h.example/x/", "raw").as_deref(),
-            Some("wss://h.example/raw")
-        );
-        assert_eq!(forward_url("ftp://h", "/x"), None);
-        let ingress = crate::ingress::Ingress::new().rule_with(crate::ingress::IngressRule {
-            hostname: None,
-            path: Some(crate::ingress::PathPattern::prefix(DEFAULT_PATH)),
-            service: Service::Forward(ForwardTarget::Tcp("127.0.0.1:22".into())),
-            origin: OriginOptions::default(),
-        });
-        assert_eq!(forward_path(&ingress).as_deref(), Some(DEFAULT_PATH));
-        assert_eq!(forward_path(&crate::ingress::Ingress::new()), None);
     }
 }

@@ -710,8 +710,8 @@ fn names(paths: &[Path]) -> Option<String> {
 
 fn legs(paths: &[Path], udp: &Egress) -> Vec<Leg> {
     let find = |id: &str| paths.iter().find(|p| p.target.id == id);
-    let via_proxy = crate::egress::proxy_for(crate::tunnel::edge_region_name(), 7844).is_some();
-    let udp_off = crate::udp::Choice::from_env().ok() == Some(crate::udp::Choice::Off);
+    let via_proxy = crate::egress::proxy_for(crate::services::edge_region_name(), 7844).is_some();
+    let udp_off = crate::udp::choice_from_env().ok() == Some(crate::udp::Choice::Off);
     let quic = if udp_off {
         Leg {
             name: "quic",

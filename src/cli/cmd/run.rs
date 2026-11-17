@@ -9,7 +9,6 @@ use anyhow::Result;
 use podnet::config::Config;
 use podnet::exit::Fault;
 use podnet::share::ShareControl;
-use podnet::Tunnel;
 
 use crate::cli::opts::Show;
 use crate::cli::signals::{deadline_of, shutdown_signal, sleep_until_opt, until_stop_or};
@@ -33,7 +32,7 @@ pub(crate) async fn run_tunnel_then(
     ready: &(dyn Fn(Option<&str>) + Sync),
 ) -> Result<()> {
     let verify = config.verify;
-    let handle = Tunnel::builder().config(config).build()?.start().await?;
+    let (handle, _) = podnet::tunnel::start(config).await?;
     let mut unverified = None;
     announce(&handle, show)?;
     // Issue 179: --run-for also ends the verify.
@@ -59,7 +58,7 @@ pub(crate) async fn run_tunnel_then(
                     // The IPv6-only kit, 0005: the edge connections end
                     // cleanly, not at the exit of the process.
                     handle.shutdown().await;
-                    return Err(err);
+                    return Err(err.into());
                 }
             };
             verified(show, url, checked.dns);
@@ -82,7 +81,7 @@ pub(crate) async fn run_share(
     idle_secs: u64,
 ) -> Result<()> {
     let verify = config.verify;
-    let handle = Tunnel::builder().config(config).build()?.start().await?;
+    let (handle, services) = podnet::tunnel::start(config).await?;
     let mut unverified = None;
     let deadline = deadline_of(run_for);
     let base = handle
@@ -128,7 +127,7 @@ pub(crate) async fn run_share(
             Ok(c) => c,
             Err(err) => {
                 handle.shutdown().await;
-                return Err(err);
+                return Err(err.into());
             }
         };
         verified(show, &public, check.dns);
@@ -137,7 +136,7 @@ pub(crate) async fn run_share(
     let mut doc = tunnel_doc(&handle, Some(&public), verify, unverified);
     doc["pin"] = pin.clone().into();
     podnet::detach::ready(doc);
-    let controls = handle.share_controls();
+    let controls = services.share_controls();
     serve_until(&handle, wait_with_idle(deadline, controls, idle_secs)).await?;
     handle.shutdown().await;
     Ok(())
@@ -149,7 +148,7 @@ pub(crate) async fn run_demo(
     run_for: Option<u64>,
     exit_on_verify: bool,
 ) -> Result<()> {
-    let handle = Tunnel::builder().config(config).build()?.start().await?;
+    let (handle, _) = podnet::tunnel::start(config).await?;
     announce(&handle, show)?;
     let deadline = deadline_of(run_for);
     if exit_on_verify {
@@ -163,7 +162,7 @@ pub(crate) async fn run_demo(
             Ok(c) => c,
             Err(err) => {
                 handle.shutdown().await;
-                return Err(err);
+                return Err(err.into());
             }
         };
         let url = handle.url().unwrap_or("");
@@ -190,7 +189,7 @@ pub(crate) async fn run_demo(
         Ok(c) => c.and_then(|c| c.unverified),
         Err(err) => {
             handle.shutdown().await;
-            return Err(err);
+            return Err(err.into());
         }
     };
     podnet::detach::ready(tunnel_doc(&handle, handle.url(), true, unverified));

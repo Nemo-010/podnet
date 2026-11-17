@@ -7,7 +7,7 @@
 //! use podnet::{Service, Tunnel};
 //!
 //! # async fn run() -> anyhow::Result<()> {
-//! let handle = Tunnel::quick()
+//! let handle = Tunnel::quick(podnet::tunnel::host()?)
 //!     .service(Service::parse("http://127.0.0.1:8080")?)
 //!     .build()?
 //!     .start()
@@ -19,7 +19,8 @@
 //! ```
 //!
 //! It speaks the Cloudflare quick-tunnel protocol natively (QUIC + Cap'n Proto
-//! RPC, no `cloudflared` subprocess) and also accepts named-tunnel tokens.
+//! RPC, no `cloudflared` subprocess, `pod-cloudflare` of PodUtils/podcrates)
+//! and also accepts named-tunnel tokens.
 
 /// `println!`, `print!` and `eprintln!` that drop a failed write (issue
 /// 74). The std macros panic when the write fails: a detached instance
@@ -163,7 +164,7 @@ pub use warp::{Identity, MasqueSession, WarpClient, WarpStack};
 pub use ws::LocalSpec;
 
 /// Install the rustls crypto provider. Called automatically by
-/// [`Tunnel::start`]; call it early if you build TLS yourself.
+/// [`tunnel::host`]; call it early if you build TLS yourself.
 pub fn init_crypto() {
     net::init_crypto();
 }

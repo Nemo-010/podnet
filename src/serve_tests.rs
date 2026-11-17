@@ -7,12 +7,12 @@ mod feature {
 
     #[test]
     fn a_quick_tunnel_link_is_built_from_the_provisioned_url() {
-        let tunnel = crate::quicktunnel::parse_quick_tunnel_response(
-            200,
+        let response: crate::quicktunnel::QuickTunnelResponse = serde_json::from_str(
             r#"{"success":true,"result":{"id":"i","hostname":"foo.trycloudflare.com",
             "account_tag":"a","secret":"GlUwcZAOuFFaHRtTTFqbk1WVmpWMHFzOGdSSUthbG1K"},"errors":[]}"#,
         )
         .expect("parse response");
+        let tunnel = response.result.expect("a tunnel");
 
         let link = ShareLink::from_quick_tunnel(&tunnel.url()).expect("link");
         assert_eq!(link.url(), "https://foo.trycloudflare.com");

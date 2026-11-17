@@ -229,7 +229,7 @@ team. A tester or the owner gives it. The ruling "#149" of 2026-11-04 in
 Each TLS connection of podnet sends the server name in the clear. The
 builders are `client_config` in `crates/podnet-core/src/trust.rs` (the WARP API, the edge
 legs, the relay), `tls_config` in `src/warp/session.rs` (MASQUE, with the
-pinned key) and `client_config` in `src/cloudflare/quic.rs` (QUIC to the
+pinned key) and `client_config` in `PodUtils/podnet@7fe60e0:src/cloudflare/quic.rs` (QUIC to the
 edge). None of them enables ECH.
 
 The proposal of the issue: `--ech auto|off|CONFIG` (`PODNET_ECH`, default
@@ -248,7 +248,7 @@ A limit: the public config of `cloudflare-ech.com` has
 
 ## Premise
 
-Read: `crates/podnet-core/src/trust.rs`, `src/warp/session.rs`, `src/cloudflare/quic.rs`.
+Read: `crates/podnet-core/src/trust.rs`, `src/warp/session.rs`, `PodUtils/podnet@7fe60e0:src/cloudflare/quic.rs`.
 ECH needs HPKE. The crypto provider of podnet is ring, which has no HPKE.
 The HPKE of rustls is in the aws-lc-rs provider (a C build on each of the
 8 targets) or in another crate. The MASQUE front door and the WARP API
@@ -282,7 +282,7 @@ defers the work.
 2026-11-05, `crates/podnet-core/src/trust.rs` is glue over `pod-tls` (PodUtils/podcrates), and the client configurations are
 in `pod-tls`. An ECH change goes to `pod-tls` as an issue or a change there (the ruling "Who edits a
 shared crate"), not into `crates/podnet-core/src/trust.rs`. The MASQUE configuration of `src/warp/session.rs` goes to `pod-warp`
-and the QUIC configuration of `src/cloudflare/quic.rs` to `pod-cloudflare` (T-050, T-052). The blocker
+and the QUIC configuration of `PodUtils/podnet@7fe60e0:src/cloudflare/quic.rs` to `pod-cloudflare` (T-050, T-052). The blocker
 stays.
 
 # T-005: crates.io: publish the library and the CLI (GitHub #161)

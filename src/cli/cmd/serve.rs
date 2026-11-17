@@ -10,7 +10,7 @@ use podnet::config::Config;
 use podnet::exit::{Fault, ResultExt};
 use podnet::files::{Access, FilesConfig, Role, Users};
 use podnet::gate::Gate;
-use podnet::ingress::{Ingress, Service};
+use podnet::ingress::Ingress;
 
 use crate::cli::cmd::local::{bind_local, Local};
 use crate::cli::cmd::run::{run_share, run_tunnel};
@@ -263,7 +263,7 @@ async fn serve_tunnel(args: &ServeArgs, files: FilesConfig) -> Result<()> {
         podnet::report::hide(token);
         config.credentials = podnet::config::parse_token(token).fault(Fault::Config)?;
     }
-    config.ingress = Ingress::new().catch_all(Service::Files(files.clone()));
+    config.ingress = Ingress::new().catch_all(podnet::ingress::files(files.clone()));
     config = args.common.apply(config)?;
     // The file server has the user of --auth-user (T-089).
     config.ingress.auth = None;

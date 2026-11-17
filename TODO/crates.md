@@ -251,7 +251,7 @@ userspace stack of `src/warp/` on `pod-netstack`, and no `crates/*/SOURCES` of P
 names a file of the module (`sh scripts/agent/podcrates.sh`). PodUtils/podcrates has no crate
 `pod-netstack` on main now. The extraction goes on. The module uses `state`, `net` and `udp` of the
 core and `podnet-netns`; it uses no module that goes to PodUtils/podcrates (`src/egress.rs`,
-`src/resolve.rs`, `src/ws.rs`, the relay, `src/warp/`, `src/cloudflare/`), so each file moves. The crate
+`src/resolve.rs`, `src/ws.rs`, the relay, `src/warp/`, `PodUtils/podnet@7fe60e0:src/cloudflare/`), so each file moves. The crate
 is the module itself: `crates/podnet-vnet/src/lib.rs` is the old `mod.rs`, and `podnet_vnet::stack` is
 the old `podnet::vnet::stack`. `crates/podnet-vnet/shim/unixsockd.c` and `crates/podnet-vnet/shim/loginshell` are not in an `include_str!`:
 `tools/ts-sshd.sh` compiles them, and they move with the other shims. No workflow compiles a shim:
@@ -500,7 +500,7 @@ list of `ci.yml` reads the members of the workspace: it takes the crate with no 
 **Milestone:** M3
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -509,14 +509,14 @@ podnet.
 
 ## Premise
 
-- The crate takes `src/cloudflare/` (with `src/cloudflare/cf-edge-roots.pem`,
-  `src/cloudflare/cloudflared-pin.txt` and `src/cloudflare/schemas/`), `src/tunnel.rs`,
+- The crate takes `PodUtils/podnet@7fe60e0:src/cloudflare/` (with `PodUtils/podnet@7fe60e0:src/cloudflare/cf-edge-roots.pem`,
+  `PodUtils/podnet@7fe60e0:src/cloudflare/cloudflared-pin.txt` and `PodUtils/podnet@7fe60e0:src/cloudflare/schemas/`), `src/tunnel.rs`,
   `src/edge_h2.rs`, `src/edge_discovery.rs`, `src/quicktunnel.rs`, `src/config.rs`,
   `src/proxy.rs`, the edge side of the WebSocket forward, the HTTP/2 leg through the relay and
   the QUIC client configuration of the quic+warp leg.
-- A test of `src/cloudflare/http2.rs` includes `tools/header-oracle.txt` from outside the crate.
+- A test of `PodUtils/podnet@7fe60e0:src/cloudflare/http2.rs` includes `PodUtils/podnet@7fe60e0:tools/header-oracle.txt` from outside the crate.
   A test of the trust store reads `Cargo.lock`.
-- `tools/check-upstream.py` and `.github/workflows/upstream.yml` read the pin file.
+- `PodUtils/podnet@7fe60e0:tools/check-upstream.py` and `PodUtils/podnet@7fe60e0:.github/workflows/upstream.yml` read the pin file.
 
 ## Approach
 
@@ -524,7 +524,7 @@ podnet.
 2. Replace the links to the crates of podnet with traits of `pod-cloudflare`.
 3. podnet depends on `pod-cloudflare` by a git tag of PodUtils/podcrates, and keeps the tunnel CLI in the root crate.
 4. Move the two tests that read files outside the crate to the root crate of podnet.
-5. Move the pin file of `tools/check-upstream.py` and the watch of `.github/workflows/upstream.yml`
+5. Move the pin file of `PodUtils/podnet@7fe60e0:tools/check-upstream.py` and the watch of `PodUtils/podnet@7fe60e0:.github/workflows/upstream.yml`
    to `PodUtils/podcrates` with the edge client.
 
 ## Decision
@@ -532,7 +532,7 @@ podnet.
 The owner, 2026-11-05 (`docs/decisions.md`, Name): the Cloudflare tunnel code is one adapter of
 podnet.
 
-The owner, 2026-11-05 (`docs/decisions.md`, Shared crates): the Cloudflare adapter (the edge client of `src/cloudflare/`, the tunnel, the quick tunnels) moves to `PodUtils/podcrates` as `pod-cloudflare`. podssh uses it for its quick tunnels.
+The owner, 2026-11-05 (`docs/decisions.md`, Shared crates): the Cloudflare adapter (the edge client of `PodUtils/podnet@7fe60e0:src/cloudflare/`, the tunnel, the quick tunnels) moves to `PodUtils/podcrates` as `pod-cloudflare`. podssh uses it for its quick tunnels.
 
 ## Prove
 
@@ -553,6 +553,13 @@ The crate of this entry has a release in `PodUtils/podcrates`, with its hand-off
 
 2026-11-05, The work goes to `pod-cloudflare` in PodUtils/podcrates. podnet only takes the crate (T-137). Do not do it in podnet. The rule "no dependency for the edge protocol"
 stays: `pod-cloudflare` implements it.
+
+## Done
+
+2026-11-17, the take of `pod-cloudflare` of podcrates `v0.69.0` (T-423): the hand-off
+`adoption/podnet/pod-cloudflare.patch` and its `.run`. The edge client, the tunnel legs, the quick tunnels, the
+configuration file and the stand-in servers of the tests left podnet; podnet keeps the glue (`src/tunnel.rs`: 299
+lines, `src/proxy.rs`). Each step of the `.run` passes here; see T-423.
 
 # T-053: The root package is the CLI and a facade that keeps each library path
 
@@ -701,7 +708,7 @@ adapter of podnet move to the shared repository (T-050, T-052).
 2. When wave 2 exists: replace the relay client (`src/ws_relay.rs`, `src/relay_reverse.rs`) with
    `pod-relay` (no crate `podnet-relay`: T-049), and the userspace stack and WireGuard of
    `src/warp/` with `pod-netstack` and `pod-wg`; move to smoltcp 0.14 and Rust 1.99.
-3. When wave 3 exists: replace `src/warp/` and `src/cloudflare/` with `pod-warp` and
+3. When wave 3 exists: replace `src/warp/` and `PodUtils/podnet@7fe60e0:src/cloudflare/` with `pod-warp` and
    `pod-cloudflare` (T-050, T-052 hand their code to the podcrates session), and add
    `send`/`receive` on `pod-wormhole` and `pod-transit`.
 4. Replace each copy entry of the record with its shared crate (T-012, T-086, T-102, T-114,
@@ -1068,7 +1075,7 @@ mint, and only the cache file changes, not the running list.
   (`:428-497`); `refresh_pool` writes the cache only (`:389-421`) and does not run for a listed list
   (`:363`). `alternates_of` takes pool order (`relay_pool.rs:108-121`); `STALE_AFTER` is 7 days.
 - Correction of the issue: a stalled host costs the stagger (2 s), not the full timeout. The race starts
-  the next host after the stagger and the first success wins (`crates/podnet-core/src/race.rs:1-9`). The loopback test of
+  the next host after the stagger and the first success wins (`PodUtils/podnet@7fe60e0:crates/podnet-core/src/race.rs:1-9`). The loopback test of
   the issue must assert a connect time near 2 s before and near 0 s after, not a full timeout.
 - Precedent: the front door orders the address that worked first (src/warp/mod.rs:911 at `9c1fc4b`, issue 124).
 - `ws_relay.rs` and `relay_pool.rs` go to `pod-relay` (T-049): a new feature waits for the crate.
@@ -1129,7 +1136,7 @@ cuts streams with no replacement. A larger cap wastes sessions.
 ## Premise
 
 - Read: constants at `ws_relay.rs:49-52`. `RelayBudget::meter` applies them (`:66`) and `meter_with`
-  takes values (`:70`). Other users: src/warp/session.rs:413 at `9c1fc4b` (through `meter`), `src/edge_h2.rs:409`
+  takes values (`:70`). Other users: src/warp/session.rs:413 at `9c1fc4b` (through `meter`), `PodUtils/podnet@7fe60e0:src/edge_h2.rs:409`
   and `:644` (direct, outside `RelayBudget`). `parse_pool` reads only `pool[].host`
   (`relay_pool.rs:83-100`). `CachedPool` has no limits (`:121-129`).
 - Measured on 2026-11-09: `https://tcp.ssh.relay.ajam.dev/relays.json` already has a `limits` object
@@ -1162,7 +1169,7 @@ T-049 is done; podcrates answers the COORD issue for `edge_h2.rs`.
 
 ## Correction
 
-2026-11-12, the take of `pod-relay` v0.30.0 (83e0c93). The crate parses the `limits` of `/relays.json` with the published names, stores them with the cached pool, and gives them to the budget (`RelayBudget::meter_for`; PodUtils/podcrates#89, ask 3 of GitHub #413, podcrates T-123). `ws_relay::meter` uses it. The WARP leg through the relay (`src/warp/session.rs`) has its budget under the limits of the relay: 4 MiB under `max_session_bytes` and 30 min under `max_session_ms`, never over 60 MiB and 11.5 h. Proven by `a_pool_with_limits_sets_the_budget`, `a_pool_with_no_limits_keeps_the_constants` and `the_age_of_the_budget_follows_the_limits_of_the_relay` (`src/ws_relay/relay_tests.rs`, 3 passed, commit 7e462ec). With the constants in place of `meter_for`, the first and the third fail. What is left: the HTTP/2 edge leg. `src/edge_h2.rs:409` and `src/edge_h2.rs:644` (frozen: `pod-cloudflare`) count `ws_relay::SESSION_BYTES` and `SESSION_AGE` directly, outside `RelayBudget`. The edge leg of a tunnel through a relay with smaller caps still uses the constants. The change is `RelayBudget::meter_for` in place of the constants in `serve_h2` and `Budget::relay`. Send a COORD issue (to podcrates) with this change (Approach, item 2). Do it in podnet only as a fix when podcrates agrees. The entry is done when the edge leg uses the limits, or when podnet takes `pod-cloudflare` (T-052).
+2026-11-12, the take of `pod-relay` v0.30.0 (83e0c93). The crate parses the `limits` of `/relays.json` with the published names, stores them with the cached pool, and gives them to the budget (`RelayBudget::meter_for`; PodUtils/podcrates#89, ask 3 of GitHub #413, podcrates T-123). `ws_relay::meter` uses it. The WARP leg through the relay (`src/warp/session.rs`) has its budget under the limits of the relay: 4 MiB under `max_session_bytes` and 30 min under `max_session_ms`, never over 60 MiB and 11.5 h. Proven by `a_pool_with_limits_sets_the_budget`, `a_pool_with_no_limits_keeps_the_constants` and `the_age_of_the_budget_follows_the_limits_of_the_relay` (`src/ws_relay/relay_tests.rs`, 3 passed, commit 7e462ec). With the constants in place of `meter_for`, the first and the third fail. What is left: the HTTP/2 edge leg. `PodUtils/podnet@7fe60e0:src/edge_h2.rs:409` and `PodUtils/podnet@7fe60e0:src/edge_h2.rs:644` (frozen: `pod-cloudflare`) count `ws_relay::SESSION_BYTES` and `SESSION_AGE` directly, outside `RelayBudget`. The edge leg of a tunnel through a relay with smaller caps still uses the constants. The change is `RelayBudget::meter_for` in place of the constants in `serve_h2` and `Budget::relay`. Send a COORD issue (to podcrates) with this change (Approach, item 2). Do it in podnet only as a fix when podcrates agrees. The entry is done when the edge leg uses the limits, or when podnet takes `pod-cloudflare` (T-052).
 
 # T-175: DoH: keep one connection for each resolver server (an ask of pod-dns and pod-proxy) (GitHub #370)
 
@@ -1955,3 +1962,54 @@ cargo deny --locked check advisories bans sources   # the deny workflow
 2026-11-17, the commit of this entry. The tag `v0.68.0` (commit `4efa604`) in each manifest, `Cargo.lock`,
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`; the installer core has the same SHA-256.
 webpki-roots 1.0.11 -> 1.0.12, russh 0.65.1 -> 0.65.2, `rsa` 0.10.0-rc.18 -> 0.10.0. `sh scripts/agent/check.sh` passes.
+
+# T-423: Take podcrates v0.69.0 with `pod-cloudflare`
+
+**Source:** PodUtils/podcrates#220 (COORD-130, 2026-11-17): the tag `v0.69.0` at `d85f2d2`, with the hand-off of
+`pod-cloudflare` (their T-029).
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** M
+**Status:** done
+
+## Problem
+
+podnet's Cloudflare tunnel (the edge client, Cap'n Proto RPC, the legs and their race, the ingress, the quick tunnels,
+the configuration file, the counters, the UDP probe) is code that `pod-cloudflare` of podcrates holds now. podnet held
+it frozen (fixes only) until the take.
+
+## Premise
+
+- The hand-off is `adoption/podnet/pod-cloudflare.patch` and `.run` at the tag. The trial of podcrates passed at podnet
+  `7fe60e0`.
+- The tag changes the text of `pod_core::text::one_line` and `multi_line` for an escape sequence, and the stand-in of
+  `pod-cloudflare` is behind its feature `standin`.
+
+## Approach
+
+1. Apply the patch on the head (`git apply --3way`); the three manifests that conflict take the line of
+   `pod-cloudflare`. Each podcrates tag is `v0.69.0`; the lock files, `scripts/install/SOURCES` and `issue-sync.yml`
+   follow.
+2. Run each command of the `.run`.
+3. The lane: the row `way-tunnel` checks the new verify line of the crate (`verified URL HTTP 200`).
+
+## Prove
+
+```sh
+PODCRATES=PATH sh -c "$(grep -v '^#' adoption/podnet/pod-cloudflare.run)"
+LANE_DIR=/var/tmp/lane/out sh scripts/lab-lane.sh PODLAB PODNET way-out way-ws
+```
+
+## Done
+
+2026-11-17, the commit of this entry. The patch applied with the head of `main` (T-421 inside); the three manifests
+took the line of `pod-cloudflare`. Each command of the `.run` passes here (the record, the size, the layers, the build,
+`cargo deny` bans and sources, `pod-cloudflare` in the tree, no moved file and no moved item left, clippy, the tests of
+the libraries, of the tunnel, of the trust, of the egress, of the signals, of the doctor, of the services, of the
+surface, the docs, the commands, the CLI and the binary, the fuzz check, rustfmt, the toolchains of podcrates). The
+static build here is `CC_x86_64_unknown_linux_musl=clang cargo build --target x86_64-unknown-linux-musl` (no
+cargo-zigbuild in this container), and `scripts/check-static.sh` passes on it. The lane with that binary and podlab
+v0.68.0: `way-tunnel` (a quick tunnel of `demo` from a host whose only way out is a proxy: registered, verified, HTTP 200),
+`way-relay` and `way-relay-refused` pass. The verify line of the crate is `verified URL HTTP 200 ...`; the row
+`way-tunnel` checks it. The installer core has the same SHA-256.

@@ -1,6 +1,7 @@
 # Progress
 
-`TODO/INDEX.md` holds 431 entries: 12 open, 13 partial, 36 blocked, 370 done.
+`TODO/INDEX.md` holds 432 entries: 11 open, 12 partial, 35 blocked, 374 done.
+`TODO/INDEX.md` holds 422 entries: 11 open, 10 partial, 35 blocked, 366 done.
 
 ## State
 
@@ -13,7 +14,7 @@
   (the transfer), `pod-extract` and `pod-testkit`. Next
   (PodUtils/podcrates#133): `pod-cloudflare`, `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`. A session
   reads the state of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
-- Frozen (fixes only, each as a COORD issue): `src/warp/` (glue over `pod-warp`), `src/cloudflare/`, `src/proxy.rs`,
+- Frozen (fixes only, each as a COORD issue): `src/warp/` (glue over `pod-warp`), `PodUtils/podnet@7fe60e0:src/cloudflare/`, `src/proxy.rs`,
   `src/tunnel.rs`, `crates/podnet-netns/src/rules.rs` and `tests/test_host/mod.rs` (in `pod-testkit`).
 - The newest release is `v0.4.0-beta.13` (T-355).
 - The tag `v0.46.0` brings the S3 carrier (bcfae9e) and the split session (3623ec5); both are in `v0.4.0-beta.12`.
@@ -45,13 +46,13 @@ not wait for a larger one.
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
-   - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `src/cloudflare/`, frozen).
+   - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
-   - the donor review (GitHub #429 to #434): done, except #435: T-244 is blocked on `pod-cloudflare`.
-4. **M2, the splits:** T-039 (moved files: podcrates); T-044 (blocked:
-   the rows left go with the takes, T-137); T-045.
-5. **M3, the crates:** T-053, then the prerelease T-054. T-052 is the take of `pod-cloudflare` of
-   `PodUtils/podcrates` (T-137): do not do it in podnet.
+   - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).
+4. **M2, the splits:** T-044 (blocked:
+   the rows left go with the takes, T-137). The split of the tunnel is done by the take of `pod-cloudflare`; each file has
+   at most 800 lines, and no allowlist has an entry.
+5. **M3, the crates:** T-053, then the prerelease T-054. The take of `pod-cloudflare` is done (podcrates `v0.69.0`).
 6. **M4, the adapters:** done.
 7. **M6, the services:** the shared part (the resumable layer and `--seal` of the reverse road) is done; the file
    server and git: done; the router: done; the transfer by code: `podnet send` and `podnet receive` are done

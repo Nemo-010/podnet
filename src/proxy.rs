@@ -1,245 +1,85 @@
-//! Inbound tunnel streams: parse the edge framing and dispatch to a service.
-//!
-//! One QUIC stream carries one request. After the `ConnectRequest` preamble the
-//! stream is either HTTP (we synthesise an HTTP/1.1 request for the origin and
-//! relay the response) or raw TCP (byte pump). Built-in services are axum
-//! routers called directly, so multipart, directory serving and file transfer
-//! work without an external process.
+//! The services of podnet behind the tunnel of pod-cloudflare: the axum
+//! routers (the static files, the file server, git, the shares) and the
+//! share proxy with its PIN gate. pod-cloudflare parses the edge framing,
+//! checks the credential in front of the tunnel, and serves the other
+//! services; it hands a request for a service of podnet to [`Services`].
+
+use std::sync::Arc;
 
 use crate::cloudflare::http2::{connection_named, is_hop_by_hop};
 use crate::cloudflare::stream as cqstream;
-use crate::cloudflare::stream::{HTTP_HEADER_KEY, HTTP_HOST_KEY, HTTP_METHOD_KEY};
-use anyhow::{anyhow, bail, Context, Result};
+#[cfg(test)]
+use crate::cloudflare::stream::HTTP_HOST_KEY;
+use crate::cloudflare::stream::{HTTP_HEADER_KEY, HTTP_METHOD_KEY};
+use anyhow::{anyhow, Result};
 use axum::body::Body;
 use axum::http::{HeaderMap, HeaderName, HeaderValue, Request, Response};
+use futures::future::BoxFuture;
+use pod_core::{Class, Failure, Stage};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tower::ServiceExt;
 
 use crate::gate::UNLOCK_PATH;
-use crate::ingress::{Ingress, OriginOptions, Service};
+use crate::ingress::{OriginOptions, Service};
 use crate::metrics::Metrics;
-use crate::net::BoxedIo;
 use crate::service::{Built, ServiceRuntime};
 use crate::share::ShareControl;
 use crate::util::path_and_query;
 
-const MAX_HEAD_BYTES: usize = 32 * 1024;
-/// The most header lines of an origin answer (issue 238: 64 was too few
-/// for an answer with many Set-Cookie lines). MAX_HEAD_BYTES limits the
-/// head too.
-pub(crate) const MAX_HEADERS: usize = 256;
-/// The longest line of the trailer of a chunked answer of the origin.
-const MAX_TRAILER_LINE: usize = 8192;
-/// The largest trailer of a chunked answer of the origin.
-const MAX_TRAILER_BYTES: usize = 64 * 1024;
+pub use pod_cloudflare::proxy::{
+    content_length, forward_http, forward_tcp, header_value, is_websocket, serve_stream,
+    write_response_meta, write_simple_response, write_simple_response_with, EdgeReader, EdgeWriter,
+    Runtime, RPC_STREAM_REFUSED,
+};
 
-/// The visitor side of one edge stream: the request body (after the
-/// `ConnectRequest`) for reading, the `ConnectResponse` and body for writing.
-/// A QUIC stream gives these directly. The HTTP/2 transport gives adapters.
-pub type EdgeReader = std::pin::Pin<Box<dyn futures::io::AsyncRead + Send>>;
-pub type EdgeWriter = std::pin::Pin<Box<dyn futures::io::AsyncWrite + Send>>;
+/// The services of podnet for the rules of one tunnel.
+pub struct Services(pub Arc<ServiceRuntime>);
 
-/// Handle one inbound stream. Errors are logged, never propagated to the edge.
-pub async fn serve_stream(
-    runtime: std::sync::Arc<ServiceRuntime>,
-    ingress: std::sync::Arc<Ingress>,
-    mut send: noq::SendStream,
-    mut recv: noq::RecvStream,
-) {
-    let mut signature = [0u8; 6];
-    if let Err(err) = recv.read_exact(&mut signature).await {
-        tracing::debug!(error = %err, "the edge closed a stream before its signature");
-        return;
+impl pod_cloudflare::ServiceDispatch for Services {
+    fn prepare(&self, index: usize, service: &Service) -> Result<(), Failure> {
+        self.0.prepare(index, service).map_err(|e| {
+            let text = format!("{}: {e:#}", service.describe());
+            Failure::caused(Stage::Host, Class::Config, text, e)
+        })
     }
-    if signature == crate::cloudflare::RPC_STREAM_SIGNATURE {
-        // The edge calls the connector (a configuration push). podnet serves
-        // no RPC on such a stream: reset it, so the edge gets an answer at
-        // once.
-        tracing::debug!("the edge opened an RPC stream; it is reset");
-        let _ = recv.stop(RPC_STREAM_REFUSED.into());
-        let _ = send.reset(RPC_STREAM_REFUSED.into());
-        return;
+
+    fn serve<'a>(
+        &'a self,
+        index: usize,
+        request: &'a cqstream::ConnectRequest,
+        host: &'a str,
+        reader: EdgeReader,
+        writer: EdgeWriter,
+    ) -> BoxFuture<'a, Result<(), Failure>> {
+        Box::pin(async move {
+            serve(&self.0, index, request, host, reader, writer)
+                .await
+                .map_err(|e| {
+                    Failure::caused(Stage::Origin, Class::Unavailable, format!("{e:#}"), e)
+                })
+        })
     }
-    let metrics = runtime.metrics().clone();
-    metrics.stream_started();
-    if let Err(err) = serve_inner(&runtime, &ingress, signature, send, recv).await {
-        metrics.error();
-        tracing::warn!(error = %format!("{err:#}"), "stream failed");
-    }
-    metrics.stream_finished();
 }
 
-/// The QUIC error code of a reset RPC stream.
-pub const RPC_STREAM_REFUSED: u32 = 0;
-
-async fn serve_inner(
+/// Answer one request of the edge with the service of podnet of rule
+/// `index`.
+async fn serve(
     runtime: &ServiceRuntime,
-    ingress: &Ingress,
-    signature: [u8; 6],
-    send: noq::SendStream,
-    recv: noq::RecvStream,
-) -> Result<()> {
-    use tokio::io::AsyncReadExt as _;
-    use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
-    let recv = std::io::Cursor::new(signature).chain(recv);
-    let mut reader: EdgeReader = Box::pin(recv.compat());
-    let writer: EdgeWriter = Box::pin(send.compat_write());
-    let request = cqstream::read_connect_request(&mut reader).await?;
-    serve_request(runtime, ingress, request, reader, writer).await
-}
-
-/// Handle one request that is already decoded. The HTTP/2 transport calls
-/// this with adapters for the stream.
-pub async fn serve_decoded(
-    runtime: std::sync::Arc<ServiceRuntime>,
-    ingress: std::sync::Arc<Ingress>,
-    request: cqstream::ConnectRequest,
-    reader: EdgeReader,
-    writer: EdgeWriter,
-) {
-    let metrics = runtime.metrics().clone();
-    metrics.stream_started();
-    if let Err(err) = serve_request(&runtime, &ingress, request, reader, writer).await {
-        metrics.error();
-        tracing::warn!(error = %format!("{err:#}"), "stream failed");
-    }
-    metrics.stream_finished();
-}
-
-async fn serve_request(
-    runtime: &ServiceRuntime,
-    ingress: &Ingress,
-    request: cqstream::ConnectRequest,
+    index: usize,
+    request: &cqstream::ConnectRequest,
+    host: &str,
     reader: EdgeReader,
     writer: EdgeWriter,
 ) -> Result<()> {
-    // A failure that a visitor sees names its request in the log.
-    let what = format!(
-        "{} {}",
-        request.meta(HTTP_METHOD_KEY).unwrap_or("-"),
-        crate::report::clean(&request.dest)
-    );
-    serve_request_inner(runtime, ingress, request, reader, writer)
-        .await
-        .with_context(|| what)
-}
-
-async fn serve_request_inner(
-    runtime: &ServiceRuntime,
-    ingress: &Ingress,
-    mut request: cqstream::ConnectRequest,
-    reader: EdgeReader,
-    writer: EdgeWriter,
-) -> Result<()> {
-    // Issue 205: the credential in front of the tunnel. A request with no
-    // right Authorization gets 401 and reaches no origin; the origin does
-    // not get the credential of podnet.
-    if let Some(auth) = &ingress.auth {
-        if !auth.check_basic(header_value(&request, "authorization")) {
-            let mut writer = writer;
-            return write_simple_response_with(
-                &mut writer,
-                401,
-                "text/plain; charset=utf-8",
-                AUTH_BODY,
-                &[(
-                    "WWW-Authenticate".to_string(),
-                    "Basic realm=\"podnet\", charset=\"UTF-8\"".to_string(),
-                )],
-            )
-            .await;
-        }
-        let name = format!("{HTTP_HEADER_KEY}:authorization");
-        request
-            .metadata
-            .retain(|(key, _)| !key.eq_ignore_ascii_case(&name));
-    }
-    let host = request
-        .meta(HTTP_HOST_KEY)
-        .map(str::to_string)
-        .or_else(|| crate::util::authority_of(&request.dest))
-        .unwrap_or_default();
-    let path = path_and_query(&request.dest);
-    tracing::debug!(%host, %path, kind = ?request.conn_type, "inbound");
-
-    let Some(index) = ingress.resolve_index(&host, &path) else {
-        let mut writer = writer;
-        return write_simple_response(
-            &mut writer,
-            503,
-            "text/plain; charset=utf-8",
-            b"podnet: no ingress rule matched\n",
-        )
-        .await;
-    };
-    let built = runtime.get(index).context("runtime rule missing")?;
-
-    match built {
-        Built::Forward(service, options) => {
-            forward_http(
-                service,
-                options,
-                &request,
-                reader,
-                writer,
-                runtime.metrics(),
-            )
-            .await
-        }
-        Built::Tcp(service, options) => {
-            forward_tcp(
-                service,
-                options,
-                &request,
-                reader,
-                writer,
-                runtime.metrics(),
-            )
-            .await
-        }
-        Built::ForwardWs(target) => {
-            if !is_websocket(&request) {
-                let mut writer = writer;
-                return write_simple_response(
-                    &mut writer,
-                    426,
-                    "text/plain; charset=utf-8",
-                    b"podnet: this endpoint requires a WebSocket upgrade\n",
-                )
-                .await;
-            }
-            crate::ws::serve_websocket(target, &request, reader, writer, runtime.metrics()).await
-        }
-        Built::HelloWorld => {
-            let mut writer = writer;
-            write_simple_response(
-                &mut writer,
-                200,
-                "text/plain; charset=utf-8",
-                b"Hello, world! (podnet)\n",
-            )
-            .await
-        }
-        Built::Status(code) => {
-            let mut writer = writer;
-            write_simple_response(&mut writer, *code, "text/plain; charset=utf-8", b"").await
-        }
-        Built::Metrics => {
-            let text = runtime.metrics().prometheus();
-            let mut writer = writer;
-            write_simple_response(
-                &mut writer,
-                200,
-                "text/plain; version=0.0.4; charset=utf-8",
-                text.as_bytes(),
-            )
-            .await
-        }
+    let built = runtime
+        .get(index)
+        .ok_or_else(|| anyhow!("no service of podnet for rule {index}"))?;
+    match built.as_ref() {
         Built::Static(router) => {
             dispatch_axum(
                 router.clone(),
-                &request,
-                &host,
+                request,
+                host,
                 reader,
                 writer,
                 runtime.metrics(),
@@ -249,8 +89,8 @@ async fn serve_request_inner(
         Built::Share(app) => {
             dispatch_axum(
                 app.router(),
-                &request,
-                &host,
+                request,
+                host,
                 reader,
                 writer,
                 runtime.metrics(),
@@ -268,8 +108,8 @@ async fn serve_request_inner(
                 gate,
                 control,
                 *stop_after,
-                &request,
-                &host,
+                request,
+                host,
                 reader,
                 writer,
                 runtime.metrics(),
@@ -277,151 +117,6 @@ async fn serve_request_inner(
             .await
         }
     }
-}
-
-// ── HTTP forwarding ─────────────────────────────────────────────────────────
-
-async fn forward_http(
-    service: &Service,
-    options: &OriginOptions,
-    request: &cqstream::ConnectRequest,
-    mut reader: EdgeReader,
-    mut writer: EdgeWriter,
-    metrics: &Metrics,
-) -> Result<()> {
-    // The QUIC leg marks a WebSocket by the connection type and may keep no
-    // Upgrade header (issue 56): is_websocket checks both.
-    let upgrade = is_websocket(request);
-    let head = match build_request_head(request, options, upgrade) {
-        Ok(head) => head,
-        Err(err) => {
-            write_simple_response(
-                &mut writer,
-                400,
-                "text/plain; charset=utf-8",
-                b"podnet: the request is not valid HTTP/1.1\n",
-            )
-            .await?;
-            return Err(err);
-        }
-    };
-    let mut io = crate::origin::dial::dial(service, options).await?;
-    tokio::io::AsyncWriteExt::write_all(&mut io, head.as_bytes()).await?;
-
-    if upgrade || is_chunked(request) {
-        return proxy_bidi(&mut reader, &mut writer, io, metrics).await;
-    }
-
-    if let Some(len) = content_length(request) {
-        if len > 0 {
-            copy_futures_to_tokio_n(&mut reader, &mut io, len, metrics).await?;
-        }
-    }
-
-    let (status, headers, leftover) = read_response_head(&mut io).await?;
-    let resp_len = response_length(&headers)?;
-    write_response_meta(&mut writer, status, &headers).await?;
-    // A chunked body: the edge frames the body itself, so send only the
-    // payload of the chunks. The last chunk ends the body, also when the
-    // origin keeps the connection open.
-    let chunked = headers_value(&headers, "transfer-encoding")
-        .is_some_and(|v| v.to_ascii_lowercase().contains("chunked"));
-    if chunked {
-        let mut source =
-            tokio::io::BufReader::new(tokio::io::AsyncReadExt::chain(&leftover[..], &mut io));
-        copy_chunked_to_futures(&mut source, &mut writer, metrics).await?;
-        return futures_close(&mut writer).await;
-    }
-    if !leftover.is_empty() {
-        futures_write_all(&mut writer, &leftover).await?;
-        futures::io::AsyncWriteExt::flush(&mut writer).await?;
-        metrics.add_out(leftover.len() as u64);
-    }
-    match resp_len {
-        Some(total) => {
-            let remaining = total.saturating_sub(leftover.len() as u64);
-            if remaining > 0 {
-                copy_tokio_to_futures_n(&mut io, &mut writer, remaining, metrics).await?;
-            }
-        }
-        None => {
-            copy_tokio_to_futures_eof(&mut io, &mut writer, metrics).await?;
-        }
-    }
-    futures_close(&mut writer).await
-}
-
-async fn proxy_bidi(
-    reader: &mut EdgeReader,
-    writer: &mut EdgeWriter,
-    io: BoxedIo,
-    metrics: &Metrics,
-) -> Result<()> {
-    let (mut io_r, mut io_w) = tokio::io::split(io);
-    let in_metrics = metrics.clone();
-    let out_metrics = metrics.clone();
-
-    let request_pump = async {
-        let _ = copy_futures_to_tokio_eof(reader, &mut io_w, &in_metrics).await;
-        let _ = tokio::io::AsyncWriteExt::shutdown(&mut io_w).await;
-    };
-    let response_pump = async {
-        let (status, headers, leftover) = read_response_head(&mut io_r).await?;
-        write_response_meta(writer, status, &headers).await?;
-        if !leftover.is_empty() {
-            futures_write_all(writer, &leftover).await?;
-            out_metrics.add_out(leftover.len() as u64);
-        }
-        copy_tokio_to_futures_eof(&mut io_r, writer, &out_metrics).await?;
-        futures_close(writer).await?;
-        Ok::<(), anyhow::Error>(())
-    };
-    let (_, response) = tokio::join!(request_pump, response_pump);
-    response
-}
-
-/// The body of the 401 of `--auth-user` (issue 205).
-pub const AUTH_BODY: &[u8] = b"podnet: this tunnel needs a user and a password (HTTP Basic)\n";
-
-/// The answer of a raw TCP origin to an HTTP request (issue 199).
-pub const TCP_HTTP_BODY: &[u8] = b"podnet: a raw TCP origin carries TCP or WebSocket streams, not HTTP. Use --forward with \"podnet connect\", or --port for an HTTP origin.\n";
-
-async fn forward_tcp(
-    service: &Service,
-    options: &OriginOptions,
-    request: &cqstream::ConnectRequest,
-    mut reader: EdgeReader,
-    mut writer: EdgeWriter,
-    metrics: &Metrics,
-) -> Result<()> {
-    // Issue 199: a quick tunnel gets HTTP requests. A raw byte pipe gave
-    // the edge no HTTP status, and the edge answered 502.
-    if request.conn_type == cqstream::ConnectionType::Http && !is_websocket(request) {
-        static WARNED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-        if !WARNED.swap(true, std::sync::atomic::Ordering::Relaxed) {
-            tracing::warn!(
-                origin = %crate::origin::dial::origin_label(service),
-                "an HTTP request came to a raw TCP origin; podnet answers 501 (use --forward and podnet connect)"
-            );
-        }
-        return write_simple_response(&mut writer, 501, "text/plain; charset=utf-8", TCP_HTTP_BODY)
-            .await;
-    }
-    let io = crate::origin::dial::dial(service, options).await?;
-    cqstream::write_connect_response(&mut writer, "", &[]).await?;
-    let (mut io_r, mut io_w) = tokio::io::split(io);
-    let in_metrics = metrics.clone();
-    let out_metrics = metrics.clone();
-    let to_origin = async {
-        let _ = copy_futures_to_tokio_eof(&mut reader, &mut io_w, &in_metrics).await;
-        let _ = tokio::io::AsyncWriteExt::shutdown(&mut io_w).await;
-    };
-    let from_origin = async {
-        let _ = copy_tokio_to_futures_eof(&mut io_r, &mut writer, &out_metrics).await;
-        let _ = futures_close(&mut writer).await;
-    };
-    tokio::join!(to_origin, from_origin);
-    Ok(())
 }
 
 // ── Built-in (axum) dispatch ────────────────────────────────────────────────
@@ -577,11 +272,12 @@ async fn write_axum_response(
     let mut stream = body.into_data_stream();
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|e| anyhow!("response body: {e}"))?;
-        futures_write_all(writer, &chunk).await?;
+        futures::io::AsyncWriteExt::write_all(writer, &chunk).await?;
         futures::io::AsyncWriteExt::flush(writer).await?;
         metrics.add_out(chunk.len() as u64);
     }
-    futures_close(writer).await
+    futures::io::AsyncWriteExt::close(writer).await?;
+    Ok(())
 }
 
 // ── quickbridge proxy mode ──────────────────────────────────────────────────
@@ -613,7 +309,7 @@ async fn share_proxy(
     if path == UNLOCK_PATH && method.eq_ignore_ascii_case("POST") {
         let len = content_length(request).unwrap_or(0);
         if len > crate::gate::MAX_UNLOCK_BODY {
-            return write_simple_response(
+            return reply(
                 &mut writer,
                 413,
                 "text/plain; charset=utf-8",
@@ -625,7 +321,7 @@ async fn share_proxy(
         // Issue 229: an unlock from another site does not use a try of the
         // PIN.
         if !crate::gate::same_site(&headers, Some(host)) {
-            return write_simple_response(
+            return reply(
                 &mut writer,
                 403,
                 "text/plain; charset=utf-8",
@@ -646,7 +342,7 @@ async fn share_proxy(
             .unwrap_or_else(|| "/".to_string());
         return match gate.unlock(&password) {
             Some(cookie) => {
-                write_simple_response_with(
+                reply_with(
                     &mut writer,
                     303,
                     "text/plain; charset=utf-8",
@@ -663,7 +359,7 @@ async fn share_proxy(
             }
             None => {
                 let html = gate.page_html(&next, true);
-                write_simple_response(
+                reply(
                     &mut writer,
                     403,
                     "text/html; charset=utf-8",
@@ -676,7 +372,7 @@ async fn share_proxy(
 
     if !gate.is_open(&headers) {
         let html = gate.page_html(&path, false);
-        return write_simple_response(
+        return reply(
             &mut writer,
             crate::gate::locked_status(method),
             "text/html; charset=utf-8",
@@ -688,6 +384,7 @@ async fn share_proxy(
     control.touch();
     let service = share_origin(target);
     let result = forward_http(
+        crate::origin::dial::origins(),
         &service,
         &OriginOptions::default(),
         request,
@@ -695,13 +392,35 @@ async fn share_proxy(
         writer,
         metrics,
     )
-    .await;
+    .await
+    .map_err(anyhow::Error::from);
     // --stop-after: the first request that the origin answered in full
     // ends the session. A HEAD request does not count.
     if stop_after && result.is_ok() && !method.eq_ignore_ascii_case("HEAD") {
         control.request_stop();
     }
     result
+}
+
+/// [`write_simple_response`] with the error of podnet.
+async fn reply(
+    writer: &mut EdgeWriter,
+    status: u16,
+    content_type: &str,
+    body: &[u8],
+) -> Result<()> {
+    Ok(write_simple_response(writer, status, content_type, body).await?)
+}
+
+/// [`write_simple_response_with`] with the error of podnet.
+async fn reply_with(
+    writer: &mut EdgeWriter,
+    status: u16,
+    content_type: &str,
+    body: &[u8],
+    extra: &[(String, String)],
+) -> Result<()> {
+    Ok(write_simple_response_with(writer, status, content_type, body, extra).await?)
 }
 
 fn headers_from_request(request: &cqstream::ConnectRequest) -> HeaderMap {
@@ -767,470 +486,6 @@ fn percent_decode(value: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-// ── Response helpers ────────────────────────────────────────────────────────
-
-async fn write_simple_response(
-    writer: &mut EdgeWriter,
-    status: u16,
-    content_type: &str,
-    body: &[u8],
-) -> Result<()> {
-    write_simple_response_with(writer, status, content_type, body, &[]).await
-}
-
-async fn write_simple_response_with(
-    writer: &mut EdgeWriter,
-    status: u16,
-    content_type: &str,
-    body: &[u8],
-    extra: &[(String, String)],
-) -> Result<()> {
-    // Issue 271: a reply that podnet makes (the PIN page, the unlock
-    // redirect, an error) is not stored by a cache.
-    let mut headers = vec![
-        ("Content-Type".to_string(), content_type.to_string()),
-        ("Content-Length".to_string(), body.len().to_string()),
-        ("Cache-Control".to_string(), "no-store".to_string()),
-    ];
-    headers.extend(extra.iter().cloned());
-    write_response_meta(writer, status, &headers).await?;
-    if !body.is_empty() {
-        futures_write_all(writer, body).await?;
-    }
-    futures_close(writer).await
-}
-
-/// Build the `ConnectResponse` metadata pairs. The status is a bare
-/// `HttpStatus`; every header must be `HttpHeader:<Name>` or the edge drops it.
-fn response_meta_pairs(status: u16, headers: &[(String, String)]) -> Vec<(String, String)> {
-    let prefix = format!("{HTTP_HEADER_KEY}:");
-    let mut meta: Vec<(String, String)> = Vec::with_capacity(headers.len() + 1);
-    meta.push((cqstream::HTTP_STATUS_KEY.to_string(), status.to_string()));
-    for (name, value) in headers {
-        let key = if name == cqstream::HTTP_STATUS_KEY || name.starts_with(&prefix) {
-            name.clone()
-        } else {
-            format!("{prefix}{name}")
-        };
-        meta.push((key, value.clone()));
-    }
-    meta
-}
-
-pub(crate) async fn write_response_meta(
-    writer: &mut EdgeWriter,
-    status: u16,
-    headers: &[(String, String)],
-) -> Result<()> {
-    let meta = response_meta_pairs(status, headers);
-    let refs: Vec<(&str, &str)> = meta.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
-    cqstream::write_connect_response(writer, "", &refs).await?;
-    Ok(())
-}
-
-// ── Request head ────────────────────────────────────────────────────────────
-
-/// The HTTP/1.1 head of the request to the origin.
-///
-/// The method, the target and the host come from the edge (the QUIC leg has
-/// no HTTP parser before this) or from `httpHostHeader`: each one with a
-/// control character, a space or a line break is an error (issue 226). A
-/// header with a bad name or value is dropped. The hop-by-hop headers and
-/// the headers that `Connection` names stay on their hop (issue 235), but
-/// `Transfer-Encoding` stays: a chunked request body goes to the origin as
-/// it is.
-pub(crate) fn build_request_head(
-    request: &cqstream::ConnectRequest,
-    options: &OriginOptions,
-    upgrade: bool,
-) -> Result<String> {
-    let method = request.meta(HTTP_METHOD_KEY).unwrap_or("GET");
-    if axum::http::Method::from_bytes(method.as_bytes()).is_err() {
-        bail!("the request method {method:?} is not a token");
-    }
-    let path = request_path(&request.dest);
-    if !path.bytes().all(|b| b > b' ' && b != 0x7f) {
-        bail!("the request target {path:?} has a space or a control character");
-    }
-    let host = match &options.http_host_header {
-        Some(host) => host.clone(),
-        None => request.meta(HTTP_HOST_KEY).unwrap_or_default().to_string(),
-    };
-    if HeaderValue::from_bytes(host.as_bytes()).is_err() {
-        let from = if options.http_host_header.is_some() {
-            "httpHostHeader"
-        } else {
-            "the request"
-        };
-        bail!("the Host {host:?} of {from} has a control character");
-    }
-    let prefix = format!("{HTTP_HEADER_KEY}:");
-    let headers = || {
-        request
-            .metadata
-            .iter()
-            .filter_map(|(key, value)| Some((key.strip_prefix(&prefix)?, value.as_str())))
-    };
-    let named = connection_named(
-        headers()
-            .filter(|(name, _)| name.eq_ignore_ascii_case("connection"))
-            .map(|(_, value)| value),
-    );
-
-    let mut head = String::with_capacity(256);
-    head.push_str(method);
-    head.push(' ');
-    head.push_str(&path);
-    head.push_str(" HTTP/1.1\r\n");
-    if !host.is_empty() {
-        head.push_str("Host: ");
-        head.push_str(&host);
-        head.push_str("\r\n");
-    }
-    let mut saw_upgrade = false;
-    for (name, value) in headers() {
-        let lower = name.to_ascii_lowercase();
-        if lower == "host" {
-            continue;
-        }
-        if options.strip_accept_encoding && lower == "accept-encoding" {
-            continue;
-        }
-        if lower == "upgrade" && upgrade {
-            saw_upgrade = true;
-        } else if drop_for_origin(&lower, &named) {
-            continue;
-        }
-        if HeaderName::from_bytes(name.as_bytes()).is_err()
-            || HeaderValue::from_bytes(value.as_bytes()).is_err()
-        {
-            tracing::warn!(header = %name.escape_debug(), "a request header is not valid HTTP; it is dropped");
-            continue;
-        }
-        head.push_str(name);
-        head.push_str(": ");
-        head.push_str(value);
-        head.push_str("\r\n");
-    }
-    if upgrade {
-        if !saw_upgrade {
-            head.push_str("Upgrade: websocket\r\n");
-        }
-        head.push_str("Connection: Upgrade\r\n");
-    } else {
-        head.push_str("Connection: close\r\n");
-    }
-    head.push_str("\r\n");
-    Ok(head)
-}
-
-/// Whether the request header `lower` (in lower case) stays out of the head
-/// to the origin: a hop-by-hop header but `Transfer-Encoding`, or a header
-/// that `Connection` names.
-fn drop_for_origin(lower: &str, named: &[String]) -> bool {
-    (is_hop_by_hop(lower) && lower != "transfer-encoding") || named.iter().any(|n| n == lower)
-}
-
-fn request_path(dest: &str) -> String {
-    path_and_query(dest)
-}
-
-pub(crate) fn header_value<'a>(
-    request: &'a cqstream::ConnectRequest,
-    name: &str,
-) -> Option<&'a str> {
-    let prefix = format!("{HTTP_HEADER_KEY}:");
-    request.metadata.iter().find_map(|(key, value)| {
-        key.strip_prefix(&prefix)
-            .filter(|header| header.eq_ignore_ascii_case(name))
-            .map(|_| value.as_str())
-    })
-}
-
-fn content_length(request: &cqstream::ConnectRequest) -> Option<u64> {
-    header_value(request, "content-length").and_then(|v| v.parse().ok())
-}
-
-fn is_chunked(request: &cqstream::ConnectRequest) -> bool {
-    header_value(request, "transfer-encoding")
-        .map(|v| v.to_ascii_lowercase().contains("chunked"))
-        .unwrap_or(false)
-}
-
-fn is_upgrade(request: &cqstream::ConnectRequest) -> bool {
-    header_value(request, "upgrade").is_some()
-        || header_value(request, "connection")
-            .map(|v| v.to_ascii_lowercase().contains("upgrade"))
-            .unwrap_or(false)
-}
-
-/// The edge marks an upgrade by connection type, and may not keep the
-/// `Upgrade`/`Connection` headers in the metadata, so check both.
-fn is_websocket(request: &cqstream::ConnectRequest) -> bool {
-    request.conn_type == cqstream::ConnectionType::Websocket || is_upgrade(request)
-}
-
-// ── Response head ───────────────────────────────────────────────────────────
-
-/// The Content-Length of an origin answer, after a check of its framing
-/// (issue 238). Each Content-Length value (also each item of a list) must
-/// be the same number (RFC 9110 section 8.6). A Content-Length together
-/// with a Transfer-Encoding that is not chunked is an error. With a chunked
-/// Transfer-Encoding, the chunks frame the body (RFC 9112 section 6.3).
-fn response_length(headers: &[(String, String)]) -> Result<Option<u64>> {
-    let mut length = None;
-    for (_, value) in headers
-        .iter()
-        .filter(|(name, _)| name.eq_ignore_ascii_case("content-length"))
-    {
-        for item in value.split(',') {
-            let item = item.trim();
-            let n = item
-                .parse::<u64>()
-                .ok()
-                .filter(|_| item.bytes().all(|b| b.is_ascii_digit()))
-                .with_context(|| format!("the origin answer has a bad Content-Length {item:?}"))?;
-            if length.is_some_and(|l| l != n) {
-                bail!("the origin answer has conflicting framing: two Content-Length values");
-            }
-            length = Some(n);
-        }
-    }
-    let encodings: Vec<String> = headers
-        .iter()
-        .filter(|(name, _)| name.eq_ignore_ascii_case("transfer-encoding"))
-        .map(|(_, value)| value.to_ascii_lowercase())
-        .collect();
-    if length.is_some() && !encodings.is_empty() {
-        if encodings.iter().any(|v| v.contains("chunked")) {
-            return Ok(None);
-        }
-        bail!("the origin answer has conflicting framing: Content-Length and Transfer-Encoding");
-    }
-    Ok(length)
-}
-
-async fn read_response_head<R>(io: &mut R) -> Result<(u16, Vec<(String, String)>, Vec<u8>)>
-where
-    R: tokio::io::AsyncRead + Unpin,
-{
-    let mut buf: Vec<u8> = Vec::with_capacity(4096);
-    let mut tmp = [0u8; 2048];
-    loop {
-        let n = tokio::io::AsyncReadExt::read(io, &mut tmp).await?;
-        if n == 0 {
-            bail!("origin closed before sending a response head");
-        }
-        buf.extend_from_slice(&tmp[..n]);
-        if buf.len() > MAX_HEAD_BYTES {
-            bail!("origin response head exceeds {MAX_HEAD_BYTES} bytes");
-        }
-        let parsed = {
-            let mut headers = [httparse::EMPTY_HEADER; MAX_HEADERS];
-            let mut response = httparse::Response::new(&mut headers);
-            match response.parse(&buf)? {
-                httparse::Status::Complete(consumed) => {
-                    let status = response.code.ok_or_else(|| anyhow!("no status code"))?;
-                    let pairs = response
-                        .headers
-                        .iter()
-                        .map(|h| {
-                            (
-                                h.name.to_string(),
-                                String::from_utf8_lossy(h.value).into_owned(),
-                            )
-                        })
-                        .collect::<Vec<_>>();
-                    Some((status, pairs, consumed))
-                }
-                httparse::Status::Partial => None,
-            }
-        };
-        if let Some((status, pairs, consumed)) = parsed {
-            let leftover = buf.split_off(consumed);
-            return Ok((status, pairs, leftover));
-        }
-    }
-}
-
-fn headers_value<'a>(headers: &'a [(String, String)], name: &str) -> Option<&'a str> {
-    headers
-        .iter()
-        .find(|(k, _)| k.eq_ignore_ascii_case(name))
-        .map(|(_, v)| v.as_str())
-}
-
-// ── Byte pumps ──────────────────────────────────────────────────────────────
-
-async fn copy_futures_to_tokio_n<R, W>(
-    src: &mut R,
-    dst: &mut W,
-    mut remaining: u64,
-    metrics: &Metrics,
-) -> Result<()>
-where
-    R: futures::io::AsyncRead + Unpin,
-    W: tokio::io::AsyncWrite + Unpin,
-{
-    let mut buf = [0u8; 16 * 1024];
-    while remaining > 0 {
-        let want = buf.len().min(remaining as usize);
-        let n = futures::io::AsyncReadExt::read(src, &mut buf[..want]).await?;
-        if n == 0 {
-            bail!("edge EOF with {remaining} request bytes still expected");
-        }
-        tokio::io::AsyncWriteExt::write_all(dst, &buf[..n]).await?;
-        metrics.add_in(n as u64);
-        remaining -= n as u64;
-    }
-    Ok(())
-}
-
-async fn copy_futures_to_tokio_eof<R, W>(src: &mut R, dst: &mut W, metrics: &Metrics) -> Result<u64>
-where
-    R: futures::io::AsyncRead + Unpin,
-    W: tokio::io::AsyncWrite + Unpin,
-{
-    let mut buf = [0u8; 16 * 1024];
-    let mut total = 0u64;
-    loop {
-        let n = futures::io::AsyncReadExt::read(src, &mut buf).await?;
-        if n == 0 {
-            break;
-        }
-        tokio::io::AsyncWriteExt::write_all(dst, &buf[..n]).await?;
-        metrics.add_in(n as u64);
-        total += n as u64;
-    }
-    Ok(total)
-}
-
-async fn copy_tokio_to_futures_n<R, W>(
-    src: &mut R,
-    dst: &mut W,
-    mut remaining: u64,
-    metrics: &Metrics,
-) -> Result<()>
-where
-    R: tokio::io::AsyncRead + Unpin,
-    W: futures::io::AsyncWrite + Unpin,
-{
-    let mut buf = [0u8; 16 * 1024];
-    while remaining > 0 {
-        let want = buf.len().min(remaining as usize);
-        let n = tokio::io::AsyncReadExt::read(src, &mut buf[..want]).await?;
-        if n == 0 {
-            bail!("origin EOF with {remaining} response bytes still expected");
-        }
-        futures::io::AsyncWriteExt::write_all(dst, &buf[..n]).await?;
-        // Flush each read: a small write of the origin (an SSE event, the
-        // start of a page) goes to the visitor at once.
-        futures::io::AsyncWriteExt::flush(dst).await?;
-        metrics.add_out(n as u64);
-        remaining -= n as u64;
-    }
-    Ok(())
-}
-
-async fn copy_tokio_to_futures_eof<R, W>(src: &mut R, dst: &mut W, metrics: &Metrics) -> Result<u64>
-where
-    R: tokio::io::AsyncRead + Unpin,
-    W: futures::io::AsyncWrite + Unpin,
-{
-    let mut buf = [0u8; 16 * 1024];
-    let mut total = 0u64;
-    loop {
-        let n = tokio::io::AsyncReadExt::read(src, &mut buf).await?;
-        if n == 0 {
-            break;
-        }
-        futures::io::AsyncWriteExt::write_all(dst, &buf[..n]).await?;
-        // Flush each read: a small write of the origin (an SSE event, the
-        // start of a page) goes to the visitor at once.
-        futures::io::AsyncWriteExt::flush(dst).await?;
-        metrics.add_out(n as u64);
-        total += n as u64;
-    }
-    Ok(total)
-}
-
-/// Decode the chunked body of `src` and write its payload to `dst`. The
-/// trailer is read and dropped. A size line of more than 4096 bytes, a bad
-/// size or an early end is an error.
-async fn copy_chunked_to_futures<R, W>(src: &mut R, dst: &mut W, metrics: &Metrics) -> Result<()>
-where
-    R: tokio::io::AsyncBufRead + Unpin,
-    W: futures::io::AsyncWrite + Unpin,
-{
-    use tokio::io::AsyncBufReadExt;
-    let mut line = Vec::new();
-    loop {
-        line.clear();
-        let n = tokio::io::AsyncReadExt::take(&mut *src, 4096)
-            .read_until(b'\n', &mut line)
-            .await?;
-        if n == 0 || !line.ends_with(b"\n") {
-            anyhow::bail!("the chunked body of the origin ends early");
-        }
-        let text = std::str::from_utf8(&line).context("a chunk size is not text")?;
-        let hex = text.split(';').next().unwrap_or("").trim();
-        let size = u64::from_str_radix(hex, 16)
-            .with_context(|| format!("a bad chunk size {hex:?} from the origin"))?;
-        if size == 0 {
-            // The trailer: header lines up to an empty line, at most
-            // MAX_TRAILER_LINE bytes each and MAX_TRAILER_BYTES in all
-            // (issue 244). podnet does not send the trailer on.
-            let mut total = 0;
-            loop {
-                line.clear();
-                let n = tokio::io::AsyncReadExt::take(&mut *src, MAX_TRAILER_LINE as u64)
-                    .read_until(b'\n', &mut line)
-                    .await?;
-                if n == 0 || line == b"\r\n" || line == b"\n" {
-                    return Ok(());
-                }
-                if !line.ends_with(b"\n") {
-                    bail!(
-                        "a trailer line of the origin is longer than {} KiB",
-                        MAX_TRAILER_LINE / 1024
-                    );
-                }
-                total += n;
-                if total > MAX_TRAILER_BYTES {
-                    bail!(
-                        "the trailer of the origin is larger than {} KiB",
-                        MAX_TRAILER_BYTES / 1024
-                    );
-                }
-            }
-        }
-        copy_tokio_to_futures_n(src, dst, size, metrics).await?;
-        line.clear();
-        tokio::io::AsyncReadExt::take(&mut *src, 2)
-            .read_until(b'\n', &mut line)
-            .await?;
-        if line != b"\r\n" && line != b"\n" {
-            anyhow::bail!("a chunk of the origin has no line end after its data");
-        }
-    }
-}
-
-async fn futures_write_all<W>(dst: &mut W, bytes: &[u8]) -> Result<()>
-where
-    W: futures::io::AsyncWrite + Unpin,
-{
-    futures::io::AsyncWriteExt::write_all(dst, bytes).await?;
-    Ok(())
-}
-
-async fn futures_close<W>(dst: &mut W) -> Result<()>
-where
-    W: futures::io::AsyncWrite + Unpin,
-{
-    futures::io::AsyncWriteExt::close(dst).await?;
-    Ok(())
-}
-
 // `connect.rs` is the HTTP CONNECT client (a dial through a proxy). This
 // module serves the edge streams. These re-exports keep the old paths
 // (`crate::proxy::connect_tunnel` and others).
@@ -1255,12 +510,14 @@ mod tests {
         use std::sync::Arc;
         use std::time::Duration;
         use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
-        let pair = crate::cloudflare::quic::testing::local_pair().await;
+        let pair = pod_cloudflare::standin::quic::local_pair().await;
         let dir = tempfile::tempdir().unwrap();
         let config = crate::share::ShareConfig::upload(dir.path());
         let token = config.token.clone();
-        let ingress = Arc::new(Ingress::new().catch_all(Service::Share(config)));
-        let runtime = Arc::new(ServiceRuntime::build(&ingress, Metrics::new()).unwrap());
+        let ingress =
+            Arc::new(crate::ingress::Ingress::new().catch_all(crate::ingress::share(config)));
+        let hosted = crate::tunnel::hosted().unwrap();
+        let runtime = Arc::new(Runtime::build(hosted.host, &ingress, hosted.metrics).unwrap());
         let client = pair.client.clone();
         let server = tokio::spawn(async move {
             while let Ok((send, recv)) = client.accept_bi().await {
@@ -1359,157 +616,6 @@ mod tests {
         server.abort();
     }
 
-    /// On a QUIC connection in memory: a stream with the RPC signature is
-    /// reset at once, and a data stream after it is served (the signature
-    /// that podnet read first goes back in front of the request).
-    #[tokio::test]
-    async fn an_rpc_stream_is_reset_and_a_data_stream_is_served() {
-        crate::test_host::need_loopback!();
-        use crate::cloudflare::schema::ConnectionType;
-        use std::sync::Arc;
-        use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
-        let pair = crate::cloudflare::quic::testing::local_pair().await;
-        let ingress = Arc::new(Ingress::new().catch_all(Service::HelloWorld));
-        let runtime = Arc::new(ServiceRuntime::build(&ingress, Metrics::new()).unwrap());
-        let client = pair.client.clone();
-        let server = tokio::spawn(async move {
-            while let Ok((send, recv)) = client.accept_bi().await {
-                tokio::spawn(serve_stream(runtime.clone(), ingress.clone(), send, recv));
-            }
-        });
-
-        let (mut send, mut recv) = pair.edge.open_bi().await.unwrap();
-        send.write_all(&crate::cloudflare::RPC_STREAM_SIGNATURE)
-            .await
-            .unwrap();
-        send.write_all(b"01 a call").await.unwrap();
-        let err = tokio::time::timeout(std::time::Duration::from_secs(5), recv.read_to_end(1024))
-            .await
-            .expect("an answer to the RPC stream")
-            .unwrap_err();
-        assert!(
-            matches!(
-                err,
-                noq::ReadToEndError::Read(noq::ReadError::Reset(code))
-                    if code == noq::VarInt::from_u32(RPC_STREAM_REFUSED)
-            ),
-            "{err:?}"
-        );
-
-        let (send, recv) = pair.edge.open_bi().await.unwrap();
-        let mut writer = send.compat_write();
-        let mut reader = recv.compat();
-        let request = cqstream::ConnectRequest {
-            dest: "http://x.trycloudflare.com/".into(),
-            conn_type: ConnectionType::Http,
-            metadata: vec![
-                (HTTP_METHOD_KEY.into(), "GET".into()),
-                (HTTP_HOST_KEY.into(), "x.trycloudflare.com".into()),
-            ],
-        };
-        cqstream::write_connect_request(&mut writer, &request)
-            .await
-            .unwrap();
-        futures::io::AsyncWriteExt::close(&mut writer)
-            .await
-            .unwrap();
-        let (error, meta) = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            cqstream::read_connect_response(&mut reader),
-        )
-        .await
-        .expect("an answer to the data stream")
-        .unwrap();
-        assert_eq!(error, "");
-        assert!(
-            meta.iter()
-                .any(|(k, v)| k == cqstream::HTTP_STATUS_KEY && v == "200"),
-            "{meta:?}"
-        );
-        server.abort();
-    }
-
-    /// A writer that keeps the bytes until a flush, like a buffered edge
-    /// stream. `committed` holds what a flush passed on.
-    struct HoldUntilFlush {
-        held: Vec<u8>,
-        committed: std::sync::Arc<std::sync::Mutex<Vec<u8>>>,
-    }
-
-    impl futures::io::AsyncWrite for HoldUntilFlush {
-        fn poll_write(
-            mut self: std::pin::Pin<&mut Self>,
-            _: &mut std::task::Context<'_>,
-            buf: &[u8],
-        ) -> std::task::Poll<std::io::Result<usize>> {
-            self.held.extend_from_slice(buf);
-            std::task::Poll::Ready(Ok(buf.len()))
-        }
-        fn poll_flush(
-            mut self: std::pin::Pin<&mut Self>,
-            _: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<std::io::Result<()>> {
-            let held = std::mem::take(&mut self.held);
-            self.committed.lock().unwrap().extend_from_slice(&held);
-            std::task::Poll::Ready(Ok(()))
-        }
-        fn poll_close(
-            self: std::pin::Pin<&mut Self>,
-            cx: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<std::io::Result<()>> {
-            self.poll_flush(cx)
-        }
-    }
-
-    /// A small write of the origin reaches the edge before the origin
-    /// writes more (an SSE event), with a length and to the end of the
-    /// stream.
-    #[tokio::test]
-    async fn small_writes_go_out_at_once() {
-        for with_length in [true, false] {
-            let committed = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-            let mut dst = HoldUntilFlush {
-                held: Vec::new(),
-                committed: committed.clone(),
-            };
-            let (mut origin, mut src) = tokio::io::duplex(1 << 16);
-            let copy = tokio::spawn(async move {
-                if with_length {
-                    copy_tokio_to_futures_n(&mut src, &mut dst, 20, &Metrics::new())
-                        .await
-                        .map(|_| ())
-                } else {
-                    copy_tokio_to_futures_eof(&mut src, &mut dst, &Metrics::new())
-                        .await
-                        .map(|_| ())
-                }
-            });
-            tokio::io::AsyncWriteExt::write_all(&mut origin, b"data: event-1\n\n")
-                .await
-                .unwrap();
-            let start = std::time::Instant::now();
-            while committed.lock().unwrap().len() < 15 {
-                assert!(
-                    start.elapsed() < std::time::Duration::from_secs(2),
-                    "the event was held"
-                );
-                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-            }
-            tokio::io::AsyncWriteExt::write_all(&mut origin, b"12345")
-                .await
-                .unwrap();
-            drop(origin);
-            copy.await.unwrap().unwrap();
-            assert_eq!(
-                committed.lock().unwrap().as_slice(),
-                b"data: event-1\n\n12345"
-            );
-        }
-    }
-
-    /// The payload of each chunk, with no framing; an extension and a
-    /// trailer are dropped; the last chunk ends the body while the origin
-    /// keeps the connection open.
     /// Issue 243: a built-in body of no known size is streamed, not
     /// buffered to its end. A body of a known size gets a Content-Length.
     #[tokio::test]
@@ -1580,225 +686,6 @@ mod tests {
         futures::stream::unfold(rx, |mut rx| async move { rx.recv().await.map(|v| (v, rx)) })
     }
 
-    /// Issue 238: an answer with more than 64 headers passes.
-    #[tokio::test]
-    async fn an_origin_answer_with_many_headers_passes() {
-        let mut raw = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n".to_vec();
-        for i in 0..100 {
-            raw.extend_from_slice(format!("Set-Cookie: c{i}=v\r\n").as_bytes());
-        }
-        raw.extend_from_slice(b"\r\nok");
-        let (status, headers, leftover) = read_response_head(&mut &raw[..]).await.unwrap();
-        assert_eq!(
-            (status, headers.len(), leftover.as_slice()),
-            (200, 101, &b"ok"[..])
-        );
-    }
-
-    /// Issue 238: two different Content-Length values, or Content-Length
-    /// with a Transfer-Encoding that is not chunked, are an error.
-    #[test]
-    fn the_framing_of_an_origin_answer_is_checked() {
-        let h = |pairs: &[(&str, &str)]| {
-            pairs
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-                .collect::<Vec<_>>()
-        };
-        let cl = "Content-Length";
-        let te = "Transfer-Encoding";
-        assert_eq!(response_length(&h(&[(cl, "5")])).unwrap(), Some(5));
-        assert_eq!(
-            response_length(&h(&[(cl, "5"), (cl, "5")])).unwrap(),
-            Some(5)
-        );
-        assert_eq!(response_length(&h(&[(cl, "5, 5")])).unwrap(), Some(5));
-        assert_eq!(response_length(&h(&[])).unwrap(), None);
-        assert_eq!(
-            response_length(&h(&[(cl, "5"), (te, "chunked")])).unwrap(),
-            None
-        );
-        for bad in [
-            h(&[(cl, "5"), (cl, "6")]),
-            h(&[(cl, "5, 6")]),
-            h(&[(cl, "x")]),
-            h(&[(cl, "+5")]),
-            h(&[(cl, "5"), (te, "gzip")]),
-        ] {
-            assert!(response_length(&bad).is_err(), "{bad:?}");
-        }
-    }
-
-    /// Issue 244: the trailer of a chunked answer has a cap, in all and
-    /// for each line.
-    #[tokio::test]
-    async fn the_trailer_of_the_origin_has_a_cap() {
-        let mut many = b"1\r\na\r\n0\r\n".to_vec();
-        for _ in 0..20_000 {
-            many.extend_from_slice(b"X: y\r\n");
-        }
-        many.extend_from_slice(b"\r\n");
-        let mut long = b"0\r\n".to_vec();
-        long.extend(std::iter::repeat_n(b'a', 20_000));
-        long.extend_from_slice(b"\r\n\r\n");
-        for (raw, want) in [(&many, "larger than 64 KiB"), (&long, "longer than 8 KiB")] {
-            let mut source = tokio::io::BufReader::new(&raw[..]);
-            let mut out = futures::io::Cursor::new(Vec::new());
-            let err = copy_chunked_to_futures(&mut source, &mut out, &Metrics::new())
-                .await
-                .unwrap_err();
-            assert!(err.to_string().contains(want), "{err:#}");
-        }
-        // A small trailer is read and dropped.
-        let raw = b"1\r\na\r\n0\r\nX-Sum: 1\r\n\r\n";
-        let mut source = tokio::io::BufReader::new(&raw[..]);
-        let mut out = futures::io::Cursor::new(Vec::new());
-        copy_chunked_to_futures(&mut source, &mut out, &Metrics::new())
-            .await
-            .unwrap();
-        assert_eq!(out.into_inner(), b"a");
-    }
-
-    #[tokio::test]
-    async fn a_chunked_body_is_decoded() {
-        let (mut origin, podnet_side) = tokio::io::duplex(1 << 16);
-        let mut wire = Vec::new();
-        let mut want = Vec::new();
-        for i in 0..100u32 {
-            let chunk = format!("{}{i:04}", "c".repeat(1000));
-            wire.extend_from_slice(format!("{:x};ext=1\r\n{chunk}\r\n", chunk.len()).as_bytes());
-            want.extend_from_slice(chunk.as_bytes());
-        }
-        wire.extend_from_slice(b"0\r\nX-Trailer: 1\r\n\r\n");
-        // The origin writes, and does not close: the decoder must end at
-        // the last chunk.
-        let writer = tokio::spawn(async move {
-            tokio::io::AsyncWriteExt::write_all(&mut origin, &wire)
-                .await
-                .unwrap();
-            origin
-        });
-        let mut source = tokio::io::BufReader::new(podnet_side);
-        let mut out = futures::io::Cursor::new(Vec::new());
-        tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            copy_chunked_to_futures(&mut source, &mut out, &Metrics::new()),
-        )
-        .await
-        .expect("the decoder ends at the last chunk")
-        .unwrap();
-        assert_eq!(out.into_inner(), want);
-        drop(writer.await.unwrap());
-
-        for bad in [
-            &b"zz\r\nab\r\n0\r\n\r\n"[..],
-            b"5\r\nab",
-            b"2\r\nabXX0\r\n\r\n",
-        ] {
-            let mut source = tokio::io::BufReader::new(bad);
-            let mut out = futures::io::Cursor::new(Vec::new());
-            assert!(
-                copy_chunked_to_futures(&mut source, &mut out, &Metrics::new())
-                    .await
-                    .is_err(),
-                "{:?}",
-                String::from_utf8_lossy(bad)
-            );
-        }
-    }
-    use crate::cloudflare::stream::ConnectionType;
-
-    fn req(dest: &str, metadata: Vec<(&str, &str)>) -> cqstream::ConnectRequest {
-        cqstream::ConnectRequest {
-            dest: dest.to_string(),
-            conn_type: ConnectionType::Http,
-            metadata: metadata
-                .into_iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-                .collect(),
-        }
-    }
-
-    // Issue 205: with --auth-user, a request with no right credential gets
-    // 401 and reaches no origin; the right one passes, and the origin does
-    // not get the header.
-    #[tokio::test]
-    async fn the_credential_in_front_of_the_tunnel() {
-        crate::test_host::need_loopback!();
-        use tokio::io::AsyncReadExt as _;
-        use tokio_util::compat::{TokioAsyncReadCompatExt as _, TokioAsyncWriteCompatExt as _};
-        // An origin that answers with the request head it got.
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let origin = format!("http://{}", listener.local_addr().unwrap());
-        tokio::spawn(async move {
-            while let Ok((mut s, _)) = listener.accept().await {
-                tokio::spawn(async move {
-                    let mut buf = vec![0u8; 4096];
-                    let n = s.read(&mut buf).await.unwrap_or(0);
-                    let head = String::from_utf8_lossy(&buf[..n]).to_string();
-                    let answer = format!(
-                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{head}",
-                        head.len()
-                    );
-                    let _ = tokio::io::AsyncWriteExt::write_all(&mut s, answer.as_bytes()).await;
-                });
-            }
-        });
-        let mut ingress = Ingress::new().catch_all(Service::Http(origin));
-        let creds = pod_proxy::Credentials::new("u", "secret").unwrap();
-        ingress.auth = Some(creds.clone());
-        let runtime = ServiceRuntime::build(&ingress, Metrics::new()).unwrap();
-        let run = |auth: Option<String>| {
-            let mut meta = vec![
-                (HTTP_METHOD_KEY, "GET".to_string()),
-                (HTTP_HOST_KEY, "x".to_string()),
-            ];
-            let header = format!("{HTTP_HEADER_KEY}:Authorization");
-            let mut request = req("https://x/", vec![]);
-            for (k, v) in meta.drain(..) {
-                request.metadata.push((k.to_string(), v));
-            }
-            if let Some(a) = auth {
-                request.metadata.push((header, a));
-            }
-            request
-        };
-        for (auth, want) in [
-            (None, "401"),
-            (Some("Basic d3Jvbmc6d3Jvbmc=".to_string()), "401"),
-            (Some(creds.basic_header()), "200"),
-        ] {
-            let (ours, theirs) = tokio::io::duplex(1 << 16);
-            let (_input, input) = tokio::io::duplex(64);
-            serve_request_inner(
-                &runtime,
-                &ingress,
-                run(auth.clone()),
-                Box::pin(input.compat()),
-                Box::pin(ours.compat_write()),
-            )
-            .await
-            .unwrap();
-            let mut reader = theirs.compat();
-            let (_, meta) = cqstream::read_connect_response(&mut reader).await.unwrap();
-            let status = meta
-                .iter()
-                .find(|(k, _)| k == crate::cloudflare::stream::HTTP_STATUS_KEY)
-                .map(|(_, v)| v.clone())
-                .unwrap_or_default();
-            assert_eq!(status, want, "{auth:?}");
-            if want == "200" {
-                let mut body = Vec::new();
-                let _ = futures::io::AsyncReadExt::read_to_end(&mut reader, &mut body).await;
-                let body = String::from_utf8_lossy(&body);
-                assert!(
-                    !body.to_ascii_lowercase().contains("authorization"),
-                    "{body}"
-                );
-            }
-        }
-    }
-
     // Issue 204: the origin of a proxy share.
     #[test]
     fn the_origin_of_a_proxy_share() {
@@ -1810,182 +697,6 @@ mod tests {
         );
     }
 
-    // Issue 199: an HTTP request to a raw TCP origin gets 501, with no dial.
-    #[tokio::test]
-    async fn an_http_request_to_a_tcp_origin_gets_501() {
-        crate::test_host::need_loopback!();
-        use tokio_util::compat::{TokioAsyncReadCompatExt as _, TokioAsyncWriteCompatExt as _};
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let service = Service::Tcp(listener.local_addr().unwrap().to_string());
-        let request = req("https://x/", vec![(HTTP_HOST_KEY, "x")]);
-        let (ours, theirs) = tokio::io::duplex(4096);
-        let (_input, input) = tokio::io::duplex(64);
-        forward_tcp(
-            &service,
-            &OriginOptions::default(),
-            &request,
-            Box::pin(input.compat()),
-            Box::pin(ours.compat_write()),
-            &Metrics::new(),
-        )
-        .await
-        .unwrap();
-        let mut reader = theirs.compat();
-        let (error, meta) = cqstream::read_connect_response(&mut reader).await.unwrap();
-        assert!(error.is_empty(), "{error}");
-        assert!(
-            meta.contains(&(
-                crate::cloudflare::stream::HTTP_STATUS_KEY.to_string(),
-                "501".to_string()
-            )),
-            "{meta:?}"
-        );
-        let accepted =
-            tokio::time::timeout(std::time::Duration::from_millis(200), listener.accept()).await;
-        assert!(accepted.is_err(), "the origin was dialed");
-    }
-
-    #[test]
-    fn head_and_flags() {
-        let request = req(
-            "https://x/a",
-            vec![
-                (HTTP_METHOD_KEY, "POST"),
-                (HTTP_HOST_KEY, "x"),
-                ("HttpHeader:Content-Length", "5"),
-            ],
-        );
-        assert_eq!(content_length(&request), Some(5));
-        let head = build_request_head(&request, &OriginOptions::default(), false).unwrap();
-        assert!(head.starts_with("POST /a HTTP/1.1\r\n"));
-        assert!(head.contains("Connection: close\r\n"));
-    }
-
-    /// Issue 56: a WebSocket stream of the QUIC leg (connection type
-    /// Websocket) with no Upgrade header still upgrades the origin.
-    #[test]
-    fn a_websocket_stream_with_no_upgrade_header_upgrades() {
-        let mut ws = req(
-            "https://x/ws",
-            vec![
-                (HTTP_HOST_KEY, "x"),
-                ("HttpHeader:Sec-Websocket-Key", "dGhlIHNhbXBsZSBub25jZQ=="),
-                ("HttpHeader:Connection", "keep-alive"),
-            ],
-        );
-        ws.conn_type = cqstream::ConnectionType::Websocket;
-        assert!(!is_upgrade(&ws) && is_websocket(&ws));
-        let head = build_request_head(&ws, &OriginOptions::default(), is_websocket(&ws)).unwrap();
-        assert!(head.contains("Upgrade: websocket\r\n"), "{head}");
-        assert!(head.contains("Connection: Upgrade\r\n"), "{head}");
-        assert!(
-            !head.contains("keep-alive") && !head.contains("Connection: close"),
-            "{head}"
-        );
-        assert!(
-            head.contains("Sec-Websocket-Key: dGhlIHNhbXBsZSBub25jZQ=="),
-            "{head}"
-        );
-        // With an Upgrade header, it is not doubled.
-        let with = req("https://x/ws", vec![("HttpHeader:Upgrade", "websocket")]);
-        let head = build_request_head(&with, &OriginOptions::default(), true).unwrap();
-        assert_eq!(head.matches("pgrade: websocket").count(), 1, "{head}");
-    }
-
-    /// Issue 226: a line break in a field of the edge does not reach the
-    /// origin as a new header line.
-    #[test]
-    fn a_line_break_does_not_make_a_header_line() {
-        let request = req(
-            "https://x/a",
-            vec![
-                (HTTP_HOST_KEY, "x"),
-                ("HttpHeader:X-A", "a\r\nInjected: 1"),
-                ("HttpHeader:Bad Name", "b"),
-                ("HttpHeader:X-Name\r\nInjected", "c"),
-                ("HttpHeader:Cookie", "name=caf\u{e9}"),
-            ],
-        );
-        let head = build_request_head(&request, &OriginOptions::default(), false).unwrap();
-        assert!(!head.contains("Injected"), "{head}");
-        assert!(!head.contains("Bad Name"), "{head}");
-        assert!(head.contains("Cookie: name=caf\u{e9}\r\n"), "{head}");
-        assert_eq!(head.matches("\r\n\r\n").count(), 1, "{head}");
-        assert!(head.ends_with("\r\n\r\n"), "{head}");
-        assert_eq!(head.matches('\n').count(), head.matches("\r\n").count());
-
-        let bad = [
-            req(
-                "https://x/a",
-                vec![(HTTP_METHOD_KEY, "GET /x HTTP/1.1\r\n")],
-            ),
-            req("https://x/a\r\nInjected: 1", vec![]),
-            req("https://x/a b", vec![]),
-            req("https://x/a", vec![(HTTP_HOST_KEY, "x\nInjected: 1")]),
-        ];
-        for request in &bad {
-            assert!(
-                build_request_head(request, &OriginOptions::default(), false).is_err(),
-                "{request:?}"
-            );
-        }
-        let options = OriginOptions {
-            http_host_header: Some("x\r\nInjected: 1".into()),
-            ..OriginOptions::default()
-        };
-        let err = build_request_head(&req("https://x/", vec![]), &options, false).unwrap_err();
-        assert!(err.to_string().contains("httpHostHeader"), "{err}");
-    }
-
-    /// Issue 235: the hop-by-hop headers and the headers that Connection
-    /// names do not go to the origin. Transfer-Encoding stays for a chunked
-    /// body.
-    #[test]
-    fn hop_by_hop_headers_stay_on_their_hop() {
-        let request = req(
-            "https://x/u",
-            vec![
-                (HTTP_METHOD_KEY, "POST"),
-                ("HttpHeader:Keep-Alive", "timeout=5"),
-                ("HttpHeader:Te", "trailers"),
-                ("HttpHeader:Trailer", "X-Sum"),
-                ("HttpHeader:Proxy-Authorization", "Basic YTpi"),
-                ("HttpHeader:Connection", "close, X-Hop"),
-                ("HttpHeader:X-Hop", "1"),
-                ("HttpHeader:X-Keep", "2"),
-                ("HttpHeader:Transfer-Encoding", "chunked"),
-            ],
-        );
-        let head = build_request_head(&request, &OriginOptions::default(), false).unwrap();
-        for gone in [
-            "Keep-Alive",
-            "Te:",
-            "Trailer",
-            "Proxy-Authorization",
-            "X-Hop",
-        ] {
-            assert!(!head.contains(gone), "{gone} in {head}");
-        }
-        assert!(head.contains("X-Keep: 2\r\n"), "{head}");
-        assert!(head.contains("Transfer-Encoding: chunked\r\n"), "{head}");
-        assert_eq!(head.matches("Connection:").count(), 1, "{head}");
-        assert!(head.contains("Connection: close\r\n"), "{head}");
-        let sized = req("https://x/u", vec![("HttpHeader:Content-Length", "5")]);
-        let head = build_request_head(&sized, &OriginOptions::default(), false).unwrap();
-        assert!(head.contains("Content-Length: 5\r\n"), "{head}");
-    }
-
-    #[test]
-    fn upgrade_and_chunked() {
-        let ws = req("https://x/ws", vec![("HttpHeader:Upgrade", "websocket")]);
-        assert!(is_upgrade(&ws));
-        let chunked = req(
-            "https://x/u",
-            vec![("HttpHeader:Transfer-Encoding", "chunked")],
-        );
-        assert!(is_chunked(&chunked));
-    }
-
     #[test]
     fn form_parsing() {
         let fields = parse_form(b"password=123456&next=%2Fs%2Fabc%2F&x=a+b");
@@ -1993,42 +704,4 @@ mod tests {
         assert!(fields.contains(&("next".to_string(), "/s/abc/".to_string())));
         assert!(fields.contains(&("x".to_string(), "a b".to_string())));
     }
-
-    #[test]
-    fn strips_accept_encoding_on_request() {
-        let request = req(
-            "https://x/",
-            vec![("HttpHeader:Accept-Encoding", "gzip, br")],
-        );
-        let head = build_request_head(&request, &OriginOptions::default(), false).unwrap();
-        assert!(head.contains("Accept-Encoding: gzip, br"));
-
-        let options = OriginOptions {
-            strip_accept_encoding: true,
-            ..OriginOptions::default()
-        };
-        let head = build_request_head(&request, &options, false).unwrap();
-        assert!(!head.to_ascii_lowercase().contains("accept-encoding"));
-    }
-
-    #[test]
-    fn response_meta_prefixes_headers() {
-        let headers = vec![
-            ("Content-Type".to_string(), "text/plain".to_string()),
-            ("Set-Cookie".to_string(), "a=b".to_string()),
-            ("HttpHeader:Location".to_string(), "/next".to_string()),
-        ];
-        let meta = response_meta_pairs(303, &headers);
-        assert_eq!(meta[0], ("HttpStatus".to_string(), "303".to_string()));
-        assert!(meta.contains(&(
-            "HttpHeader:Content-Type".to_string(),
-            "text/plain".to_string()
-        )));
-        assert!(meta.contains(&("HttpHeader:Set-Cookie".to_string(), "a=b".to_string())));
-        assert!(meta.contains(&("HttpHeader:Location".to_string(), "/next".to_string())));
-        assert!(!meta.iter().any(|(k, _)| k == "Content-Type"));
-    }
 }
-
-// ── re-exports from the outbound CONNECT client ─────────────────────────────
-//

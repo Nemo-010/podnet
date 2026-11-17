@@ -4,7 +4,7 @@
 use podnet::{Service, Tunnel};
 
 # async fn run() -> anyhow::Result<()> {
-let handle = Tunnel::quick()
+let handle = Tunnel::quick(podnet::tunnel::host()?)
     .service(Service::parse("http://127.0.0.1:8080")?)
     .ha_connections(2)
     .build()?
@@ -17,7 +17,11 @@ handle.shutdown().await;
 # }
 ```
 
+* The tunnel is `pod-cloudflare` of PodUtils/podcrates. `podnet::tunnel::host`
+  gives it the host of podnet: the TLS context, the way out, the resolver, the
+  relay, the WARP device, the services of podnet and the variables.
 * `podnet::Ingress` holds ordered rules for a tunnel with more than one service.
+  `podnet::ingress::files`, `git` and `share` make the services of podnet.
 * `podnet::warp::WarpClient` registers a device and opens a `WarpStack` (the
   `WarpNet` of `pod-warp`, a `pod_core::Dial`): `podnet::warp::tcp_connect`
   and its datagrams go through the tunnel.

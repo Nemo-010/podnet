@@ -6,7 +6,7 @@ attachments, not files of the repository: `docs/research/podnet/mwan-field.md`, 
 quotes them. These entries can start at any time from M0. An entry that changes a file of a split
 of M2 lands before that split starts, or after it ends. Names: before T-016 a variable is
 `CFRS_X`; after it, `PODNET_X`. A fix in a module that podcrates already holds, or that
-T-137 plans to move (`src/warp/`, `src/resolve.rs`, `src/egress.rs`, `src/cloudflare/`), lands in
+T-137 plans to move (`src/warp/`, `src/resolve.rs`, `src/egress.rs`, `PodUtils/podnet@7fe60e0:src/cloudflare/`), lands in
 podnet until podnet takes the crate. Tell the podcrates session of the fix (`docs/decisions.md`, Who edits a
 shared crate). After the take, the fix goes to PodUtils/podcrates.
 
@@ -1945,7 +1945,7 @@ allowlist, or (2) a statement that they are snapshots.
 - Read: `TODO/RULES.md:56` says that these directories "are readings at a time". `TODO/todo.toml:15`
   lists them as `readings`. `architecture.md:3` names its commit (`3bed023`, 2026-11-04).
   `tests/docs.rs:94-105` reads eight documents, not these.
-- Read: the live plan is the record. T-040 (`TODO/split.md:822`) still says that `seccomp.rs` has 1,900
+- Read: the live plan is the record. T-040 (`TODO/split.md:827`) still says that `seccomp.rs` has 1,900
   lines, and "do this entry before T-063 starts, or after T-067 is done". Now `seccomp.rs` has 1516
   lines and T-063 to T-067 are done. This is a stale figure in the record, not in a reading.
 - Measured: `grep -rn "crates/pod-netns/" docs/research docs/reports` gives 35, 8, 6, 6, 5, 5, 2, 2 hits
@@ -1995,10 +1995,10 @@ CONNECT ...: 502`, exit 69, and `curl --proxy ... URL` gives 200. `--no-verify` 
 
 ## Premise
 
-- Read: `verify_fetch` (`src/tunnel.rs:1182-1263`). The Dns arm (`:1228-1231`) and the other `Err` arm
+- Read: `verify_fetch` (`PodUtils/podnet@7fe60e0:src/tunnel.rs:1182-1263`). The Dns arm (`PodUtils/podnet@7fe60e0:src/tunnel.rs:1228-1231`) and the other `Err` arm
   (`:1232-1235`) only change the retry text. After the loop only `last_status` can demote the verdict
   (`:1253-1258`). Otherwise `fault(Unavailable)` (`:1259-1262`).
-- Read: the three front ends each shut down and return the error (`src/cli/cmd/run.rs:17-198`).
+- Read: the three front ends each shut down and return the error (`PodUtils/podnet@7fe60e0:src/cli/cmd/run.rs:17-198`).
   `run_demo` passes a body token, so the warn branch cannot apply; it prints PROOF from `check.dns`
   (`run.rs:153-160`). `wants_verify` (`tunnel.rs:1208`) has no caller. The ready document has
   `"verified": bool` (`run.rs:196-215`).
@@ -2033,7 +2033,7 @@ cargo test --test cli -- tunnel_ready_document_marks_an_unresolved_name
 
 ## Done
 
-2026-11-09, commit ebc94ea. `verify_fetch` (now `src/tunnel/verify.rs`) tracks failures before the edge: Dns hop, or a proxy `Refusal` of CONNECT. When each attempt failed so, it returns `Verified { unverified: Some("resolution") }` and the tunnel stays up (also for a body token). The ready document has `unverified`; `run_demo` prints NOT PROVED. `PODNET_VERIFY_STRICT=1` gives exit 69. HTTP 530 stays fatal. Tests: `a_name_that_does_not_resolve_keeps_the_tunnel_up` (skips when a proxy of the host answers), `a_proxy_refusal_is_a_resolution_failure`, `a_failed_verify_exits_69_after_the_budget`. The CLI test `tunnel_ready_document_marks_an_unresolved_name` is not written: it needs a live tunnel. CI: at the merge.
+2026-11-09, commit ebc94ea. `verify_fetch` (now `PodUtils/podnet@7fe60e0:src/tunnel/verify.rs`) tracks failures before the edge: Dns hop, or a proxy `Refusal` of CONNECT. When each attempt failed so, it returns `Verified { unverified: Some("resolution") }` and the tunnel stays up (also for a body token). The ready document has `unverified`; `run_demo` prints NOT PROVED. `PODNET_VERIFY_STRICT=1` gives exit 69. HTTP 530 stays fatal. Tests: `a_name_that_does_not_resolve_keeps_the_tunnel_up` (skips when a proxy of the host answers), `a_proxy_refusal_is_a_resolution_failure`, `a_failed_verify_exits_69_after_the_budget`. The CLI test `tunnel_ready_document_marks_an_unresolved_name` is not written: it needs a live tunnel. CI: at the merge.
 
 # T-164: Document `--no-verify` in the README, and say what it does not do (GitHub #361)
 
@@ -2054,9 +2054,9 @@ Operators of restricted hosts need the flag: the fresh `*.trycloudflare.com` nam
 ## Premise
 
 - `src/cli/opts.rs:59-61` declares it (`global = true`); `src/cli/opts.rs:174` sets `config.verify`.
-- `src/cli/cmd/run.rs:23,69` read `config.verify` and gate `verify_accepting`; `src/tunnel.rs:1182`
+- `src/cli/cmd/run.rs:23,69` read `config.verify` and gate `verify_accepting`; `PodUtils/podnet@7fe60e0:src/tunnel.rs:1182`
   runs the fetch. `crates/podnet-core/src/net.rs` takes `no_tls_verify` from the ingress rule. The two flags share no state.
-- `grep -n -e '--no-verify' README.md docs/*.md` finds nothing. `wants_verify` (`src/tunnel.rs:1172`) has no caller.
+- `grep -n -e '--no-verify' README.md docs/*.md` finds nothing. `wants_verify` (`PodUtils/podnet@7fe60e0:src/tunnel.rs:1172`) has no caller.
 - Not measured: the runtime fetch on a restricted host.
 
 ## Approach
@@ -2094,7 +2094,7 @@ has `--masque-endpoint`; `tunnel` has none.
 
 ## Premise
 
-- `warp_targets` builds the client with no `with_masque` (`src/tunnel.rs:827-838`). Neither
+- `warp_targets` builds the client with no `with_masque` (`PodUtils/podnet@7fe60e0:src/tunnel.rs:827-838`). Neither
   `TunnelOpts` (`src/cli/opts.rs:21-106`) nor `TunnelArgs` has the flag. `with_masque` exists
   (src/warp/mod.rs:264 at `9c1fc4b`); `warp` uses it (`src/cli/cmd/warp/client.rs:67-74`).
 - `open_on` (src/warp/mod.rs:762-791 at `9c1fc4b`) uses `endpoint_order` (`:103-124`): the record order, IPv4 first.
@@ -2125,7 +2125,7 @@ cargo test --test cli -- tunnel_takes_masque_endpoint
 
 ## Done
 
-2026-11-13, commit 59f6b60. Item 2: `tunnel` (and `share`, `serve`, `demo`: the option is global) takes `--masque-endpoint IP:PORT`. It goes through `Config::masque_endpoint` and `warp_targets` (now `src/tunnel/warp_targets.rs`) to `MasqueOptions::endpoint`, which is `Door::Pinned` of `pod-warp` v0.37.0 (a wrong value is exit 64). The doc and the profile (`docs/protocol.md`, section 10) list the flag. Item 1 was done on 2026-11-09 (see Correction). Test: `cargo test --test cli -- warp::tunnel_takes_masque_endpoint` (help, a bad value, a good value with `demo --check`; not run on the old code: the old binary has no such flag and clap exits 2). Not proven: a live WARP session on a host with no IPv4 route.
+2026-11-13, commit 59f6b60. Item 2: `tunnel` (and `share`, `serve`, `demo`: the option is global) takes `--masque-endpoint IP:PORT`. It goes through `Config::masque_endpoint` and `warp_targets` (now `PodUtils/podnet@7fe60e0:src/tunnel/warp_targets.rs`) to `MasqueOptions::endpoint`, which is `Door::Pinned` of `pod-warp` v0.37.0 (a wrong value is exit 64). The doc and the profile (`docs/protocol.md`, section 10) list the flag. Item 1 was done on 2026-11-09 (see Correction). Test: `cargo test --test cli -- warp::tunnel_takes_masque_endpoint` (help, a bad value, a good value with `demo --check`; not run on the old code: the old binary has no such flag and clap exits 2). Not proven: a live WARP session on a host with no IPv4 route.
 
 # T-170: Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367)
 
@@ -2144,7 +2144,7 @@ attempts repeat the same failure for about 30 s.
 
 ## Premise
 
-- `src/quicktunnel.rs:258-260` (budget and attempts), `:292-312` (the arms; `Hop::Dns` goes to
+- `PodUtils/podnet@7fe60e0:src/quicktunnel.rs:258-260` (budget and attempts), `PodUtils/podnet@7fe60e0:src/quicktunnel.rs:292-312` (the arms; `Hop::Dns` goes to
   `ProvisionError::Http(_)` at `:312`).
 - `crate::resolve::answering_step(host)` (`src/resolve.rs:146`) names the step that answers now.
 - `src/quicktunnel.rs` is Cloudflare adapter code (pod-cloudflare, T-029/T-052): a fix is allowed.
@@ -2163,7 +2163,7 @@ cargo test -p podnet quicktunnel::tests::a_dns_failure_is_retried_once
 
 ## Done
 
-2026-11-09, commit 99aa461. `provision` retries a `Hop::Dns` failure once, then again only when `answering_step` of the API host changed (`src/quicktunnel/retry.rs`). The error ends with the `Hop::Dns` hint through the hop of the error. Test: `quicktunnel::retry::tests::a_dns_failure_is_retried_once` (the decision, not a live run). CI: at the merge.
+2026-11-09, commit 99aa461. `provision` retries a `Hop::Dns` failure once, then again only when `answering_step` of the API host changed (`PodUtils/podnet@7fe60e0:src/quicktunnel/retry.rs`). The error ends with the `Hop::Dns` hint through the hop of the error. Test: `quicktunnel::retry::tests::a_dns_failure_is_retried_once` (the decision, not a live run). CI: at the merge.
 
 # T-171: The verify loop names the remedy when the public name does not resolve (GitHub #367)
 
@@ -2176,13 +2176,13 @@ cargo test -p podnet quicktunnel::tests::a_dns_failure_is_retried_once
 
 ## Problem
 
-`verify_fetch` retries 180 s (`VERIFY_BUDGET`, `src/tunnel.rs:1267`). On a host with no resolver the
+`verify_fetch` retries 180 s (`VERIFY_BUDGET`, `PodUtils/podnet@7fe60e0:src/tunnel.rs:1267`). On a host with no resolver the
 error text repeats `system resolver: no answer ... Network unreachable`. The final error
-(`src/tunnel.rs:1259-1262`) names no remedy: `--resolve HOST=IP`, or `--no-verify`.
+(`PodUtils/podnet@7fe60e0:src/tunnel.rs:1259-1262`) names no remedy: `--resolve HOST=IP`, or `--no-verify`.
 
 ## Premise
 
-- The loop keeps `last = "waiting for DNS: ..."` (`src/tunnel.rs:1228-1231`). `Verified.dns` records the
+- The loop keeps `last = "waiting for DNS: ..."` (`PodUtils/podnet@7fe60e0:src/tunnel.rs:1228-1231`). `Verified.dns` records the
   step on success only. `Hop::Dns` has a hint (`crates/podnet-core/src/hop.rs:45`).
 - `run_tunnel`, `run_share` and `run_demo` (`src/cli/cmd/run.rs`) wait for the verify.
 - Overlap: #357 (exit 69 and teardown on an unresolved name). Do both in one pass; the verdict of the
@@ -2356,7 +2356,7 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 
 ## Problem
 
-`podnet doctor` builds the relay row with `Relay::from_env(None)` and keeps it only when the URL starts with `https://` (`src/doctor.rs:159-170`). The user cannot pass the relay on the command line, and a loopback relay (`http://127.0.0.1:PORT`, allowed by `src/ws_relay.rs:113-165`) gives no row. `bug-report --doctor` has the same table. `--transport relay` is not seen either.
+`podnet doctor` builds the relay row with `Relay::from_env(None)` and keeps it only when the URL starts with `https://` (`src/doctor.rs:159-170`). The user cannot pass the relay on the command line, and a loopback relay (`http://127.0.0.1:PORT`, allowed by `src/ws_relay.rs:119-171`) gives no row. `bug-report --doctor` has the same table. `--transport relay` is not seen either.
 
 ## Premise
 
@@ -2438,9 +2438,9 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:249`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:21-46`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:249`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-45`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:59` and `crates/podnet-netns/src/seccomp/accept.rs:45`.
-- `crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `crates/podnet-core/src/net.rs:174`).
+- `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:174`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:77-83`).
 
 ## Approach
@@ -2476,7 +2476,7 @@ cargo test -p podnet-netns tailscale
 
 ## Premise
 
-- `connect_origin` (`crates/podnet-core/src/net.rs:103-128`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:243-261`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`crates/podnet-core/src/net.rs:94-98`).
+- `connect_origin` (`PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:103-128`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:243-261`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:94-98`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
 - The `F: Fn() -> Fut` shape of `forward` stays (`crates/podnet-vnet/src/proxy.rs:185-189`).
 
@@ -2655,7 +2655,7 @@ cargo test -p podnet --test cli doctor_tells_listen_from_bind
 
 ## Problem
 
-`crates/podnet-core/src/exit.rs:122-139` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `crates/podnet-vnet/src/switch.rs:413-415`, `crates/podnet-netns/src/tailscale.rs:320-321`, `src/cli/cmd/relay.rs:281`, and also `crates/podnet-vnet/src/proxy.rs:262-264` and src/warp/proxy.rs:71-73 at `9c1fc4b` (not named in the issue). `exit.rs:152` reads only `Faulted`.
+`PodUtils/podnet@7fe60e0:crates/podnet-core/src/exit.rs:122-139` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `crates/podnet-vnet/src/switch.rs:413-415`, `crates/podnet-netns/src/tailscale.rs:320-321`, `src/cli/cmd/relay.rs:281`, and also `crates/podnet-vnet/src/proxy.rs:262-264` and src/warp/proxy.rs:71-73 at `9c1fc4b` (not named in the issue). `exit.rs:152` reads only `Faulted`.
 
 ## Premise
 
@@ -2880,7 +2880,7 @@ Tests: a 0644 file becomes 0600 after `save`; a symlink is replaced; `load` refu
 
 ## Problem
 
-`docs/protocol.md:209` says the alternates are the first 3 hosts of the pool. The text after it says the default relay uses 6 hosts until a pool is cached. The code takes 3 (`MAX_ALTERNATES`, src/relay_pool.rs lines 39 and 119 at `7c5f87e`; the file went to `pod-relay` of PodUtils/podcrates). The seed has 6 endpoints (`ajam-relay.toml`). A connect with no pool tries the primary and 3 hosts. The stagger is 2 s each (`src/ws_relay.rs:200`).
+`docs/protocol.md:209` says the alternates are the first 3 hosts of the pool. The text after it says the default relay uses 6 hosts until a pool is cached. The code takes 3 (`MAX_ALTERNATES`, src/relay_pool.rs lines 39 and 119 at `7c5f87e`; the file went to `pod-relay` of PodUtils/podcrates). The seed has 6 endpoints (`ajam-relay.toml`). A connect with no pool tries the primary and 3 hosts. The stagger is 2 s each (`src/ws_relay.rs:206`).
 
 ## Premise
 
@@ -2924,12 +2924,12 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 ## Premise
 
 - `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:66-112`. `RelayCommand::Node` has it: `:61-62`.
-- `detach_of` has no arm for it: `src/cli/opts.rs:260-269`. `connect` has one: `:251`.
+- `detach_of` has no arm for it: `src/cli/opts.rs:262-271`. `connect` has one: `:253`.
 - Both accept loops use `accepted?`: `src/cli/cmd/relay.rs:277`, `:289`. `connect -L` logs and returns:
   `src/cli/cmd/connect.rs:208-211`.
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:283`.
   `SocketFile` is in `src/cli/cmd/connect.rs:219-239` (`pub(crate)`).
-- Message: `crates/podnet-core/src/net.rs:27-33`.
+- Message: `crates/podnet-core/src/net.rs:26-32`.
 - `src/main.rs:141` allows `--replace` without `--detach` only for `Command::Connect`.
 
 ## Approach
@@ -2972,7 +2972,7 @@ command builds the type (latent).
 
 - `src/transport/websocket.rs:181-185` (direct dial, `host` and `port` dropped), `:142-150` (`rsplit_once(':')`),
   `:193-197` (TLS).
-- The precedent: `src/ws.rs:120-123`, `:155` (`crate::egress::dial`), `:161` (ALPN `http/1.1`);
+- The precedent: `PodUtils/podnet@7fe60e0:src/ws.rs:120-123`, `PodUtils/podnet@7fe60e0:src/ws.rs:155` (`crate::egress::dial`), `PodUtils/podnet@7fe60e0:src/ws.rs:161` (ALPN `http/1.1`);
   `src/ws_relay.rs` lines 605-619 at `98d8a71`; `Host::parse`, lines 137-149 at `98d8a71`.
 - `grep -rn WebSocketTunnel src` finds only the module and one test (`src/transport/mod.rs:474`).
 
@@ -3011,9 +3011,9 @@ to true. Each `serve --dir DIR` of a directory with no `index.html` logs `WARN .
 ## Premise
 
 - `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:115` (field), `:125` (`root_404: false`),
-  `src/cli/cmd/run.rs:44` (read).
+  `src/cli/cmd/run.rs:43` (read).
 - `serve` passes `args.common.show()`: `src/cli/cmd/serve.rs:225`.
-- The warn branch: `src/tunnel.rs:1218-1222`. `static_router` gives 404 at `/` with no index: `crates/podnet-serve/src/files/mod.rs:73-137`.
+- The warn branch: `PodUtils/podnet@7fe60e0:src/tunnel.rs:1218-1222`. `static_router` gives 404 at `/` with no index: `crates/podnet-serve/src/files/mod.rs:73-137`.
 - `src/config.rs` is in the size allowlist: do not add the field there.
 
 ## Approach
@@ -3049,9 +3049,9 @@ Each JSON document of podnet has the keys `schema` (1) and `podnet` (`status::st
 
 ## Premise
 
-- `src/cli/cmd/run.rs:95-105` (no `stamped`). The only `stamped` call of `run.rs` is `:292` (`announce`).
+- `src/cli/cmd/run.rs:94-104` (no `stamped`). The only `stamped` call of `run.rs` is `:291` (`announce`).
 - `grep -rn "status::stamped" src/cli` gives 8 hits, none in `run_share`.
-- The `verified` line is unstamped in every command (`run.rs:119`, `:167`). It stays as it is.
+- The `verified` line is unstamped in every command (`run.rs:119`, `:166`). It stays as it is.
 
 ## Approach
 
@@ -3211,7 +3211,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 ## Premise
 
 - `crates/podnet-serve/src/origin/static_files.rs:256-258` (the `b'+'` arm), `:84-89` (`resolve`), test `:603-607` asserts `"a b"`.
-- `crates/podnet-serve/src/files/mod.rs:257-272`, `:170`. `crates/podnet-serve/src/ingress.rs:200-203`, test `:635-648` (`"a + stays a +"`).
+- `crates/podnet-serve/src/files/mod.rs:257-272`, `:170`. `PodUtils/podnet@7fe60e0:crates/podnet-serve/src/ingress.rs:200-203`, test `PodUtils/podnet@7fe60e0:crates/podnet-serve/src/ingress.rs:635-648` (`"a + stays a +"`).
 - `docs/serve.md:76-77`.
 - One more divergence (not in the issue): a bad escape (`%zz`) passes through in the library decoder
   (`crates/podnet-serve/src/origin/static_files.rs:242-260`, test `:616-618`). The CLI decoder returns `None` (`crates/podnet-serve/src/files/mod.rs:262-265`), so the request is refused. A short escape at the
@@ -4040,7 +4040,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
   (`crates/podnet-netns/src/seccomp/accept.rs:43`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:44`).
 - The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:78`, `src/cli/cmd/net/mod.rs:95` and
   `src/cli/cmd/net/mod.rs:173` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:244`).
-- `libc` is a dependency (`Cargo.toml:156`, `crates/podnet-netns/Cargo.toml:24`). No code calls
+- `libc` is a dependency (`Cargo.toml:161`, `crates/podnet-netns/Cargo.toml:24`). No code calls
   `renameat2` yet.
 - T-186 (done, GitHub #385) added `claim_unix_path` and `bind_claimed`. They do not cover the interval.
   GitHub #306 (closed) fixed the inbound directory of `accept.rs` only.
@@ -4331,7 +4331,7 @@ create call makes the next run send `PATCH` for the same device id and no second
   for MASQUE counts as "register again", not as "resume" (`src/warp/mod.rs:438-446`).
 - src/warp/mod.rs:202-241 at `9c1fc4b` (`register_with`): `create_device`, then `enrol_masque`; the token stays in
   memory.
-- The call sites with no lock: `src/cli/cmd/warp/client.rs:153`, `src/tunnel.rs:828` (only with
+- The call sites with no lock: `src/cli/cmd/warp/client.rs:153`, `PodUtils/podnet@7fe60e0:src/tunnel.rs:828` (only with
   `--warp-identity PATH`; without it `tunnel` registers a new device on each run and saves nothing),
   `src/cli/cmd/warp/front.rs:200`, and the WireGuard `load_or_register` (`src/warp/export.rs:75`; the
   callers `src/cli/cmd/warp/client.rs:38` and `src/cli/cmd/warp/client.rs:57`).
@@ -4595,7 +4595,7 @@ prerelease with the 8 binaries, `podnet.1`, `llms.txt`, `llms-full.txt`, `SHA256
 
 Stale or misleading comments and records, found at `76e8b60`:
 
-- `crates/podnet-core/src/net.rs:13-14`: a doc comment ("Install the ring crypto provider once per process...") sits
+- `crates/podnet-core/src/net.rs:12-13`: a doc comment ("Install the ring crypto provider once per process...") sits
   above the doc comment of `claim_socket_path`, so rustdoc merges the two. No item `install_crypto_provider` exists.
 - `src/bug_report.rs` `tail`: the doc says "The last `n` lines of the file". The code reads the whole file with
   `read_to_string`, so one invalid UTF-8 byte prints "(the log ... cannot be read)".
@@ -4969,8 +4969,8 @@ each push.
   in its tests (`flolep2607/cctop:crates/tunnel/src/cloudflare/fake_edge/`: QUIC and HTTP/2 listeners, `registerConnection`, visitor
   streams, a fake quick-tunnel API). `cloudflare/cloudflared` has Go test fakes only.
 - podnet has `--service-url` (the provision endpoint), `PODNET_EDGE` (replaces the discovery of the edge,
-  `src/tunnel.rs`) and an in-memory fake edge (`src/cloudflare/rpc.rs`, `fake_edge`).
-- The roots of the edge are built in (`src/cloudflare/`); no override exists. `src/cloudflare/` is frozen for
+  `src/tunnel.rs`) and an in-memory fake edge (`PodUtils/podnet@7fe60e0:src/cloudflare/rpc.rs`, `fake_edge`).
+- The roots of the edge are built in (`PodUtils/podnet@7fe60e0:src/cloudflare/`); no override exists. `PodUtils/podnet@7fe60e0:src/cloudflare/` is frozen for
   `pod-cloudflare`: a test hook there is a change to report to podcrates.
 - A stand-in tests podnet against its own reading of the protocol, not against a change of Cloudflare.
 
@@ -4980,7 +4980,7 @@ each push.
    an edge listener over TLS on HTTP/2 that answers `registerConnection` and opens visitor streams; a front that
    maps the Host of a visitor to its tunnel. QUIC after HTTP/2.
 2. A hook for the trust roots of the edge in tests (an environment variable read only with a test CA), written as a
-   COORD issue (to podcrates) because `src/cloudflare/` is frozen.
+   COORD issue (to podcrates) because `PodUtils/podnet@7fe60e0:src/cloudflare/` is frozen.
 3. Move the quick-tunnel steps of `live.yml` that test podnet (the proxy, no DNS, dropped 7844, `--detach`, `ps`,
    `--json`, `--auth-user`, the leg fallback) into `ci` against the stand-in. Keep one real quick tunnel per leg in
    `live`.
@@ -4996,8 +4996,8 @@ cargo test --workspace -- quick_tunnel_standin
 
 2026-11-12. Step 2 of the Approach (a hook for the trust roots of the edge) is not needed. `SSL_CERT_FILE`
 (and `--ca-file`) gives the only platform roots of podnet, and the edge adds its own roots to them
-(`crates/podnet-core/src/trust.rs`, `edge_tls_config` in `src/cloudflare/mod.rs`). A test CA in
-`SSL_CERT_FILE` makes the stand-in edge valid. `src/cloudflare/` is not changed, and no COORD issue to
+(`crates/podnet-core/src/trust.rs`, `edge_tls_config` in `PodUtils/podnet@7fe60e0:src/cloudflare/mod.rs`). A test CA in
+`SSL_CERT_FILE` makes the stand-in edge valid. `PodUtils/podnet@7fe60e0:src/cloudflare/` is not changed, and no COORD issue to
 podcrates is needed. The QUIC leg is not built (step 1, "QUIC after HTTP/2"). The move of the steps of
 `live.yml` (step 3) is not done in this pass.
 
@@ -5015,7 +5015,7 @@ checks the verify of the public URL through the proxy. (3) These steps stay in `
 the real service or the verify of the public URL: the QUIC, HTTP/2, QUIC through WARP and relay legs (one real quick
 tunnel for each leg), `--json` (the event `verified` and its resolver), SIGTERM during the verify, the UDP probe, no
 system DNS, the wrong `--resolve` pin and the staggered legs with WARP. (4) The QUIC leg of the stand-in stays out:
-it needs `src/cloudflare/` (frozen). No frozen file changed. Commit 3654b05. `cargo test --test quick_tunnel_standin`: 15 passed, three
+it needs `PodUtils/podnet@7fe60e0:src/cloudflare/` (frozen). No frozen file changed. Commit 3654b05. `cargo test --test quick_tunnel_standin`: 15 passed, three
 runs in a row. The entry stays partial for the QUIC leg.
 
 ## Done
@@ -6337,11 +6337,11 @@ The fuzz run 43590953876 stopped the target `capnp_message` with a panic: `index
 the index is 10`. The crash input (base64):
 `AAAAAAsAAAAAAAAAAQAHAAMIAAAAAABdAgAAAAAAAAA2AAAAAAAAAAA/ACAAAAIAAAAAAAAABZECAAAACgAAAAUAAAACAAAAAAAAADYAAAAAAAAAAD8AIAAAAgAAAAAAAAAAAAAAAAA=`.
 The input comes from the Cloudflare edge (the RPC of the tunnel), so a peer can stop the process.
-`src/cloudflare/capnp.rs` is frozen for `pod-cloudflare` of PodUtils/podcrates; a fix is allowed.
+`PodUtils/podnet@7fe60e0:src/cloudflare/capnp.rs` is frozen for `pod-cloudflare` of PodUtils/podcrates; a fix is allowed.
 
 ## Premise
 
-- Read at 7f22571: `check_range` of `src/cloudflare/capnp.rs` gave a length of 0 to a segment that does not exist,
+- Read at 7f22571: `check_range` of `PodUtils/podnet@7fe60e0:src/cloudflare/capnp.rs` gave a length of 0 to a segment that does not exist,
   so a list of 0 words in segment 10 passed the check. `Reader::bytes` then indexed `self.msg.segments[segment]`
   with no check: the segment index 10 in a message of 1 segment panics. A double-far pointer names the segment of
   the content.
@@ -6368,7 +6368,7 @@ cd fuzz && cargo +nightly-2026-10-15 fuzz run capnp_message corpus/capnp_message
 
 ## Done
 
-2026-11-14, commit 54637d9. `check_range` of `src/cloudflare/capnp.rs` refuses a segment that does not exist (also
+2026-11-14, commit 54637d9. `check_range` of `PodUtils/podnet@7fe60e0:src/cloudflare/capnp.rs` refuses a segment that does not exist (also
 for 0 words); `bytes` and `data_word` read their words with `get`. The file keeps its count of the size allowlist
 (944 lines). `fuzz_a_list_in_a_missing_segment_is_an_error` of `src/fuzzing.rs`: the crash input, and a double-far
 pointer to a list of each kind in segment 10; at 7f22571 it panicked ("the len is 1 but the index is 10").
@@ -7882,7 +7882,7 @@ device 30 s earlier.
 
 ## Premise
 
-- A quick tunnel with no `--warp-identity` registers a new WARP device for each run (`src/tunnel/warp_targets.rs:28`,
+- A quick tunnel with no `--warp-identity` registers a new WARP device for each run (`PodUtils/podnet@7fe60e0:src/tunnel/warp_targets.rs:28`,
   `docs/tunnels.md`). podnet names the limit and the wait in its error. The fault is in the check, not in podnet.
 - live passed on 3f203cc with the same steps: the limit holds at some times only.
 
@@ -8136,7 +8136,7 @@ for 180 s the public URL gave HTTP 502 and 530, and podnet logged no reconnect: 
 ## Premise
 
 - The reactor of `src/tunnel.rs` sees a lost connection only when `accept_bi` of the QUIC connection fails. The QUIC idle
-  timeout is 30 s (`src/cloudflare/quic.rs`). No loss was logged in 180 s: the timers of the QUIC connection seem not to
+  timeout is 30 s (`PodUtils/podnet@7fe60e0:src/cloudflare/quic.rs`). No loss was logged in 180 s: the timers of the QUIC connection seem not to
   run after the WARP stack under its endpoint closed.
 - `WarpLink::endpoint` opens a new session when the reactor asks for a reconnect; the reactor never asked.
 - `src/tunnel.rs` and `src/warp/` are frozen: a fix goes to podcrates as a COORD issue too.
@@ -8157,7 +8157,7 @@ sh scripts/lab-lane.sh PODLAB PODNET way-out
 
 ## Done
 
-2026-11-16, the commit of this entry. `EndpointSource::closed` (now in `src/tunnel/warp_targets.rs`, with `WarpLink`)
+2026-11-16, the commit of this entry. `EndpointSource::closed` (now in `PodUtils/podnet@7fe60e0:src/tunnel/warp_targets.rs`, with `WarpLink`)
 reads the WARP session of a `quic+warp` leg each 2 s; the reactor of `src/tunnel.rs` takes a closed session as a lost
 connection ("the WARP session of the edge leg closed; a reconnect follows"), and the reconnect opens a new session. The
 move makes `src/tunnel.rs` smaller (1370 to 1322 lines; `scripts/size-allow.txt`).
@@ -8268,7 +8268,7 @@ session; a server that answers HTTP 403 gets one connection and the error names 
 `podnet serve DIR --detach` registered its tunnel at once, then waited for the check of the public URL: "this host does
 not resolve the new name yet", and "Cloudflare and Google say that ... does not exist" for each try. At 60 s: "--detach:
 files was not ready in 60 s; it is stopped" (exit 124). The check of a new name allows 180 s
-(`VERIFY_BUDGET` of `src/tunnel/verify.rs`).
+(`VERIFY_BUDGET` of `PodUtils/podnet@7fe60e0:src/tunnel/verify.rs`).
 
 ## Premise
 

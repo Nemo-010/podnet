@@ -80,6 +80,12 @@ pub fn context() -> &'static Context {
     })
 }
 
+/// [`context`] for the relay leg of the tunnel. A clone shares the state
+/// of the run: the limits in use, the tokens.
+pub fn shared() -> Arc<Context> {
+    Arc::new(context().clone())
+}
+
 /// A relay client in the way out of this process, with `cache` for the
 /// tokens, the pool and the record of failures.
 fn context_in(cache: Cache) -> Context {

@@ -37,8 +37,8 @@ passes), so that a lab that resets each ClientHello fails its check; and
 * DoH by IP address (`src/resolve.rs`, step 4) sends a ClientHello with no
   name (TLS checks the IP address of the certificate). In this class it is
   reset, and the chain goes on to the next server. Inferred.
-* The edge leg over HTTP/2 sends the SNI of `h2_sni()` (`src/edge_h2.rs`,
-  `src/cloudflare/`); QUIC sends its own name. Only a list that has these
+* The edge leg over HTTP/2 sends the SNI of `h2_sni()` (`pod-cloudflare`);
+  QUIC sends its own name. Only a list that has these
   names lets a tunnel start. Inferred.
 * `podnet doctor` gives a TLS row for each target (`src/doctor/tls_check.rs`);
   a reset is a failed row, not a hang. Inferred.

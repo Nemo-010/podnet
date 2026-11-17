@@ -34,7 +34,7 @@ pub async fn endpoint(stack: &WarpStack) -> Result<noq::Endpoint> {
 
 /// The TLS and transport configuration the edge expects.
 fn client_config() -> Result<noq::ClientConfig> {
-    use crate::cloudflare::{edge_roots_pem, quic_alpn};
+    use pod_cloudflare::cloudflare::{edge_roots_pem, quic_alpn};
     let tls = crate::trust::context().client_config_with(&[edge_roots_pem()], &[quic_alpn()])?;
 
     let crypto = noq::crypto::rustls::QuicClientConfig::try_from(tls)
@@ -43,7 +43,7 @@ fn client_config() -> Result<noq::ClientConfig> {
     // The tunnel carries packets of TUNNEL_MTU bytes. 1232 fits an IPv6 and
     // UDP header in that; MTU discovery stops at the IPv4 size.
     let ip_udp_v4 = 28;
-    let mut transport = crate::cloudflare::quic::transport_config(1232);
+    let mut transport = pod_cloudflare::cloudflare::quic::transport_config(1232);
     let mut discovery = noq::MtuDiscoveryConfig::default();
     discovery.upper_bound((super::ip::TUNNEL_MTU - ip_udp_v4) as u16);
     transport.mtu_discovery_config(Some(discovery));

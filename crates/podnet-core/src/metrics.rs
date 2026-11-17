@@ -1,135 +1,23 @@
-//! Tunnel metrics with a Prometheus text renderer.
+//! The counters of a tunnel: pod-cloudflare's, with the name of podnet and
+//! the counters of the decisions of podnet after them.
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-#[derive(Clone, Default)]
-pub struct Metrics {
-    inner: Arc<Inner>,
-}
+pub use pod_cloudflare::metrics::*;
 
-#[derive(Default)]
-struct Inner {
-    streams_total: AtomicU64,
-    bytes_in: AtomicU64,
-    bytes_out: AtomicU64,
-    active_streams: AtomicU64,
-    reconnects: AtomicU64,
-    connections: AtomicU64,
-    errors: AtomicU64,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct MetricsSnapshot {
-    pub streams_total: u64,
-    pub bytes_in: u64,
-    pub bytes_out: u64,
-    pub active_streams: u64,
-    pub reconnects: u64,
-    pub connections: u64,
-    pub errors: u64,
-}
-
-impl Metrics {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn stream_started(&self) {
-        self.inner.streams_total.fetch_add(1, Ordering::Relaxed);
-        self.inner.active_streams.fetch_add(1, Ordering::Relaxed);
-    }
-
-    pub fn stream_finished(&self) {
-        self.inner.active_streams.fetch_sub(1, Ordering::Relaxed);
-    }
-
-    pub fn add_in(&self, bytes: u64) {
-        self.inner.bytes_in.fetch_add(bytes, Ordering::Relaxed);
-    }
-
-    pub fn add_out(&self, bytes: u64) {
-        self.inner.bytes_out.fetch_add(bytes, Ordering::Relaxed);
-    }
-
-    pub fn reconnect(&self) {
-        self.inner.reconnects.fetch_add(1, Ordering::Relaxed);
-    }
-
-    pub fn connection_opened(&self) {
-        self.inner.connections.fetch_add(1, Ordering::Relaxed);
-    }
-
-    pub fn error(&self) {
-        self.inner.errors.fetch_add(1, Ordering::Relaxed);
-    }
-
-    pub fn snapshot(&self) -> MetricsSnapshot {
-        MetricsSnapshot {
-            streams_total: self.inner.streams_total.load(Ordering::Relaxed),
-            bytes_in: self.inner.bytes_in.load(Ordering::Relaxed),
-            bytes_out: self.inner.bytes_out.load(Ordering::Relaxed),
-            active_streams: self.inner.active_streams.load(Ordering::Relaxed),
-            reconnects: self.inner.reconnects.load(Ordering::Relaxed),
-            connections: self.inner.connections.load(Ordering::Relaxed),
-            errors: self.inner.errors.load(Ordering::Relaxed),
-        }
-    }
-
-    /// Prometheus exposition format.
-    pub fn prometheus(&self) -> String {
-        let m = self.snapshot();
-        format!(
-            "# HELP podnet_streams_total Inbound streams handled.\n\
-             # TYPE podnet_streams_total counter\n\
-             podnet_streams_total {}\n\
-             # HELP podnet_active_streams Streams currently being proxied.\n\
-             # TYPE podnet_active_streams gauge\n\
-             podnet_active_streams {}\n\
-             # HELP podnet_bytes_in_total Bytes received from the edge.\n\
-             # TYPE podnet_bytes_in_total counter\n\
-             podnet_bytes_in_total {}\n\
-             # HELP podnet_bytes_out_total Bytes sent to the edge.\n\
-             # TYPE podnet_bytes_out_total counter\n\
-             podnet_bytes_out_total {}\n\
-             # HELP podnet_reconnects_total Edge reconnections.\n\
-             # TYPE podnet_reconnects_total counter\n\
-             podnet_reconnects_total {}\n\
-             # HELP podnet_connections_total Edge connections registered.\n\
-             # TYPE podnet_connections_total counter\n\
-             podnet_connections_total {}\n\
-             # HELP podnet_errors_total Stream or connection errors.\n\
-             # TYPE podnet_errors_total counter\n\
-             podnet_errors_total {}\n",
-            m.streams_total,
-            m.active_streams,
-            m.bytes_in,
-            m.bytes_out,
-            m.reconnects,
-            m.connections,
-            m.errors
-        ) + &crate::decisions::prometheus()
-    }
+/// The counters of a tunnel of podnet: the metrics start with `podnet_`,
+/// and the counters of the decisions come after them.
+pub fn podnet() -> Metrics {
+    Metrics::with_prefix("podnet").with_extra(Arc::new(crate::decisions::prometheus))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
-    fn counts_and_renders() {
-        let metrics = Metrics::new();
-        metrics.stream_started();
-        metrics.add_in(10);
-        metrics.add_out(20);
-        metrics.stream_finished();
-        let snap = metrics.snapshot();
-        assert_eq!(snap.streams_total, 1);
-        assert_eq!(snap.active_streams, 0);
-        assert_eq!(snap.bytes_in, 10);
-        assert_eq!(snap.bytes_out, 20);
-        let text = metrics.prometheus();
-        assert!(text.contains("podnet_streams_total 1"));
-        assert!(text.contains("podnet_bytes_out_total 20"));
+    fn the_metrics_of_podnet_have_its_name_and_its_decisions() {
+        crate::decisions::count("leg", "http2");
+        let text = super::podnet().prometheus();
+        assert!(text.contains("podnet_streams_total 0"), "{text}");
+        assert!(text.contains(&crate::decisions::prometheus()), "{text}");
     }
 }

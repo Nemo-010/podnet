@@ -405,6 +405,13 @@ impl Dial for Egress {
         }
     }
 
+    fn proxy_label(&self, target: &Target) -> Option<String> {
+        match &self.via {
+            Some(proxy) => Some(proxy.to_string()),
+            None => proxy_for(&target.host(), target.port()).map(|p| p.to_string()),
+        }
+    }
+
     fn dial<'a>(
         &'a self,
         target: &'a Target,

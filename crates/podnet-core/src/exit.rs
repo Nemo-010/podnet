@@ -128,12 +128,17 @@ impl<T, E: Into<anyhow::Error>> ResultExt<T> for Result<T, E> {
     }
 }
 
-/// The exit code for `err`: the class of the outermost [`Faulted`] error in
-/// its chain, else [`FAILURE`].
+/// The exit code for `err`: the class of the outermost [`Faulted`] error
+/// or `pod_core::Failure` in its chain, else [`FAILURE`].
 pub fn code_of(err: &anyhow::Error) -> i32 {
     err.chain()
-        .find_map(|e| e.downcast_ref::<Faulted>())
-        .map(|f| f.fault.code())
+        .find_map(|e| {
+            if let Some(f) = e.downcast_ref::<Faulted>() {
+                return Some(f.fault.code());
+            }
+            e.downcast_ref::<pod_core::Failure>()
+                .map(|f| code_of_class(f.class))
+        })
         .unwrap_or(FAILURE)
 }
 
@@ -154,6 +159,15 @@ pub fn text(err: &anyhow::Error) -> String {
         out.push_str(&more);
     }
     out
+}
+
+/// The code of a class of a failure of a crate. A class with a code that
+/// podnet does not give (76, 79, 80) exits [`FAILURE`].
+pub fn code_of_class(class: pod_core::Class) -> i32 {
+    match i32::from(class.exit_code()) {
+        code @ (USAGE | NO_INPUT | UNAVAILABLE | TEMPFAIL | NO_PERM | CONFIG) => code,
+        _ => FAILURE,
+    }
 }
 
 #[cfg(test)]
@@ -209,5 +223,18 @@ mod tests {
         );
         assert_eq!(err.chain().count(), 3);
         assert_eq!(code_of(&err), UNAVAILABLE);
+    }
+
+    #[test]
+    fn a_failure_of_a_crate_gives_its_class() {
+        let failure = pod_core::Failure::new(
+            pod_core::Stage::EdgeRegister,
+            pod_core::Class::TempFail,
+            "429",
+        );
+        let err = Err::<(), _>(failure).context("starting").unwrap_err();
+        assert_eq!(code_of(&err), TEMPFAIL);
+        let failure = pod_core::Failure::new(pod_core::Stage::Quic, pod_core::Class::Protocol, "x");
+        assert_eq!(code_of(&anyhow::Error::new(failure)), FAILURE);
     }
 }

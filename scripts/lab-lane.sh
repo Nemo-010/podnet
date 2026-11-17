@@ -375,7 +375,7 @@ case_main() {
         code=$?
         grep -v '^ ' "$dir/out.txt" | grep -v trycloudflare.com | tail -20
         echo "demo exit $code"
-        test $code -eq 0 && grep -q 'verified public URL' "$dir/out.txt"
+        test $code -eq 0 && grep -q -E 'verified (public URL|https://[^ ]+ HTTP 200)' "$dir/out.txt"
         exit $?
         ;;
     way-relay | way-relay-refused)
