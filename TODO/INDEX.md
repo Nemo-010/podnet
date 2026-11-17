@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**420 entries: 11 open, 11 partial, 36 blocked, 362 done.**
+**421 entries: 12 open, 11 partial, 36 blocked, 362 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 2 | 2 | 44 | 48 |
+| P1 | 1 | 2 | 2 | 44 | 49 |
 | P2 | 5 | 6 | 10 | 191 | 212 |
 | P3 | 6 | 3 | 24 | 126 | 159 |
-| **All** | 11 | 11 | 36 | 362 | 420 |
+| **All** | 12 | 11 | 36 | 362 | 421 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -466,3 +466,4 @@ M8 Overlays, M9 Later.
 | [T-419](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.15`: the gate, the dry run, the publish and the release proofs |
 | [T-420](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.68.0 |
 | [T-421](fixes.md) | P1 | S | M5 | defect | done | The WebSocket and relay connections ignore `--ca-file`, and a proxy's refusal of the upgrade reads as a bad token |
+| [T-422](fixes.md) | P1 | S | M5 | release | open | Publish `v0.4.0-beta.16`: the gate, the dry run, the publish and the release proofs |

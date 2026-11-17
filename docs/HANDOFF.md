@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-17 08:05 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-17 12:00 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -17,7 +17,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue). The installer core in
   `scripts/install/` is that of `v0.68.0` (`core.sh`, `core-net.sh`, `pins.py`; `scripts/install/SOURCES`).
 * The newest release is `v0.4.0-beta.15` (T-419, tag at `4a8c52a`).
-* The record is `TODO/`. `cargo todo check` agrees: 419 entries, 11 open, 12 partial, 36 blocked, 360 done.
+* The record is `TODO/`. `cargo todo check` agrees: 421 entries, 12 open, 11 partial, 36 blocked, 362 done.
 
 ## Unfinished work (not on `main`)
 
@@ -42,7 +42,8 @@ None. The head is the commit of this handoff.
 
 ## Next steps
 
-0. T-419 is done: `v0.4.0-beta.15` is out (tag at `4a8c52a`).
+0. T-422: `v0.4.0-beta.16` is set (T-421 is its main fix). When `ci` and `live` pass on its commit: the dry run of
+   `release.yml`, then `publish=v0.4.0-beta.16`, then `release-proofs.yml`; then set T-422 to done with its runs.
 1. Read the runs of "CI" above. Fix each failure first (a new lane case that fails on the GitHub runner is a defect of
    the case or of podnet).
 2. T-406: wait for the answer of podssh on COORD-098 (#604).

@@ -7041,7 +7041,9 @@ What remains: step 1 (above), step 3 (the relay and the tunnel as podssh and pod
 (`podlab run --way-out ws-upgrade-refused`) runs `way-relay-refused`, and the profile `way-out` runs `way-relay` beside
 `way-tunnel`. Both run `relay connect` to the public relay with a token that it refuses. The row found T-421 (the
 WebSocket paths did not take `--ca-file`; a proxy's 403 read as a bad token). With podlab v0.68.0 the three rows pass.
-What remains of step 1: `ipv6-only` on a host with IPv6; the `icmp` rows.
+What remains of step 1: `ipv6-only` on a host with IPv6 (the GitHub runner has no IPv6 route); the `icmp` rows. The
+release binary is built with no optional feature (`release.yml`: `cargo zigbuild --release`), so its `icmp` carrier is
+"not built" (exit 69): a row of it checks nothing of ICMP. The `icmp` rows wait for a release build with the feature.
 
 
 # T-359: One shared crate for the help and the manual of each PodUtils command line
@@ -8586,3 +8588,35 @@ LANE_DIR=/var/tmp/lane/out sh scripts/lab-lane.sh PODLAB PODNET way-out way-ws
 build: `way-out way-tunnel`, `way-out way-relay` and `way-ws way-relay-refused` pass. The control: the release binary
 of `v0.4.0-beta.15` fails `way-relay-refused` with `UnknownIssuer` (exit 69, the text of the hop missing).
 `docs/relay.md` says it.
+
+# T-422: Publish `v0.4.0-beta.16`: the gate, the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md`, Releases (2026-11-09): cut the next prerelease when a batch of fixes is green. The batch since
+`v0.4.0-beta.15`: T-421 (the WebSocket and relay connections take `--ca-file`; a proxy's refusal of the upgrade), T-420
+(podcrates `v0.68.0`), T-326 (rsa 0.10.0) and the lane rows of T-358.
+**Category:** release
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+beta.15 cannot reach the relay from a host behind a proxy that re-signs TLS (T-421). The fix is on `main`.
+
+## Premise
+
+- The steps are `docs/maintenance.md`, "Release".
+
+## Approach
+
+1. Set the version `0.4.0-beta.16` (the manifests, `Cargo.lock`, `fuzz/Cargo.lock`), write the llms files again.
+2. Write `docs/releases/v0.4.0-beta.16.md`, with `## Breaking`.
+3. Push; wait until `ci` and `live` pass on that commit.
+4. Dispatch the dry run of `release.yml`; then `publish=v0.4.0-beta.16`; then check `release-proofs.yml`.
+
+## Prove
+
+```sh
+gh release view v0.4.0-beta.16 -R PodUtils/podnet
+```
