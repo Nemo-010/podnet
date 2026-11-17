@@ -8313,3 +8313,39 @@ python3 scripts/check-workflows.py
 ## Done
 
 2026-11-17, the commit of this entry. `.github/workflows/live.yml`, the step "WARP proxy", as in the Approach.
+
+# T-413: live: warp scan gets no answer from a front door once, and the step fails
+
+**Source:** live 44002295224 on 060147b (2026-11-17), the step of `scripts/live-batch2.sh`, failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet warp scan --candidate 162.159.198.1 --json` gave "no front door answered": the doors 162.159.198.1:443,
+162.159.198.2:443 and [2606:4700:103::2]:443 failed. In the same second, a WARP session to 162.159.198.2:443 was open,
+and `warp exit` through it passed. The script printed no error of a door.
+
+## Premise
+
+- The same step passed on 17fa8e6 (live 43996999160). The door works: a single try of 3000 ms missed.
+- The scan is code of `pod-warp`; the check is podnet's script.
+
+## Approach
+
+1. The script prints the error of each failed door.
+2. When no door answers, the script scans once more after 10 s with `--timeout-ms 10000`; then the step fails.
+
+## Prove
+
+```sh
+shellcheck -S warning scripts/live-batch2.sh
+# live passes the step on the next push
+```
+
+## Done
+
+2026-11-17, the commit of this entry. `scripts/live-batch2.sh`, the step "warp scan", as in the Approach.

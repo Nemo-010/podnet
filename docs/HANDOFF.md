@@ -18,7 +18,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
   `scripts/install/` is that of `v0.66.0` (`core.sh`, `core-net.sh`, `pins.py`; `scripts/install/SOURCES`).
 * The newest release is `v0.4.0-beta.14` (T-400, tag at 77ed861; release run 43995458679, publish 43995461740). Its
   `release-proofs.yml` run 44002218263 passed.
-* The record is `TODO/`. `cargo todo check` agrees: 411 entries, 11 open, 11 partial, 37 blocked, 352 done.
+* The record is `TODO/`. `cargo todo check` agrees: 412 entries, 11 open, 11 partial, 37 blocked, 353 done.
 
 ## Unfinished work (not on `main`)
 

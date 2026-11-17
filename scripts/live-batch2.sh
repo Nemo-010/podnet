@@ -67,17 +67,28 @@ else:
 ' "$dir/exit.json"
 
 echo "== warp scan (issue 139)"
-"$podnet" warp --identity "$dir/a.json" scan --candidate 162.159.198.1 --json > "$dir/scan.json" || true
-python3 -c '
+# A door can miss one try (live 44002295224: each door failed once while a
+# session to 162.159.198.2:443 was open). Print the error of each door, and
+# scan once more before the step fails.
+scan_ok() {
+    python3 -c '
 import json, sys
 d = json.load(open(sys.argv[1]))
 for door in d["doors"]:
     if door["ok"]:
         print("door", door["endpoint"], "tcp", door["tcp_ms"], "ms tls", door["tls_ms"], "ms")
     else:
-        print("door", door["endpoint"], "failed")
-assert any(door["ok"] for door in d["doors"]), "no door answered"
+        print("door", door["endpoint"], "failed:", door.get("error", ""))
+sys.exit(0 if any(door["ok"] for door in d["doors"]) else 1)
 ' "$dir/scan.json"
+}
+"$podnet" warp --identity "$dir/a.json" scan --candidate 162.159.198.1 --json > "$dir/scan.json" || true
+if ! scan_ok; then
+    echo "no door answered; the scan runs once more in 10 s"
+    sleep 10
+    "$podnet" warp --identity "$dir/a.json" scan --candidate 162.159.198.1 --timeout-ms 10000 --json > "$dir/scan.json" || true
+    scan_ok || { echo "no door answered"; exit 1; }
+fi
 
 echo "== warp proxy rules (issues 132, 136, 142)"
 printf 'domain:.example.org=reject\n' > "$dir/rules"
