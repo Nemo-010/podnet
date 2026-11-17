@@ -8,7 +8,7 @@ README.md 2e390d75c4 live podnet update asks GitHub for the newest release
 README.md 974d35bf99 live a tour: the doctor probes, the tunnel, serve, share and warp need the network; pod needs a proxy at 127.0.0.1:1080
 
 docs/background.md 5553c8bcda live a quick tunnel of Cloudflare and a WARP proxy
-docs/background.md 6f5957a10f live changes the host: a systemd user unit or the crontab of the user; TUNNEL_TOKEN=... is a placeholder
+docs/background.md 3fc88bf052 live changes the host: a systemd user unit or the crontab of the user; TUNNEL_TOKEN=... is a placeholder
 
 docs/build.md bbae8b4443 live a build from the source tree: fetches crates; ci.yml runs it
 docs/build.md 2d76669d6f live a static build from the source tree: rustup and crates; ci.yml runs it
@@ -89,11 +89,11 @@ docs/serve.md 8d3f097d4a skip a template: HUB-FINGERPRINT and CONNECTOR-FINGERPR
 docs/serve.md b37100d2e0 skip a template: CLIENT-FINGERPRINT and SERVER-FINGERPRINT; two hosts
 docs/serve.md 5e6c1ef82c skip two shells: a foreground server, then a client; ./public is the directory of the user
 docs/serve.md 5cef402f52 skip two shells: a foreground server, then a client; ./public is the directory of the user
-docs/serve.md e326129602 skip two shells and a typed password: PASSWORD is a placeholder, the server runs in the foreground
 docs/serve.md 872babe603 skip two shells: a foreground server, then a client; needs users and report.pdf
 docs/serve.md 5f6d28a04a live git serve opens a quick tunnel or the relay; NAME is a placeholder
 docs/serve.md 588daaa46a live share opens a quick tunnel
 docs/serve.md 527bfb7800 live the unlock of a PIN: needs a running serve or share with a PIN; $PIN, $ORIGIN and $URL are placeholders
+docs/serve.md f6812b6979 skip a typed password and a server in the foreground: PASSWORD is a placeholder
 
 docs/target-environment.md 3aa821689c live WARP through a SOCKS5 proxy at 127.0.0.1:9050
 docs/target-environment.md 56640f12db live WARP through a proxy; PORT is a placeholder
