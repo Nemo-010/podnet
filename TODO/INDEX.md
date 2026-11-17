@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**414 entries: 11 open, 13 partial, 37 blocked, 353 done.**
+**415 entries: 11 open, 13 partial, 37 blocked, 354 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 2 | 2 | 41 | 45 |
+| P1 | 0 | 2 | 2 | 42 | 46 |
 | P2 | 5 | 7 | 11 | 186 | 209 |
 | P3 | 6 | 4 | 24 | 125 | 159 |
-| **All** | 11 | 13 | 37 | 353 | 414 |
+| **All** | 11 | 13 | 37 | 354 | 415 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -460,3 +460,4 @@ M8 Overlays, M9 Later.
 | [T-413](fixes.md) | P2 | S | M5 | defect | done | live: warp scan gets no answer from a front door once, and the step fails |
 | [T-414](fixes.md) | P2 | S | M5 | defect | partial | live: after a kill of its MASQUE connection, the WARP proxy opens no new session in 60 s |
 | [T-415](fixes.md) | P2 | S | M5 | defect | partial | live: the first request through the WARP proxy gets a reset 5 s after the start |
+| [T-416](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.67.0 |

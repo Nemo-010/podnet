@@ -1835,3 +1835,41 @@ sh scripts/agent/check.sh
 2026-11-17, the commit of this entry. The tag `v0.66.0` (commit `b317117`) in each manifest, `Cargo.lock`,
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. `cargo clippy --workspace --all-targets` is clean;
 `sh scripts/agent/check.sh` passes.
+
+# T-416: Take podcrates v0.67.0
+
+**Source:** PodUtils/podcrates#218 (COORD-128, 2026-11-17): the tag `v0.67.0` at `1d7e983`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet takes the crates of podcrates by the tag `v0.66.0`. The tag `v0.67.0` brings the fact `remote-port` = 80 of
+localhost.run (their entry 839, the answer to COORD-100, #607), a node of the relay that keeps a session while its local
+side reads (their entry 837), and `pod_core::files::replace_private` (their entry 192). No public API breaks.
+
+## Premise
+
+- `adoption/podnet/` at the tag has no new hand-off for podnet. The installer core has the SHA-256 of `v0.63.0`.
+- Each dependency names the version of the crate with the tag: `version = "0.67.0"`.
+- The move of podnet's copies of a durable file replace to `replace_private` is a separate step (PodUtils/podnet#437).
+
+## Approach
+
+1. Each `pod-*` dependency names the tag `v0.67.0` and the version `0.67.0`; the lock files, `scripts/install/SOURCES`
+   and `issue-sync.yml` follow.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+# live: the step "A unix socket through a public SSH relay" passes on localhost-run
+```
+
+## Done
+
+2026-11-17, the commit of this entry. The tag `v0.67.0` (commit `1d7e983`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. `sh scripts/agent/check.sh` passes.
