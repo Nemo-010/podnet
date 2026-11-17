@@ -8478,3 +8478,36 @@ cargo test -p podnet-serve --lib relay::
 `the_supervisor_reconnects_and_announces_the_new_url` and `the_supervisor_sees_a_connection_that_the_relay_ends` fail;
 with `localhost`, the 37 tests of `relay::` pass. Live 44031540675 on 3d85179: `localhost-run: the origin answered
 through the relay (try 1)`.
+
+# T-419: Publish `v0.4.0-beta.15`: the gate, the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md`, Releases (2026-11-09): cut the next prerelease when a batch of fixes is green. The batch since
+`v0.4.0-beta.14`: T-403, T-404, T-405, T-410, T-417, T-418, the WARP half of T-242, the takes of podcrates `v0.64.0` to
+`v0.67.0` (T-409, T-410, T-412, T-416) and the live steps of T-398.
+**Category:** release
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The fixes and features of the batch are on `main` (ci and live passed on `3248174`), and no release has them.
+
+## Premise
+
+- The steps are `docs/maintenance.md`, "Release". The session dispatches `release.yml` with the MCP tool
+  `actions_run_trigger`.
+
+## Approach
+
+1. Set the version `0.4.0-beta.15` (the manifests, `Cargo.lock`, `fuzz/Cargo.lock`), write the llms files again.
+2. Write `docs/releases/v0.4.0-beta.15.md`, with `## Breaking`.
+3. Push; wait until `ci` and `live` pass on that commit.
+4. Dispatch the dry run of `release.yml`; then `publish=v0.4.0-beta.15`; then check `release-proofs.yml`.
+
+## Prove
+
+```sh
+gh release view v0.4.0-beta.15 -R PodUtils/podnet   # the files, the notes with the gate and the scenarios
+```

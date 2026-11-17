@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-17 02:45 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-17 08:05 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -13,12 +13,12 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`; add
   `rustfmt`, `clippy` and the target `x86_64-unknown-linux-musl` in a new container).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.66.0` (T-412), with `pod-warp`: `src/warp/` is glue
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.67.0` (T-416), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue). The installer core in
-  `scripts/install/` is that of `v0.66.0` (`core.sh`, `core-net.sh`, `pins.py`; `scripts/install/SOURCES`).
+  `scripts/install/` is that of `v0.67.0` (`core.sh`, `core-net.sh`, `pins.py`; `scripts/install/SOURCES`).
 * The newest release is `v0.4.0-beta.14` (T-400, tag at 77ed861; release run 43995458679, publish 43995461740). Its
   `release-proofs.yml` run 44002218263 passed.
-* The record is `TODO/`. `cargo todo check` agrees: 414 entries, 11 open, 13 partial, 37 blocked, 353 done.
+* The record is `TODO/`. `cargo todo check` agrees: 418 entries, 12 open, 12 partial, 37 blocked, 357 done.
 
 ## Unfinished work (not on `main`)
 
@@ -43,12 +43,14 @@ None. The head is the commit of this handoff.
 
 ## Next steps
 
-0. Read the runs of "CI" above. Fix each failure first (a new lane case that fails on the GitHub runner is a defect of
+0. T-419: `v0.4.0-beta.15` is set (the version and `docs/releases/v0.4.0-beta.15.md`). When `ci` and `live` pass on its
+   commit: the dry run of `release.yml`, then `publish=v0.4.0-beta.15`, then `release-proofs.yml`.
+   Then set T-419 to done with its runs.
+1. Read the runs of "CI" above. Fix each failure first (a new lane case that fails on the GitHub runner is a defect of
    the case or of podnet).
-1. T-400 is done.
 2. T-406: wait for the answer of podssh on COORD-098 (#604).
    T-414 and T-415: when live gives the warning "T-414" or "T-415", write the evidence as a COORD issue to podcrates (`pod-warp`).
-3. T-398: the live steps of `ssh-relay` and `warp license` passed (live 44005215136). `net tailscale` stays experimental.
+3. T-398: `net tailscale` stays experimental until the headscale harness of podcrates (their entry 502; podnet T-114).
 4. T-358, what remains: the row `way-out` (a quick tunnel in `podlab run --way-out proxy-only`) is a default row now; the lane rows with `podlab run --way-out PROFILE` and `--serve PORT`, WebSocket through the
    proxy, `ipv6-only` on a host with IPv6, the `icmp` rows; the relay and the tunnel as podssh and podrunner call them.
 5. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
@@ -58,7 +60,7 @@ None. The head is the commit of this handoff.
    After a change of a document, run `cargo test --bin podnet write_the_llms_files -- --ignored`. Issues #484 to #501
    are deferred by the owner: leave them open and unlabelled.
 
-Run the lane here: `sh scripts/get-podlab.sh v0.66.0 .work/podlab-v0.66.0`; build podnet; copy the binary and the
+Run the lane here: `sh scripts/get-podlab.sh v0.67.0 .work/podlab-v0.67.0`; build podnet; copy the binary and the
 podlab asset to a directory that uid 65534 can read (for example `/var/tmp/lane/`, not in `/tmp` or HOME); then as
 root: `setpriv --reuid=65534 --regid=65534 --clear-groups env -i PATH=/usr/bin:/bin HOME=OTHERDIR LANE_DIR=DIR/out sh
 scripts/lab-lane.sh PODLAB DIR/podnet [PROFILE...]`.

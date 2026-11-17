@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**417 entries: 11 open, 12 partial, 37 blocked, 357 done.**
+**418 entries: 12 open, 12 partial, 37 blocked, 357 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 42 | 46 |
-| P2 | 5 | 7 | 11 | 188 | 211 |
+| P2 | 6 | 7 | 11 | 188 | 212 |
 | P3 | 6 | 3 | 24 | 126 | 159 |
-| **All** | 11 | 12 | 37 | 357 | 417 |
+| **All** | 12 | 12 | 37 | 357 | 418 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -463,3 +463,4 @@ M8 Overlays, M9 Later.
 | [T-416](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.67.0 |
 | [T-417](crates.md) | P2 | S | M3 | chore | done | One durable replace of a private file: podnet's copies call `pod_core::files::replace_private` |
 | [T-418](fixes.md) | P2 | S | M5 | defect | done | ssh-relay asks for a remote forward on 0.0.0.0, and localhost.run reads it as a custom domain |
+| [T-419](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.15`: the gate, the dry run, the publish and the release proofs |
