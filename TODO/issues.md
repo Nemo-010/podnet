@@ -120,7 +120,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #422 | COORD-014: the podrunner entries and the time of pod-hold | closed (podvm closed its COORD-022, PodUtils/podvm#228) | T-229, T-230, T-231, T-232 |
 | #423 | live: two runs in a row failed (the new steps of the file server and git) | closed | T-091, T-094 |
 | #424 | COORD-015: podnet took pod-hold of v0.15.0; the answers to Q-a and Q-b of COORD-030 | closed (podcrates recorded it) | none |
-| #425 | COORD-016: T-229 measured, T-230 has the hold object, T-231 item 1 done (to podrunner) | open (a COORD issue between sessions) | none |
+| #425 | COORD-016: T-229 measured, T-230 has the hold object, T-231 item 1 done (to podrunner) | closed (the report was delivered; T-231 item 2 is in the record) | none |
 | #426 | COORD-017: podnet took v0.17.0 and pod_hold::connect and pod_hold::packet | closed (podcrates recorded it: taken e4d4049) | none |
 | #427 | COORD-018: the cut of pod-netstack (to podcrates) | closed (podnet took pod-netstack at d23ce4e) | none |
 | #428 | pod --serve door: early reply and pipelined SOCKS5 upstream handshake (donor review) | closed | T-237 |
@@ -134,8 +134,8 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #436 | podnet receive: containment of the received entries (donor review) | closed (the rules of the Correction of T-105 are `src/transfer/land.rs`, d5c38c1; `cargo test --test transfer_land`: 7 passed) | T-105 |
 | #437 | COORD-019: proposals for podcrates from the donor review (to podcrates) | open (a COORD issue between sessions) | none |
 | #438 | COORD-020: proposals for podssh from the donor review (to podssh) | closed (podssh recorded them in its record, PodUtils/podssh#188) | none |
-| #439 | COORD-021: proposals for podrunner from the donor review, part 1 of 2 (to podrunner) | open (a COORD issue between sessions) | none |
-| #440 | COORD-022: proposals for podrunner from the donor review, part 2 of 2 (to podrunner) | open (a COORD issue between sessions) | none |
+| #439 | COORD-021: proposals for podrunner from the donor review, part 1 of 2 (to podrunner) | closed (the proposals were delivered; podrunner owns them) | none |
+| #440 | COORD-022: proposals for podrunner from the donor review, part 2 of 2 (to podrunner) | closed (the proposals were delivered; podrunner owns them) | none |
 | #441 | COORD-023: proposals for the stub repositories from the donor review, part 1 of 3 (to all) | closed (a COORD issue between sessions; no entry, as CLAUDE.md says) | none |
 | #442 | COORD-024: proposals for the stub repositories from the donor review, part 2 of 3 (to all) | closed (a COORD issue between sessions; no entry, as CLAUDE.md says) | none |
 | #443 | COORD-025: proposals for the stub repositories from the donor review, part 3 of 3 (to all) | closed (a COORD issue between sessions; no entry, as CLAUDE.md says) | none |
@@ -143,7 +143,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #445 | COORD-027: podnet took pod-netstack of v0.20.0 (to podcrates) | closed (podcrates recorded it: taken d23ce4e) | none |
 | #446 | COORD-028: podnet changed three frozen files: register.rs, route.rs (fixes) and netns/tun.rs (the veth wire) (to podcrates) | closed (podcrates answered in its #68: no port; the wire stays in veth.rs, podcrates T-201) | none |
 | #447 | COORD-029: the answer to podcrates #67 (pod-wg): wg.rs is held to fixes; the split (to podcrates) | closed (podcrates wrote taken 089e1c9) | none |
-| #448 | COORD-030: podnet took pod-services-watch and the crates of v0.21.0 (to podcrates) | open (a COORD issue between sessions) | none |
+| #448 | COORD-030: podnet took pod-services-watch and the crates of v0.21.0 (to podcrates) | closed (podcrates recorded the take) | none |
 | #449 | COORD-031: podnet freezes the files of pod-relay, pod-warp and pod-cloudflare at 7c5f87e; asks for T-028 and T-029 (to podcrates) | closed (podcrates recorded it, its #74) | none |
 | #450 | COORD-032: the file-transfer of magic-wormhole has no owner; no hand-off for pod-session, pod-e2e, pod-identity (to podcrates) | closed (podcrates T-214 and T-215, its #74) | none |
 | #451 | COORD-033: pod-hold: the veth wire is done, the netns router moves onto pod-netstack, a root CI step runs the tests (to podcrates) | closed (a COORD issue between sessions) | none |
@@ -155,7 +155,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #457 | COORD-039: pod-netstack v0.25.0: three gaps that the netns router hits; podnet T-249 waits (to podcrates) | closed (a COORD issue between sessions) | none |
 | #458 | COORD-040: podnet took pod-hold-veth of podcrates v0.26.0; the fork finding of doctor.rs is fixed (to podcrates) | closed (podcrates wrote taken f107766) | none |
 | #459 | Docs: stale or misleading comments and records (net.rs, bug_report.rs, TODO files) | closed | T-258 |
-| #460 | COORD-041: podnet took the SSH relay facts (T-166); a comment fix in the frozen src/tunnel.rs; the pinggy URL rule (to podcrates) | open (a COORD issue between sessions) | none |
+| #460 | COORD-041: podnet took the SSH relay facts (T-166); a comment fix in the frozen src/tunnel.rs; the pinggy URL rule (to podcrates) | closed (podcrates recorded the take; T-166 done) | none |
 | #461 | cfb asks: tracker for the 6 asks of cfb owned by podnet (from podcrates#35) | open | T-216, T-217, T-218, T-219, T-220, T-221, T-260 |
 | #462 | COORD-042: a change in the frozen src/doctor.rs for the lanes of A-C-10 (T-260) (to podcrates) | closed (a COORD issue between sessions) | none |
 | #463 | COORD-043: a weekly watch of the relay contract in pod-relay (podnet T-134) (to podcrates) | closed (a COORD issue between sessions) | none |
@@ -213,17 +213,17 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #519 | COORD-062: podnet took v0.35.0 at 5562f21 (to podcrates) | closed (a COORD issue between sessions) | none |
 | #520 | COORD-063: podnet took v0.36.0 at 775486f (to podcrates) | closed (a COORD issue between sessions) | none |
 | #521 | COORD-064: what podnet waits for to close its issues: the datagram carriers of pod-link, pod-e2e, pod-wormhole, pod-warp's freeze and the others (to podcrates) | closed (answered by PodUtils/podcrates#133) | none |
-| #522 | COORD-065: podnet took v0.37.0 and pod-warp at f6abdc3; src/warp/ holds fixes only (to podcrates) | open (a COORD issue between sessions) | none |
+| #522 | COORD-065: podnet took v0.37.0 and pod-warp at f6abdc3; src/warp/ holds fixes only (to podcrates) | closed (podcrates recorded the take) | none |
 | #523 | live: two runs in a row failed | closed: live 43459893595 on bf01ac6 passed | T-332 |
 | #524 | COORD-066: a fix in src/warp/quic.rs: WarpNet's datagrams bind [::], so QUIC to an IPv4 edge goes as IPv4-mapped and times out (to podcrates) | closed: live 43459893595 on bf01ac6 passed with the fix of pod-warp v0.39.0 | none |
 | #525 | COORD-067: podnet took v0.38.0 (to podcrates) | closed (a COORD issue between sessions) | none |
-| #526 | COORD-068: podnet took v0.39.0 at 306d80b; the one-family fix of WARP is dropped (to podcrates) | open (a COORD issue between sessions) | none |
+| #526 | COORD-068: podnet took v0.39.0 at 306d80b; the one-family fix of WARP is dropped (to podcrates) | closed (podcrates recorded the take) | none |
 | #527 | COORD-069: the answer to the question on KCP: the congestion window by default; the 20 % loss gate runs with nodelay (podnet T-276) (to podcrates) | closed: the kcp profile and the feature udp are in d474725; ci 43491819082 on d53df25 | none |
 | #528 | [gh action] requested: ci, deny, secrets and live on b1e2b80 (Actions does not start on a push of the cloud session) | closed: ci 43445945197 and live 43445966561 failed (fixed in 2122bd4), deny and secrets passed | none |
 | #529 | [gh action] requested: ci, deny, secrets and live on 7d73ec7 | closed: ci 43452891413 failed at restricted-host (fixed in the next commit), live 43452912977 failed at the file server (fixed in 098ff8d), deny and secrets passed | none |
 | #530 | [gh action] requested: ci, deny, secrets and live on bf01ac6 | closed: each run passed (ci 43459872995, deny 43459879363, secrets 43459886257, live 43459893595) | none |
 | #531 | [gh action] requested: ci, deny, secrets and live on 6f8e69e (T-012, T-095, T-087) | closed: each run passed (ci 43471936738, deny 43471944208, secrets 43471952954, live 43471960138) | none |
-| #532 | COORD-070: podnet took v0.40.0 at 1c88531 (to podcrates) | open (a COORD issue between sessions) | none |
+| #532 | COORD-070: podnet took v0.40.0 at 1c88531 (to podcrates) | closed (podcrates recorded the take) | none |
 | #533 | COORD-071: two asks of the carriers of pod-link: a typed refusal of the key, and the TC rule of the dns carrier (to podcrates) | closed: v0.45.0 carries both asks; the exit 77 at each listener is tested in bfdc2ff (T-273, T-278) | none |
 | #534 | [gh action] requested: ci, deny, secrets and live on d53df25 | closed: ci 43491819082, deny 43491826156 and secrets 43491833085 passed; live 43491840609 failed at the new router step (fixed in c02da54) | none |
 | #535 | COORD-072: the asks of the transfer of podnet over pod-wormhole: the derivation of a key, a stand-in mailbox, the count of words, the TCP transit relay (to podcrates) | closed: v0.42.0 carries asks 1 to 4; ask 5 rides on their entry 214 | none |
@@ -249,7 +249,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #555 | COORD-079: two crashes of podnet's fuzz run: a credential in the label of a unix proxy (pod-proxy), and a list past its segment (capnp of pod-cloudflare) (to podcrates) | open (a COORD issue between sessions): part 1 is done (v0.45.0, aded9d1, T-349); part 2 waits for `pod-cloudflare` (their entry 029) | none |
 | #558 | COORD-080: podnet took v0.44.0 at 6e9e9ee (to podcrates) | closed (podcrates closed PodUtils/podcrates#154) | none |
 | #559 | [gh action] requested: ci, deny, secrets, live and fuzz on 79dfa13 (T-341 to T-350, v0.44.0) | closed: the runs are on 3ad5315 (`main` moved before the block ran): ci 43603454896, deny 43603458277 and fuzz 43603470175 passed; secrets 43603461673 and live 43603465996 failed, fixed in ce14ac4 | T-349 |
-| #560 | COORD-081: podnet took v0.45.0 at e84ebdf (to podcrates) | open (a COORD issue between sessions): the take is recorded (podcrates closed PodUtils/podcrates#157); the question on the ws listener is open | none |
+| #560 | COORD-081: podnet took v0.45.0 at e84ebdf (to podcrates) | closed (podcrates recorded the take) | none |
 | #561 | [gh action] requested: ci, deny, secrets, live and fuzz on 7860081 (ce14ac4, v0.45.0) | closed: deny 43610669298, live 43610676971 and fuzz 43610680236 passed on 7860081; ci 43610665702 (clippy `err_expect` under `--features full`) and secrets 43610673639 (the test vector of T-349 in the allow line and in TODO/fixes.md) failed, fixed in 42943fa | T-273, T-278, T-349 |
 | #562 | [gh action] requested: ci and secrets on the fix of #561 | closed: ci 43617081662 and secrets 43617085112 passed on 3b3b9be | none |
 | #563 | [gh action] requested: the release of v0.4.0-beta.11 (checks, dry run, publish, release proofs) | closed: `v0.4.0-beta.11` is out on 6491f9d (release-proofs 43623174074) | T-351 |
@@ -271,14 +271,14 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #579 | [gh action] requested: the release of v0.4.0-beta.13 (checks, dry run, publish, release proofs) | closed: `v0.4.0-beta.13` is out on 0a0f3e5 (release-proofs 43716868782) | T-355 |
 | #580 | COORD-088: podnet took v0.52.0 (to podcrates) | closed (podcrates closed PodUtils/podcrates#176) | none |
 | #581 | [gh action] requested: ci and deny on the take of v0.52.0 | closed: ci 43718529045 and deny 43718532371 passed on f6aaeca | none |
-| #582 | COORD-089: the vnet shim for a .NET payload in a podvm unit: TCP to a unix socket (to podrunner) | open (a COORD issue between sessions; the answer to PodUtils/podrunner#170): T-356 and T-357 are done | T-356, T-357 |
+| #582 | COORD-089: the vnet shim for a .NET payload in a podvm unit: TCP to a unix socket (to podrunner) | closed (T-356 and T-357 done) | T-356, T-357 |
 | #583 | [gh action] requested: ci, deny and secrets on T-356 and T-357 (the vnet shim) | closed: ci 43728239022, deny 43728242664 and secrets 43728245947 passed on 78a3911 (read from the runs; no comment came) | none |
 | #584 | COORD-090: one shared crate for the help and the manual of each command line; podnet's src/manual as a source (to all) | closed (podcrates made pod-manual, podnet took it in T-359; podssh answered in PodUtils/podssh#267, podrunner in PodUtils/podrunner#181) | T-359 |
 | #585 | COORD-091: podnet's answer to pod-lab and pod-manual: the host classes of podnet's users, the network profiles, the freeze of src/manual (to podcrates) | open (a COORD issue between sessions) | T-358, T-359 |
-| #586 | COORD-092: podnet's answer to the rulings Issues and Installer: the map of issues to entries, the external reports, scripts/install.sh (to podcrates) | open (a COORD issue between sessions) | T-360 |
-| #587 | COORD-093: podnet took v0.53.0; podnet runs the one watcher and the rule of strangers (to podcrates) | open (a COORD issue between sessions) | none |
+| #586 | COORD-092: podnet's answer to the rulings Issues and Installer: the map of issues to entries, the external reports, scripts/install.sh (to podcrates) | closed (T-360 done) | T-360 |
+| #587 | COORD-093: podnet took v0.53.0; podnet runs the one watcher and the rule of strangers (to podcrates) | closed (podcrates recorded the take) | none |
 | #588 | [gh action] requested: ci and deny on the take of v0.53.0 | closed: ci 43760786274 and deny 43760789619 passed on 34fe7e1 | none |
-| #589 | COORD-094: podnet took v0.54.0 and moved its help and manual onto pod-manual; four gaps of the crate; a text fix of frozen src/warp/ (to podcrates) | open (a COORD issue between sessions) | T-359 |
+| #589 | COORD-094: podnet took v0.54.0 and moved its help and manual onto pod-manual; four gaps of the crate; a text fix of frozen src/warp/ (to podcrates) | closed (podcrates recorded the take; T-359 done) | T-359 |
 | #590 | [gh action] requested: ci, deny and secrets on the move to pod-manual (T-359) and the documented commands (T-358, T-363) | closed: deny 43771977628 and secrets 43771980776 passed on aa8bae2; ci 43771973878 failed at the man page (groff -ww: cannot adjust line), fixed in 3aa1ee7 | none |
 | #591 | [gh action] requested: ci, deny, secrets and the dry run of issue-sync on the takes of v0.56.0 and the fix of the man page | closed: ci 43774698575, deny 43774702318, secrets 43774705423 and the dry run of issue-sync 43774709310 passed on f2d96fc (the dry run: 196 status blocks, one close of #436, 76 notes of authors outside the team) | none |
 | #592 | COORD-095: podnet's lane in the labs of pod-lab v0.56.0; two defects of podcrates crates (pod-link under Landlock, pod-hold under udp-denied); the six network profiles (to podcrates) | open (a COORD issue between sessions) | T-358, T-380, T-381 |
