@@ -256,6 +256,7 @@ pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<St
         }
     } else {
         carriers::check_query(&carrier.carrier, &query)?;
+        carriers::check_address(&carrier.carrier, base)?;
     }
     query.require_wired()?;
     if !carrier.seal && (query.pad.is_some() || query.compress.is_some()) {

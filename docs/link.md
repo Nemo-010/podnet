@@ -29,6 +29,10 @@ podnet forward -L 8080=peer:FINGERPRINT/http      # a local port to a service of
   (repeat it for more than one) or `--allow FILE`: the dialer trusts no listener by default (else exit 64). Then it copies stdin
   to one stream of the service `--service NAME` (default `raw`), and the stream to stdout. The lines about the peer go to stderr. `--check` stops after the check and prints the
   fingerprint of the peer; with `--json` it prints one document.
+  At the end of stdin, the dialer half-closes the stream (a `CLOSE` of its side) and reads until the peer ends the stream:
+  `printf REQUEST | podnet link dial ...` gets the answer. The listener half-closes the `--to` target in the same way, and
+  sends what the target writes until the target closes. A target that closes its connection at a half close (an HTTP server
+  with no half-close support) gives no answer.
 * `link connect ADDRESS (--peer FINGERPRINT | --allow FILE)` connects, runs the hello, and holds the link until the link ends
   (exit 69) or a stop signal. It runs the control socket. The ready document has `carrier`, `address`, `fingerprint`, `peer` and
   `control`. It accepts `--detach`, `--name` and the other flags of the background record. `--service NAME=TARGET` (the forms of
@@ -266,7 +270,9 @@ one in code with `podnet::link_group::LinkGroup`.
 
 ## Flags of the carriers
 
-* `--carrier NAME` selects the carrier (default `unix`). An unknown name exits 64 and lists the names.
+* `--carrier NAME` selects the carrier (default `unix`). An unknown name exits 64 and lists the names. The unix carrier takes
+  a path: an address that starts with a URL scheme (`tcp://`, `wss://`, `quic://`) or that is `IP:PORT` exits 64, and the
+  message names the carrier to give (`--carrier tcp`). The message does not show the address.
 * `--up-carrier NAME` and `--down-carrier NAME` join one session over two carriers, in place of `--carrier`: see "A split
   session".
 * `--allow-other-uid` (unix carrier) accepts a peer of another uid. Each end checks the uid of the other end with
