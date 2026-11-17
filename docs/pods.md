@@ -93,7 +93,9 @@ podnet pod -x socks5://127.0.0.1:1080 \
 ```
 
 * `domain:NAME=WAY` matches a name. `domain:.NAME=WAY` matches the name and each name under it.
-* `cidr:ADDR/PREFIX=WAY` matches an address.
+* `cidr:ADDR/PREFIX=WAY` matches an address. It does not match a name: the fake DNS of the pod answers a
+  name, and the pod does not look up its real address. Thus `cidr:140.82.0.0/16=reject` does not refuse
+  `curl https://api.example.com/`, which connects by name. Use a `domain:` rule for a name.
 * `port:N=WAY` and `port:N-M=WAY` match these ports of each host. `tcp:HOST:PORT=WAY` matches one host and one
   port. `HOST` is a name, an IPv4 address or `[IPv6]`. A name matches the same name only: no lookup. These
   rules match a TCP connect only. A datagram has no port for the rules, so it takes the next rule that
