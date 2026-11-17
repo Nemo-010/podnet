@@ -202,6 +202,47 @@ fn autostart_manual_entry_lists_as_json_and_runs_with_no_dir() {
     );
 }
 
+/// A free TCP port on `ip`.
+fn free_port(ip: &str) -> u16 {
+    std::net::TcpListener::bind((ip, 0))
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port()
+}
+
+/// #625: with no --alias-port, each --name listens on the port of its
+/// target; --alias-port gives one port for each name.
+#[test]
+fn forward_name_listens_on_the_port_of_its_target() {
+    test_host::need_loopback!();
+    let env = Env::new();
+    let (one, two) = (free_port("127.0.0.2"), free_port("127.0.0.3"));
+    let a = format!("a.test=127.0.0.1:{one}");
+    let b = format!("b.test=127.0.0.1:{two}");
+    let args = ["--no-proxy", "forward", "--name", &a, "--name", &b];
+    let out = text(&env.run(&[&args[..], &["--run-for", "1"]].concat()));
+    assert!(
+        out.contains(&format!("forward  127.0.0.2:{one}  ->")),
+        "{out}"
+    );
+    assert!(
+        out.contains(&format!("forward  127.0.0.3:{two}  ->")),
+        "{out}"
+    );
+    let port = free_port("127.0.0.2").to_string();
+    let over = [&args[..], &["--alias-port", &port, "--run-for", "1"]].concat();
+    let out = text(&env.run(&over));
+    assert!(
+        out.contains(&format!("forward  127.0.0.2:{port}  ->")),
+        "{out}"
+    );
+    assert!(
+        out.contains(&format!("forward  127.0.0.3:{port}  ->")),
+        "{out}"
+    );
+}
+
 #[test]
 fn agent_status_with_no_agent_names_each_task() {
     test_host::need_loopback!();

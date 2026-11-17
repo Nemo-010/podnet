@@ -1679,10 +1679,11 @@ podnet forward
     --name NAME=HOST:PORT
         A name for a client that takes only HOST:PORT: NAME=HOST:PORT
         (repeatable, 254 at most). Each name gets the next address of 127.0.0.2
-        to 127.0.0.255, a listener there on --alias-port, and a forward to
-        HOST:PORT. --dns answers each name with its address.
+        to 127.0.0.255, a listener there on PORT (or on --alias-port), and a
+        forward to HOST:PORT. --dns answers each name with its address.
     --alias-port PORT
-        The port of the listeners of --name.
+        The port of the listeners of --name, for each name. The default is the
+        PORT of each name.
     --dns ADDR:PORT
         A DNS door: answer DNS queries on ADDR:PORT (UDP and TCP) through the
         network, from the resolver at --dns-upstream. The names of --name get
@@ -1754,8 +1755,6 @@ podnet forward
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
-
-    --name needs --alias-port.
 
     --alias-port needs --name.
 
@@ -13454,8 +13453,9 @@ podnet forward --network relay --alias-port 7000 \
 ```
 
 * `--name NAME=HOST:PORT` (repeatable, 254 at most) gives the name the next address of `127.0.0.2` to `127.0.0.255`
-  and a forward from that address on `--alias-port PORT` to `HOST:PORT`. The client connects to `NAME:PORT`. `--name`
-  and `--alias-port` need each other. The whole of `127.0.0.0/8` is the loopback of Linux: no interface is added.
+  and a forward from that address to `HOST:PORT`. The listener takes the `PORT` of the name, or `--alias-port PORT` for
+  each name. The client connects to `NAME:PORT`. `--alias-port` needs `--name`. The whole of `127.0.0.0/8` is the
+  loopback of Linux: no interface is added.
 * With `--dns ADDR:PORT`, the DNS door answers each name with its address (type A, on UDP and on TCP) and sends each
   other name to `--dns-upstream` through the network. With no `--dns`, the lines `podnet: name ADDRESS NAME` are the
   lines of a hosts file.

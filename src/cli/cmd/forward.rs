@@ -26,11 +26,13 @@ pub(crate) struct ForwardArgs {
     local: Vec<String>,
     /// A name for a client that takes only HOST:PORT: NAME=HOST:PORT
     /// (repeatable, 254 at most). Each name gets the next address of
-    /// 127.0.0.2 to 127.0.0.255, a listener there on --alias-port, and a
-    /// forward to HOST:PORT. --dns answers each name with its address.
-    #[arg(long = "name", value_name = "NAME=HOST:PORT", requires = "alias_port")]
+    /// 127.0.0.2 to 127.0.0.255, a listener there on PORT (or on
+    /// --alias-port), and a forward to HOST:PORT. --dns answers each name
+    /// with its address.
+    #[arg(long = "name", value_name = "NAME=HOST:PORT")]
     names: Vec<String>,
-    /// The port of the listeners of --name.
+    /// The port of the listeners of --name, for each name. The default is
+    /// the PORT of each name.
     #[arg(long, value_name = "PORT", requires = "names")]
     alias_port: Option<u16>,
     /// A DNS door: answer DNS queries on ADDR:PORT (UDP and TCP) through
@@ -81,13 +83,16 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
         .transpose()
         .fault(Fault::Usage)?;
     // Each name is a rule on its address (T-404).
+    // With no --alias-port, each name listens on its own target port
+    // (#625): each name has its own address, so the ports can differ.
     let alias_rules = aliases.iter().map(|a| {
-        format!(
-            "{}:{}={}",
-            a.ip,
-            args.alias_port.unwrap_or_default(),
+        let port = args.alias_port.unwrap_or_else(|| {
             a.target
-        )
+                .parse::<Target>()
+                .map(|t| t.port())
+                .unwrap_or_default()
+        });
+        format!("{}:{port}={}", a.ip, a.target)
     });
     let rules = args
         .local
