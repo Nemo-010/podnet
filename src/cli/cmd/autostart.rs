@@ -47,9 +47,10 @@ pub(crate) enum AutostartCommand {
     Run {
         /// The name of the entry.
         name: String,
-        /// The directory of the entries (`<state>/autostart`).
+        /// The directory of the entries. The default is `<state>/autostart`,
+        /// the directory of `autostart add`.
         #[arg(long)]
-        dir: PathBuf,
+        dir: Option<PathBuf>,
     },
 }
 
@@ -131,6 +132,10 @@ pub(crate) fn autostart(command: AutostartCommand) -> Result<()> {
             Ok(())
         }
         AutostartCommand::Run { name, dir } => {
+            let dir = match dir {
+                Some(dir) => dir,
+                None => autostart::dir().fault(Fault::Config)?,
+            };
             use std::os::unix::process::CommandExt;
             let (args, vars) = autostart::load(&name, &dir).fault(Fault::Config)?;
             let exe = podnet::self_exe::current().context("the path of this binary")?;

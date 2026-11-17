@@ -98,7 +98,9 @@ podnet autostart remove web
   marker comment on the crontab line).
 * Each program that `add` or `remove` runs has a limit of 10 s.
 * `podnet autostart run NAME --dir DIR` is the entry point of the unit and of the crontab line. It reads
-  `NAME.args` and `NAME.env` in DIR and runs the command in the place of its own process. Do not call it by hand.
+  `NAME.args` and `NAME.env` in DIR and runs the command in the place of its own process. The default
+  DIR is `<state>/autostart`, the directory of `add`. Use `podnet autostart run NAME` to run an entry
+  by hand. The unit and the crontab line give `--dir`.
 * With no systemd user manager and no cron, `add` exits 69. Its error text
   gives a `nohup` line: put it in a login script (for example
   `~/.profile`).

@@ -139,6 +139,23 @@ fn autostart_run_starts_the_recorded_command() {
     assert_eq!(out.status.code(), Some(78));
 }
 
+/// #624: with no --dir, `autostart run` reads the entry in
+/// `<state>/autostart`, the directory of `autostart add`.
+#[test]
+fn autostart_run_defaults_to_the_state_dir() {
+    let env = Env::new();
+    let dir = env.path("state").join("podnet").join("autostart");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("web.args"), r#"["bug-report"]"#).unwrap();
+    std::fs::write(dir.join("web.env"), "PODNET_AUTOSTART_PROBE=1\n").unwrap();
+    let out = text(&env.run(&["autostart", "run", "web"]));
+    assert!(out.starts_with("podnet bug-report\n"), "{out}");
+    assert!(
+        out.lines().any(|l| l.trim() == "PODNET_AUTOSTART_PROBE"),
+        "{out}"
+    );
+}
+
 #[test]
 fn agent_status_with_no_agent_names_each_task() {
     test_host::need_loopback!();
