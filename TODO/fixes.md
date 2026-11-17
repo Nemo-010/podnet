@@ -9130,3 +9130,355 @@ cargo test -p podnet --bin podnet -- a_mode_that_ends_alone_gets_no_foreground_l
 
 2026-11-17, commit 9e279378. The test also checks that `serve www`, `tunnel --hello-world` and `connect -L` keep the
 line; it fails with the old `src/cli/argv.rs`.
+
+# T-438: `exit` needs `--stdio`, its only mode (GitHub #623)
+
+**Source:** GitHub #623 (https://github.com/PodUtils/podnet/issues/623), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet exit` exited 64 with no `--stdio`, and an empty session exited 1.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. `--stdio` is optional (kept as a no-op). A client that closes stdin before its first byte exits 0.
+
+## Prove
+
+```sh
+cargo test -p podnet -- exit_without_flag_serves_stdio
+```
+
+## Done
+
+2026-11-17, commit 45d8d520. Reproduced on the code before the change. The test (`tests/exit_stdio.rs::exit_without_flag_serves_stdio`) passes, and it fails on the
+code before the change. The topic document, the help and the llms files say it.
+
+# T-439: `autostart run` needs `--dir`, whose default is known (GitHub #624)
+
+**Source:** GitHub #624 (https://github.com/PodUtils/podnet/issues/624), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet autostart run NAME` with no `--dir` exited 64.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. `--dir` defaults to `STATE/autostart`; the unit and the crontab line still give `--dir`.
+
+## Prove
+
+```sh
+cargo test -p podnet -- autostart_run_defaults_to_the_state_dir
+```
+
+## Done
+
+2026-11-17, commit 04ff0c5c. Reproduced on the code before the change. The test (`tests/commands.rs::autostart_run_defaults_to_the_state_dir`) passes, and it fails on the
+code before the change. The topic document, the help and the llms files say it.
+
+# T-440: `forward --name` needs `--alias-port` (GitHub #625)
+
+**Source:** GitHub #625 (https://github.com/PodUtils/podnet/issues/625), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`--name NAME=HOST:PORT` with no `--alias-port` exited 64.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. With no `--alias-port`, each name listens on the port of its target (each name has its own address). `--alias-port` still sets one port for all names.
+
+## Prove
+
+```sh
+cargo test -p podnet -- forward_name_listens_on_the_port_of_its_target
+```
+
+## Done
+
+2026-11-17, commit 3647ef92. Reproduced on the code before the change. The test (`tests/commands.rs::forward_name_listens_on_the_port_of_its_target`) passes, and it fails on the
+code before the change. The topic document, the help and the llms files say it.
+
+# T-441: `warp env` gives nothing for a unix socket of `warp up` (GitHub #626)
+
+**Source:** GitHub #626 (https://github.com/PodUtils/podnet/issues/626), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+With no TCP listener of `warp up`, `warp env` exited 69 and named no other way.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. `warp env --unix` prints `PODNET_WARP_SOCKET` and `PODNET_PROXY=socks5h+unix:SOCKET`, or exits 69 when the socket is absent. Plain `warp env` keeps exit 69 (issue 255: `eval "$(podnet warp env)" && CMD` never runs CMD with no proxy), and its error names `--unix`.
+
+## Prove
+
+```sh
+cargo test -p podnet -- warp_env_unix_gives_the_socket_proxy
+```
+
+## Done
+
+2026-11-17, commit cb80a7d7. Reproduced on the code before the change. The test (`tests/commands.rs::warp_env_unix_gives_the_socket_proxy`) passes, and it fails on the
+code before the change. The topic document, the help and the llms files say it.
+
+# T-442: `warp scan` names a command that does not exist (GitHub #627)
+
+**Source:** GitHub #627 (https://github.com/PodUtils/podnet/issues/627), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The hint was `podnet warp --masque-endpoint ...`, which does not parse.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. The hint is `podnet warp up --masque-endpoint IP:PORT` (or proxy, run, tun, probe). The JSON is the same.
+
+## Prove
+
+```sh
+cargo test -p podnet -- the_scan_hint_is_a_command
+```
+
+## Done
+
+2026-11-17, commit 6f219c8c. Reproduced on the code before the change. The test (`cli_tests::the_scan_hint_is_a_command`) passes, and it fails on the
+code before the change. The topic document, the help and the llms files say it.
+
+# T-443: The output of `serve --pin` does not say how to unlock (GitHub #628)
+
+**Source:** GitHub #628 (https://github.com/PodUtils/podnet/issues/628), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The ready document and the text did not name the unlock flow.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. Ready documents and `--json` lines have `unlock` (`/__podnet/unlock`, else null); the text has a line `podnet: unlock` with the fields and the cookie (serve and share, local, tunnel, relay, `--at`).
+
+## Prove
+
+```sh
+cargo test -p podnet -- serve_local_checks_users_and_the_pin
+```
+
+## Done
+
+2026-11-17, commit 67dcd972. Reproduced on the code before the change. The test (`tests/cli/serve.rs::serve_local_checks_users_and_the_pin` (a real POST and the cookie), `share_local_serves_a_directory`) passes, and it fails on the
+code before the change. The topic document, the help and the llms files say it.
+
+# T-444: `serve --list --tar`: the listing has no tar link (GitHub #629)
+
+**Source:** GitHub #629 (https://github.com/PodUtils/podnet/issues/629), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The HTML listing had no link to the tar of the directory.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. With `--tar`, each HTML listing links to `?tar`. The JSON listing is the same.
+
+## Prove
+
+```sh
+cargo test -p podnet -- a_listing_with_tar_links_to_the_tar
+```
+
+## Done
+
+2026-11-17, commit e5f2ffae. Reproduced on the code before the change. The test (`crates/podnet-serve/src/files/tests.rs::a_listing_with_tar_links_to_the_tar`) passes, and it fails on the
+code before the change. The topic document, the help and the llms files say it.
+
+# T-445: `autostart`: no `--json` for `list`, no `--manual` for a host with no manager (GitHub #630)
+
+**Source:** GitHub #630 (https://github.com/PodUtils/podnet/issues/630), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`autostart list` had no JSON, and `add` on a host with no manager could only exit 69.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. `autostart list --json` (`entries`: name, args, the names of the variables, way, line; never a value). `autostart add --manual` writes the entry, prints the line for login and exits 0. The tests of the core moved to `crates/podnet-core/src/autostart/tests.rs`.
+
+## Prove
+
+```sh
+cargo test -p podnet -- autostart_manual_entry_lists_as_json_and_runs_with_no_dir
+```
+
+## Done
+
+2026-11-17, commit c279914a, 8b6ea1e4. Reproduced on the code before the change. The test (`tests/commands.rs::autostart_manual_entry_lists_as_json_and_runs_with_no_dir`) passes, and it fails on the
+code before the change. The topic document, the help and the llms files say it.
+
+# T-446: `relay node` has no `--json` (GitHub #631)
+
+**Source:** GitHub #631 (https://github.com/PodUtils/podnet/issues/631), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+Only `--detach` printed the ready document of a node.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. `relay node --json` prints the ready document (`event`, `pair`, `relay`, `target`, `expires`, `expires_in`, `schema`) as one line when the node connects; the node runs on (`detach::foreground::on_ready`).
+
+## Prove
+
+```sh
+cargo test -p podnet -- 
+```
+
+## Done
+
+2026-11-17, commit 4793d647. Reproduced on the code before the change. The test (`tests/relay_node_json.rs`) passes, and it fails on the
+code before the change. The topic document, the help and the llms files say it.
+
+# T-447: `ssh-relay` has no `--run-for`, and `-q` prints the banner (GitHub #632)
+
+**Source:** GitHub #632 (https://github.com/PodUtils/podnet/issues/632), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`--run-for` was refused, and `-q` still printed the `[relay]` banner on stderr.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. `ssh-relay --run-for SECONDS` exits 0 after that time; the banner prints only at the log level info. The URL line on stdout stays.
+
+## Prove
+
+```sh
+cargo test -p podnet -- ssh_relay_run_for_ends_and_quiet_hides_the_banner
+```
+
+## Done
+
+2026-11-17, commit 5ee06c68. Reproduced on the code before the change. The test (`tests/ssh_relay.rs::ssh_relay_run_for_ends_and_quiet_hides_the_banner`) passes, and it fails on the
+code before the change. The topic document, the help and the llms files say it.
+
+# T-448: No way to add a user to the users file of `serve` (GitHub #633)
+
+**Source:** GitHub #633 (https://github.com/PodUtils/podnet/issues/633), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+A user wrote the line `USER:ROLE:HASH` by hand.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. `serve --add-user USER:ROLE --users FILE` reads the password from stdin and adds the line (a new file: mode 0600; an existing file must be private; replaced atomically). A user in the file exits 64 unless `--replace-user` (not `--replace`: the option of detach).
+
+## Prove
+
+```sh
+cargo test -p podnet -- serve_add_user_writes_the_users_file
+```
+
+## Done
+
+2026-11-17, commit 905972fd. Reproduced on the code before the change. The test (`tests/cli/serve.rs::serve_add_user_writes_the_users_file`, unit tests in `src/cli/cmd/serve_users.rs`) passes, and it fails on the
+code before the change. The topic document, the help and the llms files say it.

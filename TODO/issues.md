@@ -312,5 +312,16 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #620 | Release binary: all network link carriers are off (only unix and memory) | open (outside the team: verified, labelled `confirmed`; T-428 partial) | T-428 |
 | #621 | podnet pod -x direct: a false "upstream :0" warning, and -x does not accept direct | closed (outside the team: verified, labelled `confirmed`; T-432) | T-432 |
 | #622 | Minor output nits: duplicate headers, double spaces, missing schema, duplicated error | closed (outside the team: verified, labelled `confirmed`; T-429) | T-429 |
+| #623 | podnet exit: --stdio is the only mode, so make it the default | closed (outside the team: verified, labelled `confirmed`; T-438) | T-438 |
+| #624 | podnet autostart run: --dir is required, but the default is already known | closed (outside the team: verified, labelled `confirmed`; T-439) | T-439 |
+| #625 | podnet forward --name: --alias-port is required, but the target port is already in the name | closed (outside the team: verified, labelled `confirmed`; T-440) | T-440 |
+| #626 | podnet warp env: print a unix-socket proxy when the TCP listener is absent | closed (outside the team: verified, labelled `confirmed`; T-441) | T-441 |
+| #627 | podnet warp scan: the hint names `podnet warp --masque-endpoint`, which is not a command | closed (outside the team: verified, labelled `confirmed`; T-442) | T-442 |
+| #628 | podnet serve --pin: the ready document and the text output do not say how to unlock | closed (outside the team: verified, labelled `confirmed`; T-443) | T-443 |
+| #629 | podnet serve --list --tar: the listing has no tar link | closed (outside the team: verified, labelled `confirmed`; T-444) | T-444 |
+| #630 | podnet autostart: add --json to list and --manual to add on a host with no manager | closed (outside the team: verified, labelled `confirmed`; T-445) | T-445 |
+| #631 | podnet relay node: add --json, or say that --detach prints the document | closed (outside the team: verified, labelled `confirmed`; T-446) | T-446 |
+| #632 | podnet ssh-relay: add --run-for, and make -q quiet | closed (outside the team: verified, labelled `confirmed`; T-447) | T-447 |
+| #633 | podnet serve: add a way to append a user to the users file | closed (outside the team: verified, labelled `confirmed`; T-448) | T-448 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**436 entries: 11 open, 11 partial, 35 blocked, 379 done.**
-**436 entries: 11 open, 11 partial, 35 blocked, 379 done.**
+**447 entries: 11 open, 11 partial, 35 blocked, 390 done.**
+**447 entries: 11 open, 11 partial, 35 blocked, 390 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 46 | 51 |
 | P2 | 3 | 6 | 10 | 200 | 219 |
-| P3 | 7 | 3 | 23 | 132 | 165 |
-| **All** | 11 | 11 | 35 | 379 | 436 |
+| P3 | 7 | 3 | 23 | 143 | 176 |
+| **All** | 11 | 11 | 35 | 390 | 447 |
 | P2 | 3 | 6 | 10 | 200 | 219 |
-| P3 | 7 | 3 | 23 | 132 | 165 |
-| **All** | 11 | 11 | 35 | 379 | 436 |
+| P3 | 7 | 3 | 23 | 143 | 176 |
+| **All** | 11 | 11 | 35 | 390 | 447 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -486,3 +486,14 @@ M8 Overlays, M9 Later.
 | [T-435](fixes.md) | P2 | S | M6 | defect | done | `expose ... -- --detach` stays in the foreground (GitHub #612) |
 | [T-436](fixes.md) | P3 | S | M6 | defect | done | A syntax error of the command line names `podnet update --check` (GitHub #616) |
 | [T-437](fixes.md) | P2 | S | M6 | defect | done | A command that ends at once prints the line "runs in the foreground" (GitHub #617) |
+| [T-438](fixes.md) | P3 | S | M6 | defect | done | `exit` needs `--stdio`, its only mode (GitHub #623) |
+| [T-439](fixes.md) | P3 | S | M6 | defect | done | `autostart run` needs `--dir`, whose default is known (GitHub #624) |
+| [T-440](fixes.md) | P3 | S | M6 | defect | done | `forward --name` needs `--alias-port` (GitHub #625) |
+| [T-441](fixes.md) | P3 | S | M6 | feature | done | `warp env` gives nothing for a unix socket of `warp up` (GitHub #626) |
+| [T-442](fixes.md) | P3 | S | M6 | defect | done | `warp scan` names a command that does not exist (GitHub #627) |
+| [T-443](fixes.md) | P3 | S | M6 | feature | done | The output of `serve --pin` does not say how to unlock (GitHub #628) |
+| [T-444](fixes.md) | P3 | S | M6 | feature | done | `serve --list --tar`: the listing has no tar link (GitHub #629) |
+| [T-445](fixes.md) | P3 | S | M6 | feature | done | `autostart`: no `--json` for `list`, no `--manual` for a host with no manager (GitHub #630) |
+| [T-446](fixes.md) | P3 | S | M6 | feature | done | `relay node` has no `--json` (GitHub #631) |
+| [T-447](fixes.md) | P3 | S | M6 | feature | done | `ssh-relay` has no `--run-for`, and `-q` prints the banner (GitHub #632) |
+| [T-448](fixes.md) | P3 | S | M6 | feature | done | No way to add a user to the users file of `serve` (GitHub #633) |
