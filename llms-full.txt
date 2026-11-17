@@ -11573,6 +11573,8 @@ local listener:
   69; `--replace` takes it over). A stale socket is removed. A file that
   is not a socket is refused (exit 64). podnet removes its socket at the
   end.
+* A client can half-close its connection after the request (`nc -N`,
+  `printf ... | podnet link dial`). It still gets the answer.
 * An address in use is refused (exit 69).
 * `--check` is refused with `--local`, and is for `--ingress tunnel` only.
   With `--ingress none`, the tunnel flags have no effect, except `--auth-user`
