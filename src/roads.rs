@@ -112,11 +112,7 @@ impl Road for Tunnel {
             let (path, server) = private_socket(&socket_dir()?, "road-tunnel", service)?;
             let mut config = self.config.clone();
             config.ingress = Ingress::new().catch_all(Service::Unix(path));
-            let handle = crate::tunnel::Tunnel::builder()
-                .config(config)
-                .build()?
-                .start()
-                .await?;
+            let (handle, _) = crate::tunnel::start(config).await?;
             let url = handle.url().map(str::to_string);
             let ready = serde_json::json!({ "road": "tunnel", "url": url, "leg": handle.leg() });
             let run = async move {

@@ -225,7 +225,7 @@ into `TODO/github.txt`, and its row in `TODO/issues.md` has the entries
 | `release.yml` | a tag, or by hand | the release binaries; a dry run with no input |
 | `publish.yml` | a tag `v*`, or by hand | `cargo publish --workspace --dry-run`; the real publish only when `[workspace.metadata.podnet] crates-io = true` (trusted publishing, no token) |
 | `release-proofs.yml` | after a release | checks the release files, SHA256SUMS and the signatures |
-| `fuzz.yml`, `upstream.yml` | on a schedule | fuzz targets; changes of cloudflared |
+| `fuzz.yml` | on a schedule | fuzz targets |
 | `record-issues.yml` | each day, by hand | `TODO/github.txt` against GitHub (`scripts/check-github-numbers.py`) |
 | `issue-sync.yml` | push to `main`, each day, by hand (a dry run by default) | the state and the status block of each issue from the record (`issue-sync.yml` of podcrates at the tag of T-137) |
 
@@ -285,9 +285,8 @@ At the first stable release (no `-beta.N`), also:
 | Path | What |
 | --- | --- |
 | `src/main.rs` | the CLI (clap), the commands, the signals (`install_signals`, `shutdown_signal`, `until_stop`) |
-| `src/tunnel.rs`, `crates/podnet-core/src/race.rs` | the tunnel: the legs (quic, http2, quic+warp, http2+relay), the race, reconnects, verify |
-| `src/cloudflare/` | the edge protocol (QUIC, HTTP/2, Cap'n Proto RPC): no dependency for it (`CLAUDE.md`) |
-| `src/proxy.rs`, `src/edge_h2.rs` | the streams of the edge to the origins and the built-in services |
+| `src/tunnel.rs` | the host of podnet for the tunnel of `pod-cloudflare` (PodUtils/podcrates): the edge protocol, the legs (quic, http2, quic+warp, http2+relay), the race, reconnects, verify |
+| `src/proxy.rs` | the services of podnet behind the tunnel (the axum routers, the share proxy) |
 | `crates/podnet-serve/src/share/`, `crates/podnet-serve/src/service.rs`, `crates/podnet-serve/src/gate.rs` | `share`, `serve`, the PIN gate |
 | `src/warp/` | WARP: registration, MASQUE session (`session.rs`), userspace stack (`ip.rs`), proxy, TUN and routes, `warp up` |
 | `src/ws_relay.rs`, `src/relay_reverse.rs` | the WebSocket relay: the forward leg, and `podnet relay` (reverse mode) |

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use anyhow::{bail, Context, Result};
 use clap::Args;
 
-use podnet::config::{load_file, Config};
+use podnet::config::Config;
 use podnet::exit::{Fault, ResultExt};
 use podnet::ingress::{ForwardTarget, Ingress, IngressRule, OriginOptions, Service};
 
@@ -104,7 +104,7 @@ pub(crate) async fn tunnel(args: TunnelArgs) -> Result<()> {
         ));
     }
     let mut config = if let Some(path) = &args.config {
-        load_file(path).fault(Fault::Config)?
+        podnet::config::load(path).fault(Fault::Config)?
     } else {
         Config::default()
     };

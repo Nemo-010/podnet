@@ -107,16 +107,15 @@ pub(super) async fn first(
     deadline: Instant,
     http: bool,
 ) -> Result<Connected, Failure> {
-    let attempts: Vec<BoxFuture<'_, anyhow::Result<Connected>>> = ways
+    let attempts: Vec<BoxFuture<'_, Result<Connected, Failure>>> = ways
         .iter()
         .map(|way| {
-            let attempt: BoxFuture<'_, anyhow::Result<Connected>> = Box::pin(async move {
-                let conn = if http {
+            let attempt: BoxFuture<'_, Result<Connected, Failure>> = Box::pin(async move {
+                if http {
                     way.dial.dial_http(target, deadline).await
                 } else {
                     way.dial.dial(target, deadline).await
-                };
-                conn.map_err(anyhow::Error::from)
+                }
             });
             attempt
         })
@@ -128,7 +127,13 @@ pub(super) async fn first(
             tracing::debug!(way = %ways[won.index].label(), after = ?won.after, %target, "a way won");
             Ok(won.value)
         }
-        Err(failures) => Err(combine(ways, target, failures)),
+        Err(failures) => {
+            let failures = failures
+                .into_iter()
+                .map(|(i, f)| (i, anyhow::Error::from(f)))
+                .collect();
+            Err(combine(ways, target, failures))
+        }
     }
 }
 

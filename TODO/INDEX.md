@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**421 entries: 12 open, 11 partial, 36 blocked, 362 done.**
+**422 entries: 11 open, 10 partial, 35 blocked, 366 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 2 | 2 | 44 | 49 |
-| P2 | 5 | 6 | 10 | 191 | 212 |
-| P3 | 6 | 3 | 24 | 126 | 159 |
-| **All** | 12 | 11 | 36 | 362 | 421 |
+| P1 | 1 | 2 | 2 | 45 | 50 |
+| P2 | 3 | 5 | 10 | 194 | 212 |
+| P3 | 7 | 3 | 23 | 126 | 159 |
+| **All** | 11 | 10 | 35 | 366 | 422 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -84,20 +84,20 @@ M8 Overlays, M9 Later.
 | [T-036](split.md) | P2 | M | M2 | chore | done | Split `src/warp/mod.rs` and `src/warp/proxy.rs` |
 | [T-037](split.md) | P2 | M | M2 | chore | done | Split `src/relay_reverse.rs` and `crates/podnet-serve/src/share/mod.rs` |
 | [T-038](split.md) | P2 | M | M2 | chore | done | Split `crates/podnet-serve/src/feature/mod.rs` and `src/proxy.rs` |
-| [T-039](split.md) | P2 | M | M2 | chore | open | Split `src/edge_h2.rs` and `src/tunnel.rs` |
+| [T-039](split.md) | P2 | M | M2 | chore | done | Split `src/edge_h2.rs` and `src/tunnel.rs` |
 | [T-040](split.md) | P2 | L | M2 | chore | done | Split the seccomp backend and the netns backend of the pod crate |
 | [T-041](split.md) | P2 | M | M2 | chore | done | Split the four large test files |
 | [T-042](split.md) | P2 | M | M2 | chore | done | Cut the upward references 1 to 7: `net`, `util`, `fetch`, `hop`, `report`, `detach` and `relay_reverse` |
 | [T-043](split.md) | P2 | M | M2 | chore | done | Cut the upward references 8, 9 and 18: a WebSocket bridge and `Metered` in the core |
 | [T-044](split.md) | P2 | L | M2 | chore | blocked | Cut the upward references 10 to 17: the WARP QUIC configuration, `ShareLink`, `RULE_KEYS`, `connect_tunnel` and the edge side of `ws` |
-| [T-045](split.md) | P2 | S | M2 | chore | partial | Each file is under 800 lines, and the allowlists of the size check and the layer check are empty |
+| [T-045](split.md) | P2 | S | M2 | chore | done | Each file is under 800 lines, and the allowlists of the size check and the layer check are empty |
 | [T-046](crates.md) | P2 | M | M3 | chore | done | Prepare the workspace for more crates: the print macros, the build facts, the scans, the package list and the test helpers |
 | [T-047](crates.md) | P2 | L | M3 | chore | done | Extract the crate `podnet-core` |
 | [T-048](crates.md) | P2 | M | M3 | chore | done | Extract the crate `podnet-vnet`, with the C sources of the shims |
 | [T-049](crates.md) | P2 | S | M3 | chore | done | The relay client of podnet becomes the shared crate `pod-relay` |
 | [T-050](crates.md) | P2 | M | M3 | chore | done | Move the WARP adapter to the shared crate `pod-warp` in `PodUtils/podcrates` |
 | [T-051](crates.md) | P2 | M | M3 | chore | done | Extract the crate `podnet-serve`, with the library-only modules |
-| [T-052](crates.md) | P2 | M | M3 | chore | open | Move the Cloudflare adapter to the shared crate `pod-cloudflare` in `PodUtils/podcrates` |
+| [T-052](crates.md) | P2 | M | M3 | chore | done | Move the Cloudflare adapter to the shared crate `pod-cloudflare` in `PodUtils/podcrates` |
 | [T-053](crates.md) | P2 | M | M3 | chore | open | The root package is the CLI and a facade that keeps each library path |
 | [T-054](crates.md) | P2 | S | M3 | release | open | A prerelease after the crate split, with the static builds of each target |
 | [T-055](adapters.md) | P2 | M | M4 | feature | done | The network types in `podnet-core`: a target, a dialer, datagrams, a network and its link |
@@ -289,7 +289,7 @@ M8 Overlays, M9 Later.
 | [T-241](fixes.md) | P2 | M | M5 | defect | done | `warp`: register under a lock, save the device before the enrolment step, and fail over the registration POST only when no response came (GitHub #432) |
 | [T-242](services.md) | P3 | M | M6 | feature | done | Rules: warn when an earlier domain or cidr rule shadows a later one, and fail when the shadowed rule is a `reject` (GitHub #433) |
 | [T-243](overlays.md) | P3 | M | M8 | feature | done | `net tailscale`: `--tailnet NAME` refuses to start or to dial when the daemon is in another tailnet, a doctor row shows the status, and the docs name `TS_FORCE_NOISE_443` (GitHub #434) |
-| [T-244](later.md) | P3 | L | M9 | feature | blocked | `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435) |
+| [T-244](later.md) | P3 | L | M9 | feature | open | `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435) |
 | [T-245](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.4`: the dry run, the publish and the release proofs |
 | [T-246](overlays.md) | P3 | S | M8 | feature | done | NetBird: the network spec `netbird:[PORT]` over the SOCKS5 listener of netstack mode |
 | [T-247](overlays.md) | P3 | M | M8 | measurement | blocked | NetBird: measure netstack mode on a proxy-only host |
@@ -467,3 +467,4 @@ M8 Overlays, M9 Later.
 | [T-420](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.68.0 |
 | [T-421](fixes.md) | P1 | S | M5 | defect | done | The WebSocket and relay connections ignore `--ca-file`, and a proxy's refusal of the upgrade reads as a bad token |
 | [T-422](fixes.md) | P1 | S | M5 | release | open | Publish `v0.4.0-beta.16`: the gate, the dry run, the publish and the release proofs |
+| [T-423](crates.md) | P1 | M | M3 | chore | done | Take podcrates v0.69.0 with `pod-cloudflare` |

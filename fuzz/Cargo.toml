@@ -2,7 +2,7 @@
 # workspace: the main workspace excludes it, and it needs a nightly
 # toolchain and glibc (libFuzzer does not run on musl).
 #
-#   cargo +nightly fuzz run capnp_message -- -max_total_time=60
+#   cargo +nightly fuzz run proxy_url -- -max_total_time=60
 #
 # Each target calls one function of podnet::fuzzing. .github/workflows/fuzz.yml
 # runs each target each week.
@@ -27,34 +27,6 @@ members = ["."]
 [[bin]]
 name = "seed"
 path = "src/seed.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "capnp_message"
-path = "fuzz_targets/capnp_message.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "rpc_message"
-path = "fuzz_targets/rpc_message.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "register_response"
-path = "fuzz_targets/register_response.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "connect_request"
-path = "fuzz_targets/connect_request.rs"
 test = false
 doc = false
 bench = false
@@ -88,13 +60,6 @@ doc = false
 bench = false
 
 [[bin]]
-name = "srv_record"
-path = "fuzz_targets/srv_record.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
 name = "acl_rule"
 path = "fuzz_targets/acl_rule.rs"
 test = false
@@ -102,22 +67,8 @@ doc = false
 bench = false
 
 [[bin]]
-name = "ingress_rule"
-path = "fuzz_targets/ingress_rule.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "config_yaml"
-path = "fuzz_targets/config_yaml.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "h2_header_block"
-path = "fuzz_targets/h2_header_block.rs"
+name = "local_spec"
+path = "fuzz_targets/local_spec.rs"
 test = false
 doc = false
 bench = false
@@ -125,13 +76,6 @@ bench = false
 [[bin]]
 name = "vnet_frame"
 path = "fuzz_targets/vnet_frame.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "request_head"
-path = "fuzz_targets/request_head.rs"
 test = false
 doc = false
 bench = false

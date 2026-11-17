@@ -55,7 +55,7 @@ These rules apply to each session. Obey them before any other default.
 
 - podnet: one static binary that brings its own network to restricted
   hosts (containers with no `CAP_NET_ADMIN`, proxy-only egress). The
-  Cloudflare tunnel (`src/cloudflare/`) is one
+  Cloudflare tunnel (`pod-cloudflare`, glue in `src/tunnel.rs`) is one
   adapter of podnet; WARP, the relay, pods and virtual networks are others.
   Services: file server, file transfer, git hosting, router.
 - Workspace: `podnet` (root: CLI and library), `crates/podnet-netns` (the
@@ -66,8 +66,8 @@ These rules apply to each session. Obey them before any other default.
   `podnet-vnet`, `podnet-serve`); the WARP and Cloudflare adapters and the
   shared layers move to the shared repository `PodUtils/podcrates`
   (`docs/decisions.md`, 2026-11-05, Shared crates and podcrates design). Do not add a
-  dependency for the edge protocol: it is implemented in `src/cloudflare/`
-  (later in `pod-cloudflare`).
+  dependency for the edge protocol: it is `pod-cloudflare` of
+  `PodUtils/podcrates`.
 - A source file has at most 800 lines (`scripts/check-size.py`). A file in
   its allowlist can only get smaller; lower its count when it shrinks.
 - Check before each push (`sh scripts/agent/check.sh`):

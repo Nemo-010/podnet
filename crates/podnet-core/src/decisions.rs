@@ -26,6 +26,27 @@ pub fn count(decision: &'static str, outcome: &str) {
     }
 }
 
+/// The events of a crate into podnet's log, and its decisions into these
+/// counters with the names of the crate.
+pub fn report() -> pod_core::Report {
+    pod_core::Report {
+        events: std::sync::Arc::new(|event: pod_core::Event| match event.level {
+            pod_core::Level::Info => tracing::info!(kind = event.kind, "{}", event.text),
+            pod_core::Level::Warn => tracing::warn!(kind = event.kind, "{}", event.text),
+        }),
+        observer: std::sync::Arc::new(Counters),
+    }
+}
+
+/// The observer of [`report`].
+struct Counters;
+
+impl pod_core::Observer for Counters {
+    fn decision(&self, decision: &'static str, outcome: &str) {
+        count(decision, outcome);
+    }
+}
+
 /// The count of one decision and outcome.
 pub fn get(decision: &'static str, outcome: &str) -> u64 {
     COUNTS

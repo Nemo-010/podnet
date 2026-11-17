@@ -13,7 +13,7 @@ use std::time::Duration;
 use serde_json::{json, Value};
 
 use crate::config::{Config, Credentials};
-use crate::ingress::{ForwardTarget, OriginOptions, Service};
+use crate::ingress::{ForwardTarget, OriginOptions, Podnet, Service};
 use crate::share::ShareMode;
 
 /// The time limit of each connection to an origin.
@@ -197,11 +197,16 @@ pub async fn check(config: &Config) -> Report {
         ),
         Ok(None) => {
             // #277: the row names a lookup, so it makes the lookup.
+            let host = crate::tunnel::base_host();
             let found = tokio::time::timeout(
                 EDGE_LOOKUP,
-                crate::edge_discovery::discover_system(crate::cloudflare::IpVersionFilter::Auto),
+                crate::edge_discovery::discover_system(
+                    &host,
+                    crate::cloudflare::IpVersionFilter::Auto,
+                ),
             )
             .await
+            .map(|found| found.map_err(anyhow::Error::from))
             .unwrap_or_else(|_| Err(anyhow::anyhow!("no answer in {} s", EDGE_LOOKUP.as_secs())));
             let (status, detail) = edge_row(found.map(|edges| edges.len()));
             report.push("edge", status, detail);
@@ -211,13 +216,15 @@ pub async fn check(config: &Config) -> Report {
 
     let legs = match crate::tunnel::leg_plan(config.protocol, config.transport) {
         Ok(plan) => {
-            let proxy = crate::egress::proxy_for(crate::tunnel::edge_region_name(), 7844);
+            let words = crate::udp::words();
+            let proxy = crate::egress::proxy_for(crate::services::edge_region_name(), 7844)
+                .map(|p| p.to_string());
             let (plan, mut note) =
-                crate::tunnel::plan_with_proxy(plan, config.protocol, proxy.as_ref());
+                crate::tunnel::plan_with_proxy(plan, config.protocol, proxy.as_deref(), &words);
             // The check sends no UDP probe: only PODNET_UDP=off applies here.
-            let udp = crate::udp::Choice::from_env().map_err(|e| format!("{e:#}"));
+            let udp = crate::udp::choice_from_env().map_err(|e| format!("{e:#}"));
             match udp.and_then(|u| {
-                crate::tunnel::plan_with_udp(plan, u, None).map_err(|e| format!("{e:#}"))
+                crate::tunnel::plan_with_udp(plan, u, None, &words).map_err(|e| format!("{e:#}"))
             }) {
                 Ok((plan, udp_note)) => {
                     note = note.or(udp_note);
@@ -264,7 +271,7 @@ pub async fn check(config: &Config) -> Report {
     }
 
     let mut files = Vec::new();
-    if let Some(path) = &config.warp_identity {
+    if let Some(path) = &crate::tunnel::warp_options().identity {
         files.push(path.display().to_string());
         report.result("warp-identity", identity_file(path));
     }
@@ -319,14 +326,16 @@ fn service_files(service: &Service) -> Vec<String> {
         Service::Unix(path) | Service::UnixTls(path) => vec![path.display().to_string()],
         Service::Forward(ForwardTarget::Unix(path)) => vec![path.display().to_string()],
         Service::Static { root, .. } => vec![root.display().to_string()],
-        Service::Files(files) => vec![files.root.display().to_string()],
-        Service::Git(git) => vec![git.root.display().to_string()],
-        Service::Share(share) => match share.mode {
-            ShareMode::Upload => vec![share.dest.display().to_string()],
-            ShareMode::Download => share.file.iter().map(|p| p.display().to_string()).collect(),
-            ShareMode::Proxy => Vec::new(),
+        _ => match crate::ingress::podnet(service) {
+            Some(Podnet::Files(files)) => vec![files.root.display().to_string()],
+            Some(Podnet::Git(git)) => vec![git.root.display().to_string()],
+            Some(Podnet::Share(share)) => match share.mode {
+                ShareMode::Upload => vec![share.dest.display().to_string()],
+                ShareMode::Download => share.file.iter().map(|p| p.display().to_string()).collect(),
+                ShareMode::Proxy => Vec::new(),
+            },
+            None => Vec::new(),
         },
-        _ => Vec::new(),
     }
 }
 
@@ -359,24 +368,35 @@ async fn service(service: &Service, origin: &OriginOptions) -> Result<String, St
             Ok(format!("{label}: built in"))
         }
         Service::Static { root, spa, .. } => static_dir(root, *spa),
-        Service::Files(files) => static_dir(&files.root, files.spa),
-        Service::Git(git) => static_dir(&git.root, false),
-        Service::Share(share) => match share.mode {
-            ShareMode::Upload => upload_dir(&share.dest),
-            ShareMode::Download => match &share.file {
-                Some(file) => regular_file(file),
-                None => Err("download mode needs --file".to_string()),
-            },
-            ShareMode::Proxy => {
-                let target = share.target.clone().unwrap_or_default();
-                let service = match crate::proxy::share_origin(&target) {
-                    Service::Http(_) => Service::Tcp(target.clone()),
-                    unix => unix,
-                };
-                dial(&service, origin).await?;
-                Ok(format!("{target}: connects"))
-            }
+        Service::Custom(_) => match crate::ingress::podnet(service) {
+            Some(Podnet::Files(files)) => static_dir(&files.root, files.spa),
+            Some(Podnet::Git(git)) => static_dir(&git.root, false),
+            Some(Podnet::Share(share)) => share_check(share, origin).await,
+            None => Ok(format!("{label}: a service of podnet")),
         },
+    }
+}
+
+/// Check the files or the origin of a share.
+async fn share_check(
+    share: &crate::share::ShareConfig,
+    origin: &OriginOptions,
+) -> Result<String, String> {
+    match share.mode {
+        ShareMode::Upload => upload_dir(&share.dest),
+        ShareMode::Download => match &share.file {
+            Some(file) => regular_file(file),
+            None => Err("download mode needs --file".to_string()),
+        },
+        ShareMode::Proxy => {
+            let target = share.target.clone().unwrap_or_default();
+            let service = match crate::proxy::share_origin(&target) {
+                Service::Http(_) => Service::Tcp(target.clone()),
+                unix => unix,
+            };
+            dial(&service, origin).await?;
+            Ok(format!("{target}: connects"))
+        }
     }
 }
 
@@ -627,7 +647,7 @@ mod tests {
 
         // An upload --dir that is a file.
         let file = root.join("index.html");
-        let report = check(&with(Service::Share(ShareConfig::upload(&file)))).await;
+        let report = check(&with(crate::ingress::share(ShareConfig::upload(&file)))).await;
         assert!(
             failed(&report)[0].ends_with("not a directory"),
             "{:?}",
@@ -635,12 +655,12 @@ mod tests {
         );
         // An upload --dir that does not exist yet: the check makes nothing.
         let fresh = root.join("a/b");
-        let report = check(&with(Service::Share(ShareConfig::upload(&fresh)))).await;
+        let report = check(&with(crate::ingress::share(ShareConfig::upload(&fresh)))).await;
         assert!(report.ok(), "{:?}", report.checks);
         assert!(!root.join("a").exists());
 
         // T-091: a download --file that is a directory is one tar stream.
-        let report = check(&with(Service::Share(ShareConfig::download(root)))).await;
+        let report = check(&with(crate::ingress::share(ShareConfig::download(root)))).await;
         assert!(report.ok(), "{:?}", report.checks);
     }
 
@@ -654,7 +674,7 @@ mod tests {
         };
         let mut share = ShareConfig::proxy("127.0.0.1:1".to_string());
         share.gate = crate::gate::Gate::pin();
-        config.ingress = Ingress::new().catch_all(Service::Share(share.clone()));
+        config.ingress = Ingress::new().catch_all(crate::ingress::share(share.clone()));
         let report = check(&config).await;
         let all = format!("{}{}", report.text(), report.to_json());
         assert!(!all.contains("account-tag-secret"));

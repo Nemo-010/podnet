@@ -131,7 +131,7 @@ the host name. `crates/podnet-core/src/trust.rs` gives the roots:
 
 The edge also trusts the Cloudflare roots of the fact `roots` of the edge of
 `pod-services` (PodUtils/podcrates), the certificates of
-`src/cloudflare/cf-edge-roots.pem`. The first of them ends on 2029-08-15
+`cloudflare/cf-edge-roots.pem` of `pod-cloudflare`. The first of them ends on 2029-08-15
 (`trust::edge_roots_first_end`; a test of `pod-services` reads it from the
 certificates). The MASQUE connection of WARP checks the
 key of the server against the key that the WARP API gave, and does not

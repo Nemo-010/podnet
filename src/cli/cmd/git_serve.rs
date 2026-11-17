@@ -23,7 +23,7 @@ use podnet::config::Config;
 use podnet::exit::{Fault, ResultExt};
 use podnet::files::{Access, Role, Users};
 use podnet::git::http::HttpOptions;
-use podnet::ingress::{Ingress, Service};
+use podnet::ingress::Ingress;
 
 use crate::cli::cmd::connect::unix_listener;
 use crate::cli::cmd::git::{default_host_key, real_root, record_path};
@@ -364,7 +364,7 @@ async fn serve_tunnel(
     servers: &mut Servers,
 ) -> Result<()> {
     let config = Config {
-        ingress: Ingress::new().catch_all(Service::Git(http)),
+        ingress: Ingress::new().catch_all(podnet::ingress::git(http)),
         ..Config::default()
     };
     let config = args.common.apply(config)?;

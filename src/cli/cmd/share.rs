@@ -220,7 +220,7 @@ pub(crate) async fn share(args: ShareArgs) -> Result<()> {
         podnet::report::hide(token);
         config.credentials = podnet::config::parse_token(token).fault(Fault::Config)?;
     }
-    config.ingress = Ingress::new().catch_all(Service::Share(share_config.clone()));
+    config.ingress = Ingress::new().catch_all(podnet::ingress::share(share_config.clone()));
     config = args.common.apply(config)?;
     if args.common.check {
         return preflight(&config, args.common.show()).await;

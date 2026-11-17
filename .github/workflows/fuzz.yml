@@ -4,8 +4,9 @@ name: fuzz
 # Each target runs for `seconds` (a seccomp_* target for 60) with a malloc
 # limit of 64 MiB. A crash, a timeout or a large allocation fails the job,
 # and the input is kept as an artifact. Rule: a crash input becomes a unit
-# test first, then the fix (example: capnp.rs
-# fuzz_a_zero_size_struct_list_is_charged).
+# test first, then the fix (example: fuzzing.rs
+# fuzz_a_unix_proxy_label_holds_no_user_info). The parsers of the Cloudflare
+# edge have their targets in pod-cloudflare of PodUtils/podcrates.
 #
 # libFuzzer needs glibc: the runner is ubuntu-24.04, not musl. The nightly is
 # pinned: nightly-2026-10-31 cannot compile ssh-key 0.7.0-rc.11 (a query
@@ -52,16 +53,8 @@ jobs:
         timeout-minutes: 15
         working-directory: fuzz
         run: cargo +"$NIGHTLY" run --locked --bin seed -- corpus
-      - name: A planted pointer loop ends
-        timeout-minutes: 15
-        working-directory: fuzz
-        run: |
-          set -eu
-          # One segment of two words: the root struct, and its pointer to itself.
-          printf '\000\000\000\000\002\000\000\000\000\000\000\000\000\000\001\000\374\377\377\377\000\000\001\000' > loop.bin
-          timeout 600 cargo +"$NIGHTLY" fuzz run capnp_message loop.bin -- -runs=1 -timeout=5
       - name: Each target
-        # 26 targets: 23 of `seconds` (120 s) and 3 of 60 s are 49 min.
+        # 18 targets: 15 of `seconds` (120 s) and 3 of 60 s are 33 min.
         timeout-minutes: 80
         working-directory: fuzz
         run: |

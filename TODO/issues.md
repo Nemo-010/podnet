@@ -130,7 +130,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #432 | warp: registration under a lock, save before the enrolment step (donor review) | closed | T-241 |
 | #433 | rules: a shadowed rule warns, a shadowed reject fails (donor review) | closed (T-242: the pod and the router in e7ec95c and dc5d221, warp proxy in the next commit) | T-242 |
 | #434 | net tailscale: --tailnet guard and the TS_FORCE_NOISE_443 hint (donor review) | closed | T-243 |
-| #435 | tunnel --inspect: capture, ring, redaction, replay (donor review) | open (T-244 is blocked on pod-cloudflare) | T-244 |
+| #435 | tunnel --inspect: capture, ring, redaction, replay (donor review) | open (T-244: its capture hook goes into pod-cloudflare, which podnet took) | T-244 |
 | #436 | podnet receive: containment of the received entries (donor review) | closed (the rules of the Correction of T-105 are `src/transfer/land.rs`, d5c38c1; `cargo test --test transfer_land`: 7 passed) | T-105 |
 | #437 | COORD-019: proposals for podcrates from the donor review (to podcrates) | open (a COORD issue between sessions) | none |
 | #438 | COORD-020: proposals for podssh from the donor review (to podssh) | closed (podssh recorded them in its record, PodUtils/podssh#188) | none |

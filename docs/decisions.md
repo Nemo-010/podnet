@@ -11,7 +11,7 @@ form of the rulings that apply to each session.
 | --- | --- | --- |
 | 2026-11-01 | License | The project is 0BSD. Code from `talaria0101/cfrs` and `nemo-010/cfrs` is also 0BSD and needs no credit. |
 | 2026-11-01 | Platforms | Linux only. No Windows or macOS builds. Static Linux binaries for all major architectures, with cargo-zigbuild (zig cc). |
-| 2026-11-01 | Dependencies | No dependency for the edge protocol: it is in `src/cloudflare/`. |
+| 2026-11-01 | Dependencies | No dependency for the edge protocol: it is the code of PodUtils, the crate `pod-cloudflare` of PodUtils/podcrates. |
 | 2026-11-01 | Dependabot | Apply each judged update as an own commit on `main` (checks green). Close the pull request with a link to the commit. Do not merge the Dependabot branch. |
 | 2026-11-01 | `podnet update` | Check SHA256SUMS, and the certificate identity and the signature of the cosign bundle over SHA256SUMS, with own code. The Rekor inclusion proof is not checked. |
 | 2026-11-01 | Issues | A watcher polls for new issues. An agent triages each new issue. Close each issue with evidence (commits, CI runs, test output). |

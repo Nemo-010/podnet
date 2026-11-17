@@ -22,7 +22,7 @@ pub fn targets(relay: Option<&str>) -> Vec<Target> {
         },
         Target {
             id: "edge-name",
-            host: crate::tunnel::edge_region_name().into(),
+            host: crate::services::edge_region_name().into(),
             port: 7844,
             tls: Tls::Edge,
         },

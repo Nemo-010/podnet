@@ -3,11 +3,3 @@
 # When a file becomes smaller, lower its count; when it has 800 lines or
 # fewer, remove its line: python3 -I scripts/check-size.py --update.
 # Do not add a file, and do not raise a count: split the file.
-944 src/cloudflare/capnp.rs
-1123 src/cloudflare/http2.rs
-1187 src/config.rs
-1608 src/edge_h2.rs
-2034 src/proxy.rs
-850 src/quicktunnel.rs
-1322 src/tunnel.rs
-817 src/warp/up.rs

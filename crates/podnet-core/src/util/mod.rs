@@ -63,17 +63,6 @@ pub fn human_bytes(bytes: u64) -> String {
     }
 }
 
-/// `Host[:port]` from an absolute URL.
-pub fn authority_of(url: &str) -> Option<String> {
-    let rest = url.split("://").nth(1)?;
-    let authority = rest.split(['/', '?', '#']).next()?;
-    if authority.is_empty() {
-        None
-    } else {
-        Some(authority.to_string())
-    }
-}
-
 /// Path and query from a destination URL (`https://host/a?b` -> `/a?b`).
 pub fn path_and_query(dest: &str) -> String {
     if let Some(scheme) = dest.find("://") {
@@ -101,38 +90,6 @@ pub fn ensure_dir(path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// The public host of a quick-tunnel URL, validated against the
-/// `*.trycloudflare.com` allowlist so a hostile API response cannot point the
-/// tool at another host.
-pub fn validate_quick_hostname(raw: &str) -> Result<String> {
-    let host = raw
-        .trim()
-        .trim_end_matches('/')
-        .strip_prefix("https://")
-        .unwrap_or(raw.trim().trim_end_matches('/'))
-        .to_ascii_lowercase();
-    let bad = host.is_empty() || host.contains(['/', '\\', '@', '?', '#', ':', '[', ']', ' ']);
-    if bad {
-        anyhow::bail!("quick tunnel returned a malformed hostname: {raw:?}");
-    }
-    let zone = crate::services::text(crate::services::QUICK, "tunnel-zone");
-    let Some(sub) = host.strip_suffix(&format!(".{zone}")) else {
-        anyhow::bail!("quick tunnel hostname is not under {zone}: {host}");
-    };
-    if sub.is_empty()
-        || sub.contains('.')
-        || sub.starts_with('-')
-        || sub.ends_with('-')
-        || sub.len() > 63
-        || !sub
-            .chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
-    {
-        anyhow::bail!("quick tunnel hostname label is invalid: {host}");
-    }
-    Ok(format!("https://{host}"))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -155,25 +112,10 @@ mod tests {
     }
 
     #[test]
-    fn authority_and_path() {
-        assert_eq!(
-            authority_of("https://x.trycloudflare.com/a"),
-            Some("x.trycloudflare.com".into())
-        );
+    fn path_and_query_of_a_destination() {
         assert_eq!(path_and_query("https://h/a?b=1"), "/a?b=1");
         assert_eq!(path_and_query("https://h"), "/");
         assert_eq!(path_and_query("https://h?x=1"), "/?x=1");
-    }
-
-    #[test]
-    fn quick_hosts() {
-        assert_eq!(
-            validate_quick_hostname("https://abc-123.trycloudflare.com/").unwrap(),
-            "https://abc-123.trycloudflare.com"
-        );
-        assert!(validate_quick_hostname("https://evil.com").is_err());
-        assert!(validate_quick_hostname("https://a.b.trycloudflare.com").is_err());
-        assert!(validate_quick_hostname("http://abc.trycloudflare.com").is_err());
     }
 }
 // Shared helpers: TLS configuration, HTTP, and metrics.

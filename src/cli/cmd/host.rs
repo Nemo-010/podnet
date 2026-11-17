@@ -284,7 +284,7 @@ pub(crate) async fn doctor(args: DoctorArgs) -> Result<()> {
         return Ok(());
     }
     podnet::udp::check_edge_env()?;
-    podnet::udp::Choice::from_env()?;
+    podnet::udp::choice_from_env()?;
     let base = if args.quick {
         podnet::doctor::Options::quick()
     } else {
