@@ -125,8 +125,18 @@ pub async fn udp_via_stack(
 
 /// The `export GIT_SSH_COMMAND=...` line (T-214): the command is one word
 /// for the shell that reads the line, and the `ProxyCommand` option is one
-/// word for the shell that runs `ssh`.
+/// word for the shell that runs `ssh`. A path of safe characters gives the
+/// short form `"ssh -o 'ProxyCommand=PATH warp nc %h %p'"` (GitHub #615);
+/// another path gives each layer of quotes.
 fn git_ssh_command(exe: &Path) -> String {
+    let path = exe.display().to_string();
+    let safe = !path.is_empty()
+        && path
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"/._-+@%:,=".contains(&b));
+    if safe {
+        return format!("export GIT_SSH_COMMAND=\"ssh -o 'ProxyCommand={path} warp nc %h %p'\"");
+    }
     let option = shell_quote(&format!("ProxyCommand={}", proxy_command(exe)));
     format!(
         "export GIT_SSH_COMMAND={}",
@@ -156,6 +166,10 @@ mod tests {
         let text = ssh_config(Path::new("/b/podnet"), "github.com");
         assert!(text.contains("Host github.com\n    ProxyCommand '/b/podnet' warp nc %h %p\n"));
         assert!(text.contains("GIT_SSH_COMMAND"));
+        // GitHub #615: a plain path gives a line that a person can read.
+        assert!(text.contains(
+            "# export GIT_SSH_COMMAND=\"ssh -o 'ProxyCommand=/b/podnet warp nc %h %p'\"\n"
+        ));
     }
 
     /// T-214: the printed `ProxyCommand` line is the line of `--write`, and

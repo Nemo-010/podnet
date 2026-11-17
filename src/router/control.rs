@@ -71,6 +71,12 @@ pub struct ControlState {
 }
 
 impl ControlState {
+    /// The `state_dir` of the router file: the directory of the identity
+    /// of each network, and of the usage file of the doors (GitHub #619).
+    pub fn state_dir(&self) -> Option<&std::path::Path> {
+        self.state_dir.as_deref()
+    }
+
     pub fn new(
         swaps: HashMap<String, Arc<Swap>>,
         specs: &BTreeMap<String, String>,

@@ -131,3 +131,16 @@ async fn a_door_keeps_its_rate_and_its_quota() {
     assert_eq!(stats.json()["limits"]["used"], 10_000);
     assert_eq!(stats.json()["limits"]["exhausted"], true);
 }
+
+// GitHub #619: the usage file is in the `state_dir` of the router file when
+// the file has one, so two routers with two state directories do not share
+// one count.
+#[test]
+fn the_usage_file_follows_the_state_dir_of_the_router() {
+    let dir = std::path::Path::new("/r/state");
+    assert_eq!(usage_file(Some(dir)), Some(dir.join("router-usage.json")));
+    if let Some(global) = usage_file(None) {
+        assert!(global.ends_with("router-usage.json"), "{global:?}");
+        assert_ne!(global, dir.join("router-usage.json"));
+    }
+}

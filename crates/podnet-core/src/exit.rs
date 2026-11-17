@@ -137,9 +137,51 @@ pub fn code_of(err: &anyhow::Error) -> i32 {
         .unwrap_or(FAILURE)
 }
 
+/// The text of `err` for one error line: the text of each cause, joined
+/// with `: `. A cause whose text is in the line already is not named again
+/// (GitHub #622): a failure of a crate of podcrates holds the words of its
+/// causes, as `pod_core::Failure::chain` does.
+pub fn text(err: &anyhow::Error) -> String {
+    let mut out = String::new();
+    for cause in err.chain() {
+        let more = cause.to_string();
+        if more.is_empty() || out.contains(&more) {
+            continue;
+        }
+        if !out.is_empty() {
+            out.push_str(": ");
+        }
+        out.push_str(&more);
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // GitHub #622: a cause that the line holds already is not named again.
+    #[test]
+    fn text_names_each_cause_once() {
+        #[derive(Debug)]
+        struct Api;
+        impl std::fmt::Display for Api {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str("WARP API answered HTTP 400")
+            }
+        }
+        impl std::error::Error for Api {}
+        let err = anyhow::Error::new(Api)
+            .context("PUT /reg/{id}/account: WARP API answered HTTP 400")
+            .context("the WARP license");
+        assert_eq!(
+            text(&err),
+            "the WARP license: PUT /reg/{id}/account: WARP API answered HTTP 400"
+        );
+        assert_eq!(format!("{err:#}").matches("HTTP 400").count(), 2);
+        let plain = anyhow::anyhow!("no route").context("the dial");
+        assert_eq!(text(&plain), format!("{plain:#}"));
+    }
 
     use anyhow::Context;
 

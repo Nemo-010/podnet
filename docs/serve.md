@@ -135,7 +135,8 @@ the tunnel and the relay):
   0600. An empty line and a line that starts with `#` are skipped.
 * `--auth-user USER --auth-password-file FILE`: one more user, with the
   write role.
-* `--pin`: the files are locked with a 6-digit PIN, as `share --password`.
+* `--pin`: the files are locked with a 6-digit PIN, as `share --password`
+  (the unlock flow is under `podnet share`).
   podnet prints the PIN (`pin` in the `--json` line). With no users, the
   PIN gives the write role.
 * `--anon-read`: a GET or HEAD needs no user and no PIN. A change still
@@ -204,6 +205,9 @@ podnet git serve --root ./repos --ingress relay --pair NAME \
 podnet git urls --root ./repos          # the clone URLs and the host key
 ```
 
+- `git init` prints the directory of the bare repository. A second `git init`
+  of an existing bare repository passes and changes nothing. Another file or
+  directory at the path is refused (exit 64).
 - A fetch needs the read role: `--anon-read`, or a user of `--users`. A
   push needs the write role: `--push-user`, a write user of `--users`, or
   a key of `--authorized-keys` (ed25519 and ECDSA only).
@@ -244,6 +248,18 @@ podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
   start a new one. Requests at the same time get at most 10 compares in
   total. A correct code sets the count of wrong codes to 0. After the
   unlock, the browser goes back to a path of the same site only.
+* A client unlocks with one POST of a form to `/__podnet/unlock` of the
+  same site, with the fields `password` (the PIN) and `next` (the path to
+  go to). The answer is 303 with the cookie `podnet_pin`. Each later
+  request sends the cookie. The PIN is not HTTP Basic, and not a header.
+  The same flow opens `serve --pin`:
+
+  ```sh
+  curl -c jar -d "password=$PIN&next=/" "$ORIGIN/__podnet/unlock"
+  curl -b jar "$URL"                                   # the files
+  curl -b jar -T file.txt "$URL/file.txt"              # an upload (--upload)
+  ```
+
 * The unlock cookie has `HttpOnly`, `Secure` and `SameSite=Lax`: open the
   session with `https://` (a browser does not keep a `Secure` cookie of
   plain http). An unlock POST from another site (`Sec-Fetch-Site`, or an

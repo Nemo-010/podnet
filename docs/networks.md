@@ -329,8 +329,9 @@ authentication, and opens the channels.
 ## A user with no passwd entry
 
 On a host where `/etc/passwd` has no entry for your uid, `getpwuid` fails.
-Then `ssh` stops, and `ssh-keygen` exits 0 and writes no key. `podnet net
-doctor` shows the row `passwd entry for this uid`. `podnet net passwd-shim`
+Then `ssh` stops, and `ssh-keygen` writes no key (some builds exit 0, some
+exit 255 with `No user exists for uid N`). `podnet net doctor` shows the row
+`passwd entry for this uid`. `podnet net passwd-shim`
 writes a passwd file and the preload `fakepwd.so`, and prints `LD_PRELOAD`
 (before an old value) and `SANDHOME_PASSWD`:
 

@@ -54,8 +54,8 @@ fn git_cmd(home: &std::path::Path, args: &[&str]) -> Output {
     cmd.output().unwrap()
 }
 
-/// T-094: `git init` makes a bare repository and refuses `..` and a path
-/// in use; `git serve` serves smart HTTP and SSH on local listeners and
+/// T-094: `git init` makes a bare repository (a second init of it passes,
+/// GitHub #614) and refuses `..` and a path that another file holds; `git serve` serves smart HTTP and SSH on local listeners and
 /// prints the fingerprint of the host key; `git urls` prints the clone
 /// URLs of each repository and the same fingerprint. With a loopback
 /// interface, git clones over HTTP, an anonymous push fails, and a push
@@ -73,7 +73,18 @@ fn git_serve_init_and_urls() {
     let out = podnet_in(&state, &["git", "init", "--root", root_arg, "team/app"]);
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(root.join("team/app.git/HEAD").is_file());
-    for name in ["team/app", "team/app.git", "../x", "a/.git"] {
+    // GitHub #614: a second init of an existing bare repository passes and
+    // prints the same path, by its name with or without `.git`.
+    let first = String::from_utf8_lossy(&out.stdout).into_owned();
+    for name in ["team/app", "team/app.git"] {
+        let again = podnet_in(&state, &["git", "init", "--root", root_arg, name]);
+        assert!(again.status.success(), "{name}: {}", stderr(&again));
+        assert_eq!(String::from_utf8_lossy(&again.stdout), first, "{name}");
+    }
+    // Another file at the path, `..` and a name that starts with `.` stay
+    // refused.
+    std::fs::write(root.join("team/file"), "x").unwrap();
+    for name in ["team/file", "../x", "a/.git"] {
         let out = podnet_in(&state, &["git", "init", "--root", root_arg, name]);
         assert_eq!(out.status.code(), Some(64), "{name}: {}", stderr(&out));
     }

@@ -434,7 +434,7 @@ pub fn add(
             return Err(crate::exit::fault(
                 crate::exit::Fault::Unavailable,
                 anyhow::anyhow!(
-                    "no way to start at boot: {why}. Run this line at login (for example in ~/.profile):\n  nohup {line} >/dev/null 2>&1 &"
+                    "no way to start at boot: {why}. The entry {name} is kept (podnet autostart remove {name} removes it). Run this line at login (for example in ~/.profile):\n  nohup {line} >/dev/null 2>&1 &"
                 ),
             ))
         }

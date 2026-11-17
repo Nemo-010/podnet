@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**421 entries: 12 open, 11 partial, 36 blocked, 362 done.**
+**427 entries: 12 open, 13 partial, 36 blocked, 366 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 44 | 49 |
-| P2 | 5 | 6 | 10 | 191 | 212 |
-| P3 | 6 | 3 | 24 | 126 | 159 |
-| **All** | 12 | 11 | 36 | 362 | 421 |
+| P2 | 5 | 7 | 10 | 193 | 215 |
+| P3 | 6 | 4 | 24 | 128 | 162 |
+| **All** | 12 | 13 | 36 | 366 | 427 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -467,3 +467,9 @@ M8 Overlays, M9 Later.
 | [T-420](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.68.0 |
 | [T-421](fixes.md) | P1 | S | M5 | defect | done | The WebSocket and relay connections ignore `--ca-file`, and a proxy's refusal of the upgrade reads as a bad token |
 | [T-422](fixes.md) | P1 | S | M5 | release | open | Publish `v0.4.0-beta.16`: the gate, the dry run, the publish and the release proofs |
+| [T-424](fixes.md) | P2 | S | M6 | defect | done | `git init` of an existing bare repository fails (GitHub #614) |
+| [T-425](fixes.md) | P3 | S | M6 | chore | done | `warp ssh-config` prints a `GIT_SSH_COMMAND` line with three layers of quotes (GitHub #615) |
+| [T-426](fixes.md) | P3 | S | M6 | docs | done | The unlock flow of a PIN is not documented (GitHub #618) |
+| [T-427](fixes.md) | P2 | S | M6 | defect | done | `route` writes `router-usage.json` to the global state directory, not to `state_dir` (GitHub #619) |
+| [T-428](fixes.md) | P2 | S | M6 | docs | partial | The release binaries have no optional link carrier, and the notes do not say it (GitHub #620) |
+| [T-429](fixes.md) | P3 | S | M6 | defect | partial | Small output faults of the QA round (GitHub #622) |

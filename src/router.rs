@@ -423,6 +423,7 @@ impl RouterDoor {
         what: &str,
         door: &DoorConfig,
         ways: &HashMap<String, Way>,
+        state_dir: Option<&std::path::Path>,
     ) -> Result<RouterDoor> {
         let way = ways
             .get(&door.via)
@@ -449,7 +450,7 @@ impl RouterDoor {
         let stats = Arc::new(if limits.is_none() {
             door_stats::DoorStats::default()
         } else {
-            let file = door_limit::usage_file().map(|f| (f, door.listen.clone()));
+            let file = door_limit::usage_file(state_dir).map(|f| (f, door.listen.clone()));
             door_stats::DoorStats::limited(Arc::new(door_limit::Limiter::new(limits, file)))
         });
         let dial: Arc<dyn Dial> = Arc::new(door_stats::Counting::new(inner, stats.clone()));
@@ -647,7 +648,14 @@ impl Router {
             .doors
             .iter()
             .enumerate()
-            .map(|(i, door)| RouterDoor::build(&format!("doors[{i}]"), door, &ways))
+            .map(|(i, door)| {
+                RouterDoor::build(
+                    &format!("doors[{i}]"),
+                    door,
+                    &ways,
+                    config.state_dir.as_deref(),
+                )
+            })
             .collect::<Result<Vec<_>>>()?;
         let guests = config
             .guests

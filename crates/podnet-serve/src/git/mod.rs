@@ -159,8 +159,10 @@ pub fn repo_rel(path: &str) -> Result<&str, String> {
 
 /// Make the bare repository `path` under `root` with `git init --bare`
 /// (`--create-on-push`). The name gets `.git` at its end when it has
-/// none. A path that exists, also as `PATH.git`, is refused. The result
-/// is the real directory of the new repository.
+/// none. When `PATH.git` is a bare repository already, it is the result
+/// and nothing changes (a second `git init` passes). Another file or
+/// directory at `PATH` or `PATH.git` is refused. The result is the real
+/// directory of the repository.
 pub async fn create_repo(
     root: &Path,
     path: &str,
@@ -176,10 +178,16 @@ pub async fn create_repo(
         .canonicalize()
         .map_err(|err| format!("the repository root {}: {err}", root.display()))?;
     let bare = rel.strip_suffix(".git").unwrap_or(rel);
-    if std::fs::symlink_metadata(root.join(bare)).is_ok()
-        || std::fs::symlink_metadata(root.join(&name)).is_ok()
-    {
-        return Err(format!("the path {rel:?} exists and is not a repository"));
+    if is_bare_repo(&root.join(&name)) {
+        tracing::info!(repository = %name, "git: the bare repository exists");
+        return repo_dir(&root, &name);
+    }
+    for taken in [bare, name.as_str()] {
+        if std::fs::symlink_metadata(root.join(taken)).is_ok() {
+            return Err(format!(
+                "the path {taken:?} exists and is not a bare repository"
+            ));
+        }
     }
     // Each parent must stay in the root (no link out of it).
     if let Some(parent) = Path::new(&name)
@@ -216,6 +224,15 @@ pub async fn create_repo(
     }
     tracing::info!(repository = %name, "git: a new bare repository");
     repo_dir(&root, &name)
+}
+
+/// True when `dir` is a directory (not a link) with `HEAD`, `objects`
+/// and `refs`: a bare repository.
+fn is_bare_repo(dir: &Path) -> bool {
+    std::fs::symlink_metadata(dir).is_ok_and(|m| m.is_dir())
+        && dir.join("HEAD").is_file()
+        && dir.join("objects").is_dir()
+        && dir.join("refs").is_dir()
 }
 
 /// The paths of the repositories under `root`, sorted: each directory

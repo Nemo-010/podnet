@@ -7327,7 +7327,7 @@ documented commands" of the job `test` of `ci.yml`; set the entry `done` when th
 
 ## Done
 
-2026-11-15, eeac027 (the fix). ci 43774698575 on f2d96fc ran the documented block `docs/networks.md:337` (`net passwd-shim`,
+2026-11-15, eeac027 (the fix). ci 43774698575 on f2d96fc ran the documented block `docs/networks.md:338` (`net passwd-shim`,
 then `ssh-keygen`) in the step "The documented commands": `pass docs/networks.md:337`; `doc-commands: 4 passed, 0 failed,
 0 not run`.
 
@@ -8620,3 +8620,225 @@ beta.15 cannot reach the relay from a host behind a proxy that re-signs TLS (T-4
 ```sh
 gh release view v0.4.0-beta.16 -R PodUtils/podnet
 ```
+
+# T-424: `git init` of an existing bare repository fails (GitHub #614)
+
+**Source:** GitHub #614 (https://github.com/PodUtils/podnet/issues/614), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M6
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+A second `podnet git init demo --root R` said `the path "demo" exists and is not a repository` (exit 64) while `R/demo.git`
+was the bare repository of the first run. A script that runs `git init` twice failed.
+
+## Premise
+
+- `create_repo` (`crates/podnet-serve/src/git/mod.rs`) refused a path when `NAME` or `NAME.git` existed, with one text.
+  `git init` of git itself passes on an existing repository.
+
+## Approach
+
+1. When `NAME.git` is a bare repository (a directory, not a link, with `HEAD`, `objects` and `refs`), `create_repo`
+   gives its directory and changes nothing. Another file or directory at `NAME` or `NAME.git` is refused, and the text
+   names that path.
+2. The CLI test and `docs/serve.md` say it.
+
+## Prove
+
+```sh
+cargo test -p podnet --test cli -- git::
+```
+
+## Done
+
+2026-11-17, the commit of this entry. Reproduced with the debug build (the second run: exit 64). `git_serve_init_and_urls`
+checks that a second init by `team/app` and `team/app.git` passes and prints the same path, and that a file at the path,
+`../x` and `a/.git` exit 64: it passes.
+
+# T-425: `warp ssh-config` prints a `GIT_SSH_COMMAND` line with three layers of quotes (GitHub #615)
+
+**Source:** GitHub #615 (https://github.com/PodUtils/podnet/issues/615), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** chore
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The line `# export GIT_SSH_COMMAND='ssh -o '\''ProxyCommand='\''\'\'''\''PATH'\''\'\'''\'' warp nc %h %p'\'''` is hard to
+read. The report says that it does not work.
+
+## Premise
+
+- Measured: the line works. After the shell reads it, git's `sh` gives ssh the option
+  `ProxyCommand='PATH' warp nc %h %p`, and ssh's `sh -c` runs `PATH warp nc HOST PORT` (a stand-in `ssh` printed each
+  argument). The `'\''` of the value is quoting that the shell of git removes.
+
+## Approach
+
+1. A path of safe characters (letters, digits, `/._-+@%:,=`) gives the short form
+   `export GIT_SSH_COMMAND="ssh -o 'ProxyCommand=PATH warp nc %h %p'"`. Another path keeps each layer of quotes.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib warp::nc::
+```
+
+## Done
+
+2026-11-17, the commit of this entry (`src/warp/nc.rs`). `the_ssh_config_uses_warp_nc` checks the short form;
+`the_printed_block_quotes_the_path_as_the_written_block` runs the line in `sh` for three paths (with a space and a
+quote) and gets the path: both pass.
+
+# T-426: The unlock flow of a PIN is not documented (GitHub #618)
+
+**Source:** GitHub #618 (https://github.com/PodUtils/podnet/issues/618), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** docs
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`serve --pin` and `share --password` lock the files with a PIN. The documents do not say how a client sends it.
+
+## Premise
+
+- The unlock is a POST of a form to `/__podnet/unlock` with the fields `password` and `next`; the answer is 303 with the
+  cookie `podnet_pin` (`crates/podnet-serve/src/gate.rs`).
+
+## Approach
+
+1. `docs/serve.md` gives the flow with a `curl` example, and says that the PIN is not HTTP Basic and not a header.
+
+## Prove
+
+```sh
+grep -n '__podnet/unlock' docs/serve.md
+```
+
+## Done
+
+2026-11-17, the commit of this entry: `docs/serve.md`, under `podnet share`; `serve --pin` points to it.
+
+# T-427: `route` writes `router-usage.json` to the global state directory, not to `state_dir` (GitHub #619)
+
+**Source:** GitHub #619 (https://github.com/PodUtils/podnet/issues/619), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M6
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The usage of a door with a quota went to `router-usage.json` of podnet's state directory, also when the router file has
+`state_dir`. Two routers with two state directories shared one count, and a new router started with a spent quota.
+
+## Premise
+
+- `door_limit::usage_file` read the state directory of podnet only (`src/router/door_limit.rs`).
+
+## Approach
+
+1. `usage_file(state_dir)`: the `state_dir` of the router file, else the state directory of podnet. A door of the file
+   and a door that the control socket adds take the `state_dir` of the router.
+2. `docs/router.md` names both places.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib router::
+```
+
+## Done
+
+2026-11-17, the commit of this entry. Read in the code (the call took no `state_dir`). The test
+`the_usage_file_follows_the_state_dir_of_the_router` passes; `cargo test -p podnet --lib router::`: 74 passed.
+
+# T-428: The release binaries have no optional link carrier, and the notes do not say it (GitHub #620)
+
+**Source:** GitHub #620 (https://github.com/PodUtils/podnet/issues/620), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** docs
+**Milestone:** M6
+**Priority:** P2
+**Effort:** S
+**Status:** partial
+
+## Problem
+
+The binaries of `v0.4.0-beta.15` have the link carriers `unix` and `memory` only: `release.yml` builds the default
+features. `docs/build.md` says so; the release notes and `docs/link.md` do not.
+
+## Premise
+
+- `docs/build.md`: "The static musl build of the release set uses the default features. Build a feature on every target
+  of the release set before it joins that set."
+
+## Approach
+
+1. `docs/link.md` and the notes of each release say that a release binary has the carriers `unix` and `memory` only.
+2. A feature joins the release set when it builds and passes its tests on each target of the release (`docs/build.md`).
+   A second binary for each target with `full` is the other way; it needs a call on the size and the risk of each
+   target.
+
+## Prove
+
+```sh
+grep -n 'default builds' docs/link.md
+```
+
+## Correction
+
+2026-11-17: step 1 is done (`docs/link.md`; the notes of the next beta). Step 2 waits for the build of each feature on
+each target of the release set.
+
+# T-429: Small output faults of the QA round (GitHub #622)
+
+**Source:** GitHub #622 (https://github.com/PodUtils/podnet/issues/622), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** partial
+
+## Problem
+
+Eight small faults of output: the header `x-robots-tag` twice, two spaces in `stopped  NAME`, `origin   Compiled`, no
+`schema` in the JSON of `send`, `receive` and `relay pair`, the WARP error twice, `autostart add` exits 69 and keeps the
+entry, the text of `ssh-keygen` in the passwd shim, and no carrier hint for `link listen tcp://...`.
+
+## Premise
+
+- Measured and read: (1) a local `serve` sends no `x-robots-tag`, and no code of podnet or podcrates sets it: the edge of
+  Cloudflare adds it on a quick tunnel. (2, 3) the two spaces are the column of each status line (a label of a fixed
+  width), as in `podnet: ssh-relay  URL`. (4) a JSON document has `schema`; an event line (`tunnel`, `ssh-relay`,
+  `serve`, `send`, `receive`) has `event` and no `schema`. (5) the line printed the cause after a text that held it.
+  (6) the entry stays on purpose: the line for `~/.profile` runs it. (7) `ssh-keygen` exits 0 or 255, by its build.
+
+## Approach
+
+1. Item 5: `podnet::exit::text` joins the causes of an error and skips a cause whose text the line holds (the rule of
+   `pod_core::Failure::chain`); the error lines of `src/main.rs` take it.
+2. Item 6: the text says that the entry is kept and how to remove it (`--manual`: GitHub #630).
+3. Item 7: `docs/networks.md` and `docs/target-environment.md` say "exits 0 or 255".
+4. Item 8: with the link work (the hint of `--carrier`).
+5. Items 1 to 4: no change, for the reasons of the Premise.
+
+## Prove
+
+```sh
+cargo test -p podnet-core --lib exit::
+```
+
+## Correction
+
+2026-11-17, the commit of this line: items 5, 6 and 7. Item 8 waits for the link work. `text_names_each_cause_once` passes; it also shows that
+`{err:#}` named the cause two times.

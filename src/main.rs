@@ -65,7 +65,7 @@ fn main() {
         .map(|a| a.to_string_lossy().into_owned())
         .collect();
     if let Err(err) = apply_token_files(&argv) {
-        eprintln!("podnet: {err:#}");
+        eprintln!("podnet: {}", podnet::exit::text(&err));
         std::process::exit(podnet::exit::USAGE);
     }
     if argv.get(1).map(String::as_str) == Some("pod") {
@@ -157,7 +157,7 @@ fn main() {
                 Err(_) => podnet::link_alias::check(name),
             };
             if let Err(err) = checked {
-                eprintln!("podnet: {err:#}");
+                eprintln!("podnet: {}", podnet::exit::text(&err));
                 std::process::exit(podnet::exit::code_of(&err));
             }
         }
@@ -168,7 +168,7 @@ fn main() {
             std::process::exit(podnet::detach::start(&name, &detach.options()));
         }
         if let Err(err) = podnet::detach::child_begin() {
-            eprintln!("podnet: --detach: {err:#}");
+            eprintln!("podnet: --detach: {}", podnet::exit::text(&err));
             std::process::exit(podnet::detach::TEMPFAIL);
         }
     } else if podnet::detach::is_child() {
@@ -183,13 +183,13 @@ fn main() {
         match &detach.name {
             Some(name) => {
                 if let Err(err) = podnet::instances::check_name(name) {
-                    eprintln!("podnet: --name: {err:#}");
+                    eprintln!("podnet: --name: {}", podnet::exit::text(&err));
                     std::process::exit(podnet::exit::USAGE);
                 }
                 if let Err(err) =
                     podnet::detach::register(name, command.as_deref().unwrap_or_default())
                 {
-                    eprintln!("podnet: --name: {err:#}");
+                    eprintln!("podnet: --name: {}", podnet::exit::text(&err));
                     std::process::exit(podnet::detach::TEMPFAIL);
                 }
             }

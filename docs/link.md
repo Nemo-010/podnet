@@ -329,7 +329,8 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `icmp` | `KEY@HOST` (IPv4) to dial, an IPv4 address with no port to listen | The data of ICMP echo messages on a raw socket, an ARQ and TLS 1.3 with a pinned Ed25519 key above (T-282). Build feature `icmp`; it needs `CAP_NET_RAW` and `--allow-raw icmp`. See "The ICMP carrier". |
 
 The carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `sse`, `chunked`, `httppoll`, `dns`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
-them. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
+them, and the binaries of a release are default builds: they have the carriers `unix` and `memory` only. Build
+podnet with `--features` for another carrier. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
 carrier exits 69 with that reason.
 

@@ -60,7 +60,7 @@ impl Router {
                 format!("via: {:?} is not a network or a group", config.via),
             ));
         }
-        let door = RouterDoor::build("door", &config, &self.ways_now())
+        let door = RouterDoor::build("door", &config, &self.ways_now(), self.control.state_dir())
             .map_err(|e| Answer::new(400, format!("{e:#}")))?;
         if self.live.has_door(&door.listen.to_string()) {
             return Err(Answer::new(

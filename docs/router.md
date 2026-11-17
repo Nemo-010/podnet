@@ -323,8 +323,8 @@ doors:
   over the rate is dropped.
 * At the quota, a new flow gets "the quota of the door is used for this period" (a policy refusal). With `close`,
   each open flow ends at its next read or write. A UDP datagram is dropped.
-* The usage of each door with a quota is in `router-usage.json` of the state directory (mode 0600), by the `listen` of
-  the door. podnet writes it each 10 s while bytes pass, and at the end. A restart in the same period keeps the usage.
+* The usage of each door with a quota is in `router-usage.json` (mode 0600), by the `listen` of the door: in the
+  `state_dir` of the router file, else in the state directory of podnet (`PODNET_STATE_DIR`, `podnet man environment`). podnet writes it each 10 s while bytes pass, and at the end. A restart in the same period keeps the usage.
 * The status of the door has `limits`: `rate`, `quota`, `period`, `on_exhaust`, `used`, `period_end` (UNIX time,
   or `null`) and `exhausted`. The metrics add `podnet_route_door_rate_bytes`, `podnet_route_door_quota_bytes`,
   `podnet_route_door_quota_used_bytes` and `podnet_route_door_period_end_seconds` for the doors that have them.

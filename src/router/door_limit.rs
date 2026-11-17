@@ -394,12 +394,14 @@ impl Limiter {
     }
 }
 
-/// The usage file of the doors: `router-usage.json` in the state directory.
-pub fn usage_file() -> Option<PathBuf> {
-    podnet_core::state::state_dir()
-        .ok()
-        .flatten()
-        .map(|d| d.join("router-usage.json"))
+/// The usage file of the doors: `router-usage.json` in the `state_dir` of
+/// the router file, else in the state directory of podnet (GitHub #619).
+pub fn usage_file(state_dir: Option<&std::path::Path>) -> Option<PathBuf> {
+    match state_dir {
+        Some(dir) => Some(dir.to_path_buf()),
+        None => podnet_core::state::state_dir().ok().flatten(),
+    }
+    .map(|d| d.join("router-usage.json"))
 }
 
 #[cfg(test)]
