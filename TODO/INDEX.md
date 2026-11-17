@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**407 entries: 15 open, 11 partial, 37 blocked, 344 done.**
+**408 entries: 15 open, 11 partial, 37 blocked, 345 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 2 | 38 | 42 |
-| P2 | 6 | 5 | 11 | 183 | 205 |
+| P2 | 6 | 5 | 11 | 184 | 206 |
 | P3 | 9 | 4 | 24 | 122 | 159 |
-| **All** | 15 | 11 | 37 | 344 | 407 |
+| **All** | 15 | 11 | 37 | 345 | 408 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -453,3 +453,4 @@ M8 Overlays, M9 Later.
 | [T-406](fixes.md) | P2 | S | M5 | defect | blocked | live: the relay keeps a lost socket of a node for minutes after a reset (409), and SSH through it hangs |
 | [T-407](fixes.md) | P2 | S | M5 | defect | done | podnet connect resets a local connection when one WebSocket dial fails |
 | [T-408](fixes.md) | P2 | S | M5 | defect | done | a detached tunnel stops at 60 s while the check of its new public name may take 180 s |
+| [T-411](fixes.md) | P2 | S | M5 | defect | done | live: speed.cloudflare.com answers HTTP 429 to the shared address of WARP, and the rate check fails |

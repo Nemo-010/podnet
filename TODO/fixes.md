@@ -8254,3 +8254,42 @@ cargo test --test cli
 2026-11-16, the commit of this entry. `--ready-timeout` defaults to 240 s (`docs/background.md`, the help); a command
 that fails still ends at once with its own exit code. `live.yml`: the file server and git serve steps use `timeout 300`.
 The notes of `v0.4.0-beta.14` name it.
+
+# T-411: live: speed.cloudflare.com answers HTTP 429 to the shared address of WARP, and the rate check fails
+
+**Source:** live 43983078556 on 7d8edf2 (2026-11-17), the step "WARP proxy", failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+Each of the four downloads of 20 MB through `podnet warp proxy` gave "1 429 (bytes, HTTP status)". The step needs 1 MB/s
+from the best default run, so it failed. Each step before it through WARP passed (`warp=on`, the DNS forwarder, 30 of 30
+UDP answers).
+
+## Premise
+
+- The 429 came through the proxy: the path through WARP works; the server of the measure limits the address of the
+  WARP exit, which many users share.
+- The best default rate also took the rate of a 429 answer (a few bytes each second).
+
+## Approach
+
+1. Each download tries again after a 429 (3 tries, waits of 10 s and 20 s).
+2. Only a 200 counts for the best default rate. When no default run got a 200 and the server answered 429, the step
+   gives a warning ("the rate is not measured") in place of the threshold.
+3. The time limit of the step is 14 minutes.
+
+## Prove
+
+```sh
+python3 scripts/check-workflows.py
+# live passes the step on the next push
+```
+
+## Done
+
+2026-11-17, the commit of this entry. `.github/workflows/live.yml`, the step "WARP proxy", as in the Approach.

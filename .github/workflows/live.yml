@@ -1024,7 +1024,7 @@ jobs:
           grep -q 'udp-ntp ok' warpudp.out
           grep 'a UDP association in the stream' warpudp.err
       - name: WARP proxy
-        timeout-minutes: 9
+        timeout-minutes: 14
         run: |
           set -eu
           target/release/podnet warp proxy --listen tcp://127.0.0.1:40000 --dns 127.0.0.1:15353 --run-for 150 > warpproxy.log 2>&1 &
@@ -1093,8 +1093,13 @@ jobs:
               i=$((i + 1)); [ "$i" -lt 60 ] || break
               sleep 1
             done
-            rate=$(curl -sS --max-time 45 -o "body-$port.bin" -w '%{speed_download} %{size_download} %{http_code}' -x "socks5h://127.0.0.1:$port" \
-              'https://speed.cloudflare.com/__down?bytes=20000000' || true)
+            # T-411: the server of the measure limits the shared address of
+            # WARP (HTTP 429): try again after a wait.
+            for try in 1 2 3; do
+              rate=$(curl -sS --max-time 45 -o "body-$port.bin" -w '%{speed_download} %{size_download} %{http_code}' -x "socks5h://127.0.0.1:$port" \
+                'https://speed.cloudflare.com/__down?bytes=20000000' || true)
+              case "$rate" in *" 429") limited=$((${limited:-0} + 1)); sleep $((try * 10)) ;; *) break ;; esac
+            done
             leg=direct
             if grep -q 'MASQUE goes through the relay' "burst-$port.log"; then leg=relay; fi
             echo "warp proxy download, TCP window ${burst}, leg ${leg}: ${rate:-none} (bytes/s, bytes, HTTP status)"
@@ -1112,11 +1117,18 @@ jobs:
             wait "$bp" 2> /dev/null || true
             if [ "$burst" = default ]; then
               r=${rate%% *}
+              case "$rate" in *" 200") ;; *) r=0 ;; esac
               default=$(awk -v a="${default:-0}" -v b="${r:-0}" 'BEGIN { print (b > a) ? b : a }')
             fi
           done
           unset PODNET_WARP_TCP_BURST
-          awk -v r="${default:-0}" 'BEGIN { exit !(r >= 1000000) }'
+          # The 429 came through the proxy, so the path works; with no 200 of
+          # the default run, the rate is not measured this time.
+          if [ "${default:-0}" = 0 ] && [ "${limited:-0}" -gt 0 ]; then
+            echo "::warning::speed.cloudflare.com answered 429 to each try through WARP: the rate is not measured"
+          else
+            awk -v r="${default:-0}" 'BEGIN { exit !(r >= 1000000) }'
+          fi
           # Issue 75: the MASQUE connection is killed (ss -K); the proxy
           # opens a new session, and a new client goes through it.
           sudo ss -K dst 162.159.198.0/24 dport = 443 || true
