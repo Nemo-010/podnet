@@ -3042,6 +3042,7 @@ dependencies = [
  "futures",
  "getrandom 0.4.3",
  "http",
+ "hyper-util",
  "libc",
  "pod-core",
  "pod-proxy",

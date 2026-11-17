@@ -1,4 +1,5 @@
-//! A local listener of a router: `serve --local` and `share --local`.
+//! A local listener of a router: `serve --local` and `share --local`. The
+//! server supports a half close of HTTP/1 (`podnet::road::serve`, #613).
 
 use anyhow::Result;
 
@@ -41,7 +42,7 @@ pub(crate) async fn bind_local(local: &str, replace: bool, router: axum::Router)
         };
         let (listener, file) = unix_listener(&path, replace)?;
         let name = format!("unix:{}", path.display());
-        let server = tokio::spawn(async move { axum::serve(listener, router).await });
+        let server = tokio::spawn(podnet::road::serve(listener, router));
         return Ok(Local {
             url: name.clone(),
             listen: name,
@@ -66,7 +67,7 @@ pub(crate) async fn bind_local(local: &str, replace: bool, router: axum::Router)
         }
     };
     let bound = listener.local_addr()?;
-    let server = tokio::spawn(async move { axum::serve(listener, router).await });
+    let server = tokio::spawn(podnet::road::serve(listener, router));
     Ok(Local {
         url: format!("http://{bound}/"),
         listen: format!("tcp://{bound}"),
