@@ -21,7 +21,7 @@ pub(crate) enum AutostartCommand {
     /// Add an entry that runs `podnet ARGS`. The token and a proxy password
     /// go to a private env file (mode 0600), not to the unit, the crontab
     /// or the command line. Exit 69 when this host has no systemd user
-    /// manager and no crontab.
+    /// manager and no crontab, unless --manual is given.
     Add {
         /// The name of the entry (letters, digits, - and _).
         name: String,
@@ -33,6 +33,10 @@ pub(crate) enum AutostartCommand {
         /// INSTANCE (podnet ps), with no --detach options.
         #[arg(long, value_name = "INSTANCE", conflicts_with = "args")]
         from: Option<String>,
+        /// Install no unit and no crontab line: write the entry, print the
+        /// line to run at login (for example in ~/.profile) and exit 0.
+        #[arg(long)]
+        manual: bool,
     },
     /// Remove an entry: its unit or its crontab line, and its files. Other
     /// units and crontab lines stay as they are.
@@ -41,7 +45,13 @@ pub(crate) enum AutostartCommand {
         name: String,
     },
     /// List the entries.
-    List,
+    List {
+        /// Print one JSON document: {"entries": [...]}. Each entry has its
+        /// name, its arguments, the names of its variables (not the
+        /// values), its way (systemd, cron or manual) and its run line.
+        #[arg(long)]
+        json: bool,
+    },
     /// Run an entry in the place of this process: the unit and the crontab
     /// line call this. It reads NAME.args and NAME.env in DIR.
     Run {
@@ -92,7 +102,12 @@ pub(crate) fn autostart_args(mut args: Vec<String>) -> Result<Vec<String>> {
 pub(crate) fn autostart(command: AutostartCommand) -> Result<()> {
     use podnet::autostart;
     match command {
-        AutostartCommand::Add { name, args, from } => {
+        AutostartCommand::Add {
+            name,
+            args,
+            from,
+            manual,
+        } => {
             let (args, secrets) = match from {
                 Some(instance) => {
                     let dir = podnet::instances::run_dir().fault(Fault::Config)?;
@@ -111,7 +126,7 @@ pub(crate) fn autostart(command: AutostartCommand) -> Result<()> {
                 None => (args, Vec::new()),
             };
             let args = autostart_args(args)?;
-            let added = autostart::add(&name, &args, &secrets, autostart::PROGRAM_LIMIT)?;
+            let added = autostart::add(&name, &args, &secrets, autostart::PROGRAM_LIMIT, manual)?;
             println!(
                 "podnet: autostart {name} added ({}): {}",
                 added.way.name(),
@@ -125,10 +140,14 @@ pub(crate) fn autostart(command: AutostartCommand) -> Result<()> {
             }
             Ok(())
         }
-        AutostartCommand::List => {
+        AutostartCommand::List { json: false } => {
             for name in autostart::list()? {
                 println!("{name}");
             }
+            Ok(())
+        }
+        AutostartCommand::List { json: true } => {
+            println!("{}", list_json()?);
             Ok(())
         }
         AutostartCommand::Run { name, dir } => {
@@ -146,4 +165,28 @@ pub(crate) fn autostart(command: AutostartCommand) -> Result<()> {
             Err(anyhow::anyhow!("starting podnet {}: {err}", args.join(" ")))
         }
     }
+}
+
+/// The document of `autostart list --json` (#630). It holds no secret: the
+/// variables are names only.
+fn list_json() -> Result<String> {
+    use podnet::autostart;
+    let dir = autostart::dir().fault(Fault::Config)?;
+    let exe = podnet::self_exe::this_binary().context("the path of this binary")?;
+    let exe = exe.canonicalize().unwrap_or(exe);
+    let mut entries = Vec::new();
+    for name in autostart::list()? {
+        let (args, vars) = autostart::load(&name, &dir).fault(Fault::Config)?;
+        let env: Vec<&str> = vars.iter().map(|(k, _)| k.as_str()).collect();
+        entries.push(serde_json::json!({
+            "name": name,
+            "args": args,
+            "env": env,
+            "way": autostart::way_of(&name, autostart::PROGRAM_LIMIT).name(),
+            "line": autostart::run_line(&exe, &name, &dir),
+        }));
+    }
+    Ok(serde_json::to_string(
+        &serde_json::json!({ "entries": entries }),
+    )?)
 }

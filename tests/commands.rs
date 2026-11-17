@@ -156,6 +156,52 @@ fn autostart_run_defaults_to_the_state_dir() {
     );
 }
 
+/// #630: `add --manual` writes the entry with no unit and no
+/// crontab line and exits 0; `list --json` shows it with no secret; `run`
+/// with no --dir finds it in the directory of `add`.
+#[test]
+fn autostart_manual_entry_lists_as_json_and_runs_with_no_dir() {
+    let env = Env::new();
+    let secret = "tok3n-of-the-autostart-test";
+    let out = env
+        .cmd(&["autostart", "add", "--manual", "web", "--", "bug-report"])
+        .env("PODNET_AUTOSTART_PROBE", secret)
+        .output()
+        .unwrap();
+    let added = text(&out);
+    assert!(added.contains("added (manual)"), "{added}");
+    assert!(added.contains("nohup "), "{added}");
+    assert!(added.contains("autostart run web --dir "), "{added}");
+    let listed = text(&env.run(&["autostart", "list", "--json"]));
+    assert!(!listed.contains(secret), "{listed}");
+    let doc: serde_json::Value = serde_json::from_str(&listed).unwrap();
+    let entry = &doc["entries"][0];
+    assert_eq!(entry["name"], "web", "{listed}");
+    assert_eq!(entry["args"], serde_json::json!(["bug-report"]), "{listed}");
+    assert_eq!(entry["way"], "manual", "{listed}");
+    assert!(
+        entry["env"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|k| k == "PODNET_AUTOSTART_PROBE"),
+        "{listed}"
+    );
+    assert!(
+        entry["line"]
+            .as_str()
+            .unwrap()
+            .contains("autostart run web --dir "),
+        "{listed}"
+    );
+    let out = text(&env.run(&["autostart", "run", "web"]));
+    assert!(out.starts_with("podnet bug-report\n"), "{out}");
+    assert!(
+        out.lines().any(|l| l.trim() == "PODNET_AUTOSTART_PROBE"),
+        "{out}"
+    );
+}
+
 #[test]
 fn agent_status_with_no_agent_names_each_task() {
     test_host::need_loopback!();

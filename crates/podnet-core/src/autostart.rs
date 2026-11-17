@@ -7,7 +7,8 @@
 //! 2. an `@reboot` line in the crontab, when `crontab -l` answers.
 //!
 //! With neither, `add` prints the line to run at login and fails with exit
-//! 69. Each program that a probe or an install runs has a limit of
+//! 69. With `manual`, `add` installs no unit and no cron line: it writes the
+//! entry and gives the line to run at login. Each program that a probe or an install runs has a limit of
 //! [`PROGRAM_LIMIT`].
 //!
 //! Each entry has two private files (mode 0600) in `<state>/autostart/`:
@@ -55,6 +56,8 @@ pub type Vars = Vec<(String, String)>;
 pub enum Way {
     Systemd,
     Cron,
+    /// No unit and no cron line: the user runs the line at login.
+    Manual,
 }
 
 impl Way {
@@ -62,6 +65,7 @@ impl Way {
         match self {
             Way::Systemd => "systemd",
             Way::Cron => "cron",
+            Way::Manual => "manual",
         }
     }
 }
@@ -380,14 +384,21 @@ pub struct Added {
     pub detail: String,
 }
 
+/// The command to put in a login script for the run line `line`.
+pub fn login_line(line: &str) -> String {
+    format!("nohup {line} >/dev/null 2>&1 &")
+}
+
 /// Add the entry `name` that runs `podnet ARGS`. The variables of `extra`
 /// (the secrets of an instance, for `--from`) replace those of the
-/// environment.
+/// environment. With `manual`, no probe runs and no unit or cron line is
+/// written: the detail is the line to run at login.
 pub fn add(
     name: &str,
     args: &[String],
     extra: &[(String, String)],
     limit: Duration,
+    manual: bool,
 ) -> Result<Added> {
     // Issue 173: a bad name, command or place of the binary is a usage
     // error (64); a failed write stays an error (1).
@@ -428,18 +439,28 @@ pub fn add(
     )?;
     write_private(&dir.join(format!("{name}.env")), &env_text(&vars)?)?;
     let line = run_line(&exe, name, &dir);
-    let way = match probe(limit) {
+    let found = if manual {
+        Ok(Way::Manual)
+    } else {
+        probe(limit)
+    };
+    let way = match found {
         Ok(way) => way,
         Err(why) => {
             return Err(crate::exit::fault(
                 crate::exit::Fault::Unavailable,
                 anyhow::anyhow!(
-                    "no way to start at boot: {why}. Run this line at login (for example in ~/.profile):\n  nohup {line} >/dev/null 2>&1 &"
+                    "no way to start at boot: {why}. Run this line at login (for example in ~/.profile), or add the entry with --manual:\n  {}",
+                    login_line(&line)
                 ),
             ))
         }
     };
     let detail = match way {
+        Way::Manual => format!(
+            "run this line at login (for example in ~/.profile):\n  {}",
+            login_line(&line)
+        ),
         Way::Systemd => {
             let unit = unit_path(name)?;
             if let Some(parent) = unit.parent() {
@@ -636,6 +657,19 @@ pub fn list() -> Result<Vec<String>> {
     Ok(names)
 }
 
+/// How the entry `name` starts: its unit, its crontab line, or neither
+/// (`Manual`).
+pub fn way_of(name: &str, limit: Duration) -> Way {
+    if unit_path(name).is_ok_and(|unit| is_ours(&unit, name)) {
+        return Way::Systemd;
+    }
+    let mark = marker(name);
+    if crontab_list(limit).is_ok_and(|t| t.lines().any(|l| l.trim_end().ends_with(&mark))) {
+        return Way::Cron;
+    }
+    Way::Manual
+}
+
 /// The arguments and the variables of the entry `name` in `dir`.
 pub fn load(name: &str, dir: &Path) -> Result<(Vec<String>, Vars)> {
     check_name(name)?;
@@ -651,139 +685,5 @@ pub fn load(name: &str, dir: &Path) -> Result<(Vec<String>, Vars)> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const TOKEN: &str = "eyJhIjoiYSIsInQiOiJ0IiwicyI6InMifQ==";
-
-    #[test]
-    fn the_secrets_leave_the_arguments() {
-        let args: Vec<String> = [
-            "tunnel",
-            "--token",
-            TOKEN,
-            "--proxy=http://u:pw@proxy:3128",
-            "--url",
-            "http://127.0.0.1:8080",
-        ]
-        .iter()
-        .map(|s| s.to_string())
-        .collect();
-        let env = |k: &str| (k == "NO_PROXY").then(|| "localhost".to_string());
-        let (kept, vars) = split_secrets(&args, &env);
-        assert_eq!(kept, ["tunnel", "--url", "http://127.0.0.1:8080"]);
-        assert!(vars.contains(&("TUNNEL_TOKEN".into(), TOKEN.into())));
-        assert!(vars.contains(&("PODNET_PROXY".into(), "http://u:pw@proxy:3128".into())));
-        assert!(vars.contains(&("NO_PROXY".into(), "localhost".into())));
-        // A proxy with no password stays on the command line.
-        let (kept, _) = split_secrets(
-            &["tunnel".into(), "--proxy".into(), "http://p:3128".into()],
-            &|_| None,
-        );
-        assert_eq!(kept, ["tunnel", "--proxy", "http://p:3128"]);
-        // The env file reads back; a newline is refused.
-        let text = env_text(&vars).unwrap();
-        assert_eq!(parse_env(&text), vars);
-        assert!(env_text(&[("A".into(), "x\ny".into())]).is_err());
-    }
-
-    #[test]
-    fn the_unit_and_the_cron_line_hold_no_secret() {
-        let line = run_line(
-            Path::new("/home/u/.local/bin/podnet"),
-            "web",
-            Path::new("/home/u/.local/state/podnet/autostart"),
-        );
-        assert_eq!(
-            line,
-            "/home/u/.local/bin/podnet autostart run web --dir /home/u/.local/state/podnet/autostart"
-        );
-        let unit = unit_text("web", &line);
-        assert!(unit.starts_with("# podnet autostart web\n"));
-        assert!(unit.contains("ExecStart=/home/u/.local/bin/podnet autostart run web"));
-        assert!(unit.contains("\nRestartPreventExitStatus=64 78\n"));
-        assert!(unit.contains("\nStartLimitIntervalSec=0\n"));
-        assert!(!unit.contains(TOKEN));
-    }
-
-    // Issue 265: a unit takes % and $ as its own specifiers.
-    #[test]
-    fn the_unit_line_quotes_for_systemd() {
-        let line = unit_line(
-            Path::new("/opt/c f/podnet"),
-            "web",
-            Path::new("/tmp/%h/$X/a\"b"),
-        );
-        assert_eq!(
-            line,
-            r#""/opt/c f/podnet" autostart run web --dir "/tmp/%%h/$$X/a\"b""#
-        );
-        let plain = unit_line(Path::new("/b/podnet"), "web", Path::new("/d"));
-        assert_eq!(plain, "/b/podnet autostart run web --dir /d");
-        let unit = unit_text("web", &line);
-        assert!(unit.contains(&format!("\nExecStart={line}\n")), "{unit}");
-    }
-
-    // Issue 265: a program that writes more than a pipe holds ends in time.
-    #[test]
-    fn run_limited_reads_a_large_output() {
-        let ran = run_limited(
-            "sh",
-            &[
-                "-c",
-                "head -c 300000 /dev/zero; head -c 200000 /dev/zero >&2",
-            ],
-            None,
-            Duration::from_secs(20),
-        )
-        .unwrap();
-        assert_eq!(ran.code, Some(0));
-        assert_eq!(ran.stdout.len(), 300000);
-        assert_eq!(ran.stderr.len(), 200000);
-    }
-
-    #[test]
-    fn the_crontab_keeps_other_lines() {
-        let other = "MAILTO=\"\"\n0 3 * * * backup # podnet autostart webx\n@daily x\n";
-        let with = crontab_with(
-            other,
-            "web",
-            "/b/podnet autostart run web --dir /d",
-            Path::new("/d/web.log"),
-        );
-        assert!(with.starts_with(other));
-        assert!(with.ends_with(
-            "@reboot /b/podnet autostart run web --dir /d >> /d/web.log 2>&1 # podnet autostart web\n"
-        ));
-        // Again: one line, not two.
-        let twice = crontab_with(
-            &with,
-            "web",
-            "/b/podnet autostart run web --dir /d",
-            Path::new("/d/web.log"),
-        );
-        assert_eq!(twice, with);
-        assert_eq!(crontab_without(&with, "web"), other);
-        // No newline at the end of the old crontab.
-        let bare = crontab_with("@daily x", "web", "c", Path::new("/l"));
-        assert!(bare.starts_with("@daily x\n@reboot c"));
-    }
-
-    #[test]
-    fn a_hung_program_ends_at_the_limit() {
-        let start = Instant::now();
-        let err = run_limited("sleep", &["30"], None, Duration::from_millis(500)).unwrap_err();
-        assert!(start.elapsed() < Duration::from_secs(5));
-        assert!(format!("{err:#}").contains("did not end"), "{err:#}");
-        let ran = run_limited("cat", &[], Some("in"), Duration::from_secs(5)).unwrap();
-        assert_eq!(ran.stdout, "in");
-    }
-
-    #[test]
-    fn names() {
-        assert!(check_name("web-1_a").is_ok());
-        for bad in ["", "a/b", "a b", "..", &"x".repeat(65)] {
-            assert!(check_name(bad).is_err(), "{bad}");
-        }
-    }
-}
+#[path = "autostart_tests.rs"]
+mod tests;

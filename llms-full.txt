@@ -9142,7 +9142,7 @@ podnet autostart
     add     Add an entry that runs `podnet ARGS`. The token and a proxy
             password go to a private env file (mode 0600), not to the unit, the
             crontab or the command line. Exit 69 when this host has no systemd
-            user manager and no crontab
+            user manager and no crontab, unless --manual is given
     remove  Remove an entry: its unit or its crontab line, and its files. Other
             units and crontab lines stay as they are
     list    List the entries
@@ -9201,7 +9201,8 @@ podnet autostart
 podnet autostart add
   Add an entry that runs `podnet ARGS`. The token and a proxy password go to a
   private env file (mode 0600), not to the unit, the crontab or the command
-  line. Exit 69 when this host has no systemd user manager and no crontab.
+  line. Exit 69 when this host has no systemd user manager and no crontab,
+  unless --manual is given.
 
   Usage: podnet autostart add [OPTIONS] NAME [ARGS]...
 
@@ -9216,6 +9217,9 @@ podnet autostart add
     --from INSTANCE
         Take the command and its arguments from the detached instance INSTANCE
         (podnet ps), with no --detach options.
+    --manual
+        Install no unit and no crontab line: write the entry, print the line to
+        run at login (for example in ~/.profile) and exit 0.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -9331,6 +9335,10 @@ podnet autostart list
   Usage: podnet autostart list [OPTIONS]
 
   Options:
+    --json
+        Print one JSON document: {"entries": [...]}. Each entry has its name,
+        its arguments, the names of its variables (not the values), its way
+        (systemd, cron or manual) and its run line.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -9391,7 +9399,8 @@ podnet autostart run
 
   Options:
     --dir DIR
-        The directory of the entries (`<state>/autostart`). Required.
+        The directory of the entries. The default is `<state>/autostart`, the
+        directory of `autostart add`.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -14121,11 +14130,14 @@ or a container that kills each process of its run also ends it.
 `podnet autostart` starts a podnet command at boot and after a logout, with no
 root. It uses a systemd user unit when `systemctl --user` answers, else an
 `@reboot` line in the crontab. With neither, it prints the line to run at
-login and exits 69.
+login and exits 69. `--manual` installs no unit and no crontab line: it writes
+the entry, prints the line to run at login and exits 0.
 
 ```sh
 TUNNEL_TOKEN=... podnet autostart add web -- tunnel --url http://127.0.0.1:8080
 podnet autostart list
+podnet autostart list --json
+podnet autostart add --manual web -- tunnel --url http://127.0.0.1:8080
 podnet autostart remove web
 ```
 
@@ -14146,10 +14158,16 @@ podnet autostart remove web
   marker comment on the crontab line).
 * Each program that `add` or `remove` runs has a limit of 10 s.
 * `podnet autostart run NAME --dir DIR` is the entry point of the unit and of the crontab line. It reads
-  `NAME.args` and `NAME.env` in DIR and runs the command in the place of its own process. Do not call it by hand.
+  `NAME.args` and `NAME.env` in DIR and runs the command in the place of its own process. The default
+  DIR is `<state>/autostart`, the directory of `add`. Use `podnet autostart run NAME` to run an entry
+  by hand. The unit and the crontab line give `--dir`.
+* `podnet autostart list --json` prints one document: `{"entries": [...]}`. Each entry has `name`,
+  `args` (the arguments, with no secret), `env` (the names of the variables, not the values), `way`
+  (`systemd`, `cron` or `manual`) and `line` (the run line).
 * With no systemd user manager and no cron, `add` exits 69. Its error text
   gives a `nohup` line: put it in a login script (for example
-  `~/.profile`).
+  `~/.profile`). The entry stays. `add --manual` writes the entry, prints the
+  same line and exits 0.
 
 <!-- document: docs/doctor.md -->
 
