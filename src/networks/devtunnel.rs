@@ -304,7 +304,7 @@ pub(super) async fn up(
     let way = Way {
         http: pod_proxy::Client::new(tls.clone(), dial.clone()).with_user_agent(agent.clone()),
         ws: pod_ws::Way::new(tls, dial, agent),
-        trust: pod_tls::Trust::Default,
+        trust: crate::trust::ws_trust(),
     };
     let mut settings = Settings::default();
     if let Some(base) = account.management {

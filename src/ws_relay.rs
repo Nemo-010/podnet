@@ -289,7 +289,7 @@ impl Relay {
         let path = pod_relay::relay::forward_path(&target.ip().to_string(), target.port())
             .map_err(|e| anyhow::anyhow!(e))?;
         let shown = target.to_string();
-        let trust = pod_ws::Trust::Default;
+        let trust = crate::trust::ws_trust();
         let request = pod_relay::Request {
             ctx: &self.ctx,
             relays: &self.list,

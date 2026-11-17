@@ -128,7 +128,7 @@ def lane_cases():
     """The cases of the lane, and the text of each one."""
     text = LANE.read_text()
     names = []
-    for var in ("CASES", "NET_CASES", "PROXY_CASES", "WAYOUT_CASES"):
+    for var in ("CASES", "NET_CASES", "PROXY_CASES", "WAYOUT_CASES", "WAYWS_CASES"):
         m = re.search(rf'^{var}="([^"]*)"', text, re.M)
         names += m.group(1).split() if m else []
     return list(dict.fromkeys(names)), text
@@ -183,6 +183,8 @@ LANE_MAP = {
     "net-pod-seccomp": ["pod"],
     "net-pod-netns": ["pod"],
     "way-tunnel": ["demo"],
+    "way-relay": ["relay connect"],
+    "way-relay-refused": ["relay connect"],
     "proxy-direct": [],
     "proxy-port": [],
     "proxy-pod-auto": ["pod"],

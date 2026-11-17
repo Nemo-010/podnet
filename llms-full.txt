@@ -13571,6 +13571,11 @@ podnet relay stop NAME
   or 15 s (the idle time of the relay) after the last data. A close of the
   relay other than 1000 (for example 1009 at its byte limit) or a lost link
   exits 69, also after the end of stdin: the output can be cut.
+* A proxy that does not pass a WebSocket upgrade answers it with its own
+  page. `relay connect` then says that a hop on the way refused the upgrade,
+  not the relay, and exits 69: the token is not the cause. Each relay
+  connection takes the roots of `--ca-file` or `SSL_CERT_FILE`, as the other
+  clients of podnet do ([proxies.md](proxies.md)).
 * The relay authenticates tokens, not persons. Give the connect token only
   over a channel that you trust. Check the host key of SSH as usual.
 * The relay sets its own limits; podnet does not enforce them. Measured on

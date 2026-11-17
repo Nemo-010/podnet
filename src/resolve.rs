@@ -117,11 +117,7 @@ pub fn settings() -> pod_dns::Settings {
 fn read_settings() -> pod_dns::Settings {
     let services = pod_services::of_kind("doh").filter(|s| s.text("json-path").is_some());
     let servers = pod_dns::doh::of_services(services, &["v4", "v6"]);
-    let context = crate::trust::context();
-    let trust = match context.client_config_with(&[], &[]) {
-        Ok(config) => pod_tls::Trust::caller(Arc::new(config)).unwrap_or(pod_tls::Trust::Default),
-        Err(_) => pod_tls::Trust::Default,
-    };
+    let trust = crate::trust::ws_trust();
     pod_dns::Settings {
         resolvers: pod_dns::route::by_family(&servers, has_default_route(false)),
         names: Names::Last,

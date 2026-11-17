@@ -25,7 +25,10 @@
 # The row way-out is the lab `podlab run --way-out proxy-only` (podlab
 # 0.61.0 or later): the proxy of the lab sends each CONNECT to the real
 # network. It runs the rows of WAYOUT_CASES: a quick tunnel of podnet from
-# a host whose only way out is a proxy. It needs the network of the host.
+# a host whose only way out is a proxy, and relay connect to the public
+# relay. The row way-ws is the lab `podlab run --way-out ws-upgrade-refused`:
+# its proxy refuses the WebSocket upgrade (WAYWS_CASES). Both need the
+# network of the host.
 #
 # The network labs of NET_LABS (podlab 0.60.0 or later) run the rows of
 # NET_CASES. A lab gives its own proxy (HTTPS_PROXY, maybe with a
@@ -48,7 +51,8 @@ set -u
 CASES="version man local doctor shim-forward link-unix link-control net-switch wg-serve pod-seccomp pod-netns net-proxy-unix"
 NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni-allowlist no-proxy-no-dns ipv6-only"
 NET_CASES="version doctor net-curl net-bench net-exit net-pod-auto net-pod-seccomp net-pod-netns"
-WAYOUT_CASES="way-tunnel"
+WAYOUT_CASES="way-tunnel way-relay"
+WAYWS_CASES="way-relay-refused"
 PROXY_CASES="proxy-direct proxy-port proxy-pod-auto proxy-pod-seccomp proxy-pod-env proxy-doctor"
 
 # The cases. Each one runs inside the lab and exits 0 (pass), 1 (fail) or
@@ -372,6 +376,25 @@ case_main() {
         grep -v '^ ' "$dir/out.txt" | grep -v trycloudflare.com | tail -20
         echo "demo exit $code"
         test $code -eq 0 && grep -q 'verified public URL' "$dir/out.txt"
+        exit $?
+        ;;
+    way-relay | way-relay-refused)
+        # relay connect to the public relay through the proxy of the lab,
+        # with a token that the relay refuses (T-421). way-relay (proxy-only):
+        # the WebSocket passes, and the relay itself refuses the token (exit
+        # 78). way-relay-refused (ws-upgrade-refused): the proxy terminates
+        # TLS with the CA of SSL_CERT_FILE and refuses the upgrade; podnet
+        # trusts that CA on the WebSocket path and names the hop, not the
+        # token (exit 69).
+        timeout 120 "$podnet" relay connect lanetest --token not-a-token </dev/null >"$dir/out.txt" 2>&1
+        code=$?
+        grep -v '^ ' "$dir/out.txt" | tail -5
+        echo "relay connect exit $code"
+        if test "$name" = way-relay; then
+            test $code -eq 78 && grep -q 'refused the connect token' "$dir/out.txt"
+        else
+            test $code -eq 69 && grep -q 'on the way refused the WebSocket upgrade' "$dir/out.txt"
+        fi
         exit $?
         ;;
     proxy-*)
@@ -912,7 +935,7 @@ if test $# -eq 0; then
     # Each profile name is one word with no space or glob character: the
     # split of the list into the arguments is the intent.
     # shellcheck disable=SC2046
-    set -- $("$podlab" list | awk '/^[^ ]/ { print $1 }') allow-connect way-out
+    set -- $("$podlab" list | awk '/^[^ ]/ { print $1 }') allow-connect way-out way-ws
 fi
 
 failed=0
@@ -928,6 +951,9 @@ for profile in "$@"; do
     elif test "$profile" = way-out; then
         lab="--way-out proxy-only"
         cases=$WAYOUT_CASES
+    elif test "$profile" = way-ws; then
+        lab="--way-out ws-upgrade-refused"
+        cases=$WAYWS_CASES
     elif in_list "$profile" "$NET_LABS"; then
         cases=$NET_CASES
     fi

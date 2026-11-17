@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**419 entries: 11 open, 12 partial, 36 blocked, 360 done.**
+**420 entries: 11 open, 11 partial, 36 blocked, 362 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 2 | 2 | 43 | 47 |
-| P2 | 5 | 7 | 10 | 190 | 212 |
+| P1 | 0 | 2 | 2 | 44 | 48 |
+| P2 | 5 | 6 | 10 | 191 | 212 |
 | P3 | 6 | 3 | 24 | 126 | 159 |
-| **All** | 11 | 12 | 36 | 360 | 419 |
+| **All** | 11 | 11 | 36 | 362 | 420 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -151,7 +151,7 @@ M8 Overlays, M9 Later.
 | [T-103](services.md) | P2 | L | M6 | feature | done | The file-transfer protocol and the transit protocol of magic-wormhole |
 | [T-104](services.md) | P2 | M | M6 | feature | done | The podnet relay as a carrier of a transfer |
 | [T-105](services.md) | P2 | M | M6 | feature | done | `podnet send` and `podnet receive` |
-| [T-106](services.md) | P2 | M | M6 | measurement | partial | An interop test with the Python magic-wormhole, and the live step of a transfer of 100 MiB |
+| [T-106](services.md) | P2 | M | M6 | measurement | done | An interop test with the Python magic-wormhole, and the live step of a transfer of 100 MiB |
 | [T-107](pods.md) | P2 | M | M7 | feature | done | seccomp: the pod lives past its first program |
 | [T-108](pods.md) | P2 | S | M7 | feature | done | netns: the pod lives past its first program |
 | [T-109](pods.md) | P2 | M | M7 | feature | done | `warp exec --detach --name N` keeps a pod under the supervisor |
@@ -465,3 +465,4 @@ M8 Overlays, M9 Later.
 | [T-418](fixes.md) | P2 | S | M5 | defect | done | ssh-relay asks for a remote forward on 0.0.0.0, and localhost.run reads it as a custom domain |
 | [T-419](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.15`: the gate, the dry run, the publish and the release proofs |
 | [T-420](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.68.0 |
+| [T-421](fixes.md) | P1 | S | M5 | defect | done | The WebSocket and relay connections ignore `--ca-file`, and a proxy's refusal of the upgrade reads as a bad token |

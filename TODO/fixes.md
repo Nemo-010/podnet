@@ -2146,7 +2146,7 @@ attempts repeat the same failure for about 30 s.
 
 - `src/quicktunnel.rs:258-260` (budget and attempts), `:292-312` (the arms; `Hop::Dns` goes to
   `ProvisionError::Http(_)` at `:312`).
-- `crate::resolve::answering_step(host)` (`src/resolve.rs:150`) names the step that answers now.
+- `crate::resolve::answering_step(host)` (`src/resolve.rs:146`) names the step that answers now.
 - `src/quicktunnel.rs` is Cloudflare adapter code (pod-cloudflare, T-029/T-052): a fix is allowed.
 - Not measured: the 30 s run of the issue.
 
@@ -7037,6 +7037,12 @@ unix listeners). Each other row passed.
 
 What remains: step 1 (above), step 3 (the relay and the tunnel as podssh and podrunner call them), T-398 (T-384 is done).
 
+2026-11-17, step 1, the row with WebSocket through the proxy (T-421): the profile `way-ws` of the lane
+(`podlab run --way-out ws-upgrade-refused`) runs `way-relay-refused`, and the profile `way-out` runs `way-relay` beside
+`way-tunnel`. Both run `relay connect` to the public relay with a token that it refuses. The row found T-421 (the
+WebSocket paths did not take `--ca-file`; a proxy's 403 read as a bad token). With podlab v0.68.0 the three rows pass.
+What remains of step 1: `ipv6-only` on a host with IPv6; the `icmp` rows.
+
 
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 
@@ -8526,3 +8532,57 @@ gh release view v0.4.0-beta.15 -R PodUtils/podnet   # the files, the notes with 
 `release.yml` 44048483522 passed (with the gate). The release run 44053595040 published the release (17 files),
 `publish.yml` 44053599483 passed, and `release-proofs.yml` 44056728232 passed.
 
+
+# T-421: The WebSocket and relay connections ignore `--ca-file`, and a proxy's refusal of the upgrade reads as a bad token
+
+**Source:** T-358 step 1, the lane row with WebSocket through the proxy (2026-11-17): `podnet relay connect` in
+`podlab run --way-out ws-upgrade-refused` (podlab v0.68.0).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+1. In the lab, the proxy terminates TLS with its own CA, which `SSL_CERT_FILE` holds. `podnet bench` of the relay host
+   passed; `podnet relay connect` failed with `invalid peer certificate: UnknownIssuer`, also with `--ca-file` naming the
+   same file, and its message said to use `--ca-file`.
+2. With the CA trusted, the proxy refused the WebSocket upgrade with its own 403. podnet said "the relay refused the
+   connect token (403)" and exited 78: a user looks at the token, not at the proxy.
+
+## Premise
+
+- Each WebSocket and relay connection of podnet passed `pod_tls::Trust::Default`: the extra bundle, the system bundles
+  and the compiled-in roots. `Context::roots_for(Trust::Default)` does not read the CA file of the context. The calls:
+  `src/relay_reverse.rs` (pair, node, connect), `src/relay_reverse/resume.rs`, `src/ws_relay.rs` (the relay leg of the
+  tunnel), `src/ws.rs` (the WebSocket client of `connect` and `--url`), `src/networks/devtunnel.rs`. A host behind a
+  proxy that re-signs TLS could not use them.
+- `pod_relay::way_refusal::upgrade_refused` tells a refusal on the way (a proxy's page, a 426) from the relay's own
+  (`reverse: forbidden`).
+
+## Approach
+
+1. `podnet_core::trust::ws_trust()`: the configuration of the context (`Trust::caller`), which holds the roots of
+   `--ca-file` or `SSL_CERT_FILE`. When the roots do not load, the CA file alone (`Trust::File`): no fall back to other
+   roots. Each call above takes it; `src/resolve.rs` takes it in place of its own copy.
+2. `connect_error` and the resume layer: a refusal on the way gives "a proxy or another hop on the way refused the
+   WebSocket upgrade to the relay", exit 69, before the mapping of 401 and 403 to the token.
+3. Lane rows (T-358): `way-relay` (`--way-out proxy-only`: the relay refuses the token, exit 78) and `way-relay-refused`
+   (`--way-out ws-upgrade-refused`: exit 69 with the text of the hop).
+
+## Prove
+
+```sh
+cargo test -p podnet-core --lib trust::
+cargo test -p podnet --lib relay_reverse::
+LANE_DIR=/var/tmp/lane/out sh scripts/lab-lane.sh PODLAB PODNET way-out way-ws
+```
+
+## Done
+
+2026-11-17, the commit of this entry. Tests: `ws_trust_is_the_configuration_of_the_context`,
+`ws_trust_keeps_a_bad_ca_file`, `a_refusal_on_the_way_is_not_the_token`. The lane with podlab v0.68.0 and the debug
+build: `way-out way-tunnel`, `way-out way-relay` and `way-ws way-relay-refused` pass. The control: the release binary
+of `v0.4.0-beta.15` fails `way-relay-refused` with `UnknownIssuer` (exit 69, the text of the hop missing).
+`docs/relay.md` says it.

@@ -295,6 +295,9 @@ impl Legs {
         }
         match self.open(true).await {
             Ok(link) => Next::Link(link),
+            Err(err) if pod_relay::way_refusal::upgrade_refused(&err) => {
+                Next::Stop(super::way_refused(&self.name, &err))
+            }
             Err(ConnectError::Refused {
                 status: status @ (401 | 403),
                 ..
@@ -372,7 +375,7 @@ where
 {
     let legs = Arc::new(Legs {
         relay: relay.clone(),
-        trust: pod_ws::Trust::Default,
+        trust: crate::trust::ws_trust(),
         name: name.to_string(),
         token: token.to_string(),
         current: Mutex::new(None),

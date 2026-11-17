@@ -1363,7 +1363,7 @@ a second time. A supervisor cannot give a pin to a running start.
 
 ## Premise
 
-- The pins are in `pod_dns::Settings` (`src/resolve.rs:125-131`, `pins: pins()`). A refresh needs a
+- The pins are in `pod_dns::Settings` (`src/resolve.rs:121-127`, `pins: pins()`). A refresh needs a
   settings or pins handle that can change in `pod-dns`.
 
 ## Approach

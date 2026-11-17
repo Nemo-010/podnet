@@ -51,7 +51,7 @@ qr | lane:local
 receive | live:100 MiB by code through the mailbox, a transit relay and the podnet relay
 relay pair | live:SSH through the reverse relay; live:File server through the reverse relay; live:200 MiB each way through the reverse relay with --resume; live:100 MiB by code through the mailbox, a transit relay and the podnet relay; live:Git over SSH through the reverse relay; live:Router with WARP, the relay and a failover
 relay node | live:SSH through the reverse relay; live:200 MiB each way through the reverse relay with --resume
-relay connect | live:SSH through the reverse relay; live:File server through the reverse relay; live:200 MiB each way through the reverse relay with --resume; live:Git over SSH through the reverse relay
+relay connect | live:SSH through the reverse relay; live:File server through the reverse relay; live:200 MiB each way through the reverse relay with --resume; live:Git over SSH through the reverse relay; lane:way-relay; lane:way-relay-refused
 relay stop | live:SSH through the reverse relay; live:File server through the reverse relay; live:200 MiB each way through the reverse relay with --resume; live:100 MiB by code through the mailbox, a transit relay and the podnet relay; live:Git over SSH through the reverse relay
 route | live:Router with WARP, the relay and a failover
 send | live:100 MiB by code through the mailbox, a transit relay and the podnet relay

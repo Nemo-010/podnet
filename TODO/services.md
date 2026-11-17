@@ -1886,7 +1886,7 @@ public mailbox and relay (T-106); `--into` (not added, item 5 above).
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -2000,6 +2000,10 @@ in 60 s); `wormhole_interop_podnet_sends_a_text_to_python` passed. `sh scripts/a
 CI: ci 43560703081 (with the step "Interop with the Python magic-wormhole": 7 passed, none skipped), deny 43560707016, secrets 43560710399 and live 43560713372 on c72c604 passed (GitHub #551).
 
 CI: ci 43590942248, deny 43590945244, secrets 43590947996 and live 43590951009 on 9610316 passed (GitHub #554). The live step "100 MiB by code through the mailbox, a transit relay and the podnet relay" took 19 s: "transit: 100 MiB in 13.8 s (7.2 MiB/s), via relay tcp:transit.magic-wormhole.io:4001" and "podnet-relay: 100 MiB in 4.6 s (21.7 MiB/s), via podnet relay"; the SHA-256 of the received file and of the sender agreed with the source in both (the step checks both and passed).
+
+2026-11-17: each part of the Approach is done: the interop tests of text, file and directory (the step of `ci.yml`),
+and the live step of 100 MiB, which passed in live 43590951009 and in each live run of 2026-11-17 (for example
+44059283697 on 3a09c01). The status is done.
 
 # T-167: `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364)
 

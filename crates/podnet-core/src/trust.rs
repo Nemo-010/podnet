@@ -71,11 +71,82 @@ pub fn context() -> &'static Arc<Context> {
     })
 }
 
+/// The trust of each WebSocket and relay connection (`pod-ws`, `pod-relay`):
+/// the roots of [`context`], as each other client of podnet has them. A
+/// `--ca-file` or `SSL_CERT_FILE` replaces the default roots here too.
+/// `pod_tls::Trust::Default` does not read the CA file of the context: it
+/// gives the system bundles and the compiled-in roots only, so a proxy that
+/// re-signs TLS refused each relay connection with its CA in `--ca-file`.
+pub fn ws_trust() -> pod_tls::Trust {
+    static TRUST: OnceLock<pod_tls::Trust> = OnceLock::new();
+    TRUST
+        .get_or_init(|| {
+            let ca_file = CA_FILE.get().cloned().or_else(|| {
+                std::env::var_os(CA_FILE_VARIABLE)
+                    .filter(|v| !v.is_empty())
+                    .map(PathBuf::from)
+            });
+            trust_of(context().client_config_with(&[], &[]), ca_file)
+        })
+        .clone()
+}
+
+/// The trust over the configuration of the context. When the roots of the
+/// context do not load, a CA file is used alone ([`pod_tls::Trust::File`]),
+/// so that the connection gives the error of the file: podnet never falls
+/// back to other roots than the file of the user.
+fn trust_of(
+    config: Result<rustls::ClientConfig, pod_tls::Error>,
+    ca_file: Option<PathBuf>,
+) -> pod_tls::Trust {
+    match (config, ca_file) {
+        (Ok(config), _) => {
+            pod_tls::Trust::caller(Arc::new(config)).unwrap_or(pod_tls::Trust::Default)
+        }
+        (Err(_), Some(path)) => pod_tls::Trust::File(path),
+        (Err(_), None) => pod_tls::Trust::Default,
+    }
+}
+
 /// The seconds of `time` since the Unix epoch, negative before it, for
 /// [`pod_core::clock::http_date`].
 pub fn unix_secs(time: std::time::SystemTime) -> i64 {
     match time.duration_since(std::time::SystemTime::UNIX_EPOCH) {
         Ok(d) => d.as_secs() as i64,
         Err(e) => -(e.duration().as_secs() as i64),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config() -> rustls::ClientConfig {
+        let provider = Arc::new(rustls::crypto::ring::default_provider());
+        rustls::ClientConfig::builder_with_provider(provider)
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .with_root_certificates(rustls::RootCertStore::empty())
+            .with_no_client_auth()
+    }
+
+    // The relay and the WebSocket clients take the configuration of the
+    // context, which holds the roots of --ca-file: not the default roots.
+    #[test]
+    fn ws_trust_is_the_configuration_of_the_context() {
+        let trust = trust_of(Ok(config()), Some(PathBuf::from("/ca.pem")));
+        assert!(matches!(trust, pod_tls::Trust::Caller(_)), "{trust:?}");
+        let trust = trust_of(Ok(config()), None);
+        assert!(matches!(trust, pod_tls::Trust::Caller(_)), "{trust:?}");
+    }
+
+    // A CA file that does not load is used alone, so the connection gives
+    // its error: no fall back to the default roots.
+    #[test]
+    fn ws_trust_keeps_a_bad_ca_file() {
+        let err = || pod_tls::Error::Config("no roots".into());
+        let trust = trust_of(Err(err()), Some(PathBuf::from("/missing.pem")));
+        assert_eq!(trust, pod_tls::Trust::File(PathBuf::from("/missing.pem")));
+        assert_eq!(trust_of(Err(err()), None), pod_tls::Trust::Default);
     }
 }

@@ -153,7 +153,7 @@ pub async fn dial(
     timeout: std::time::Duration,
     authorization: Option<&str>,
 ) -> Result<Session> {
-    let trust = pod_tls::Trust::Default;
+    let trust = crate::trust::ws_trust();
     pod_ws::bridge::dial(url, &way(), &trust, timeout, authorization)
         .await
         .map_err(|err| failed(url, err))
@@ -224,7 +224,7 @@ async fn dial_again(url: &str, authorization: Option<&str>) -> Result<Session> {
         let err = match pod_ws::bridge::dial(
             url,
             &way(),
-            &pod_tls::Trust::Default,
+            &crate::trust::ws_trust(),
             DIAL_TIMEOUT,
             authorization,
         )

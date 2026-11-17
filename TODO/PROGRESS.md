@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 419 entries: 11 open, 12 partial, 36 blocked, 360 done.
+`TODO/INDEX.md` holds 420 entries: 11 open, 11 partial, 36 blocked, 362 done.
 
 ## State
 
@@ -58,9 +58,7 @@ not wait for a larger one.
    over `pod-wormhole` (`docs/transfer.md`; `docs/decisions.md`, 2026-11-13, The transfer layer).
    The transit key is magic-wormhole's (`Wormhole::derive_key` of `pod-wormhole` v0.42.0): a file and a
    directory go to and from each client of magic-wormhole. The podnet relay is the last way of the transit from podnet to podnet (done:
-   `podnet send --relay-pair NAME`); a piping server is the last way of all (`--piping`). Open:
-   T-106 (partial: a text, a file and a directory both ways with the Python magic-wormhole are done; the live
-   step of 100 MiB is written and waits for a run of `live`).
+   `podnet send --relay-pair NAME`); a piping server is the last way of all (`--piping`). The interop with the Python magic-wormhole and the live step of 100 MiB are done.
     The owner's rulings of 2026-11-11 add: T-179 (the
     direction split, an option, off by default).
 8. **M7, the pods:** no open entry. The hold of a SYN in `pod-hold` (PodUtils/podcrates#68) can start.

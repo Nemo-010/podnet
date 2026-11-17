@@ -118,11 +118,11 @@ fn left_of(expires: u64) -> Duration {
 
 /// The calls of the relay of `relay` about a pair.
 fn pair_context(relay: &Relay) -> PairContext<'_> {
-    static TRUST: pod_ws::Trust = pod_ws::Trust::Default;
+    static TRUST: std::sync::OnceLock<pod_ws::Trust> = std::sync::OnceLock::new();
     PairContext {
         ctx: relay.ctx(),
         relay: relay.primary(),
-        trust: &TRUST,
+        trust: TRUST.get_or_init(crate::trust::ws_trust),
         timeout: TIMEOUT,
     }
 }
@@ -353,7 +353,7 @@ async fn node<H: Handler>(
             tracing::warn!(name = %said_name, "{line}");
         }
     };
-    let trust = pod_ws::Trust::Default;
+    let trust = crate::trust::ws_trust();
     let mut config = road::NodeConfig {
         pair: inner,
         label: None,
@@ -451,7 +451,7 @@ where
     R: AsyncRead + Unpin + Send + 'static,
     W: AsyncWrite + Unpin + Send + 'static,
 {
-    let trust = pod_ws::Trust::Default;
+    let trust = crate::trust::ws_trust();
     let config = OperatorConfig {
         relay: relay.primary(),
         name,
@@ -507,8 +507,26 @@ pub(crate) fn outcome_error(name: &str, outcome: Outcome) -> Option<anyhow::Erro
     }
 }
 
+/// The text of a WebSocket upgrade that a hop on the way refused, not the
+/// relay: a proxy that does not pass an upgrade answers with its own page
+/// (`pod_relay::way_refusal`). The token is not the cause.
+pub(crate) fn way_refused(name: &str, err: &ConnectError) -> String {
+    let status = match err {
+        ConnectError::Refused { status, .. } => status.to_string(),
+        _ => "?".into(),
+    };
+    format!(
+        "the session to {name}: a proxy or another hop on the way refused the WebSocket upgrade to the relay \
+         (HTTP {status}, not an answer of the relay): use a way out that passes a WebSocket, or the relay \
+         from another network"
+    )
+}
+
 /// The error of an operator socket that did not open.
 pub(crate) fn connect_error(name: &str, err: ConnectError) -> anyhow::Error {
+    if pod_relay::way_refusal::upgrade_refused(&err) {
+        return fault(Fault::Unavailable, anyhow::anyhow!(way_refused(name, &err)));
+    }
     match err {
         ConnectError::Config(why) => fault(Fault::Usage, anyhow::anyhow!(why)),
         ConnectError::Refused {
@@ -538,6 +556,28 @@ pub use pod_ws::close_hint;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // A proxy that refuses the WebSocket upgrade answers with its own page:
+    // podnet says so (exit 69), and does not blame the token. The relay's
+    // own refusal (`reverse: forbidden`) is still the token (exit 78).
+    #[test]
+    fn a_refusal_on_the_way_is_not_the_token() {
+        let refused = |status, body: &str| ConnectError::Refused {
+            status,
+            body: body.into(),
+        };
+        let err = connect_error("n1", refused(403, ""));
+        assert_eq!(crate::exit::code_of(&err), 69, "{err:#}");
+        assert!(
+            format!("{err:#}").contains("on the way refused the WebSocket upgrade"),
+            "{err:#}"
+        );
+        let err = connect_error("n1", refused(403, "reverse: forbidden\n"));
+        assert_eq!(crate::exit::code_of(&err), 78, "{err:#}");
+        assert!(format!("{err:#}").contains("connect token"), "{err:#}");
+        let err = connect_error("n1", refused(426, "reverse: WebSocket upgrade required"));
+        assert_eq!(crate::exit::code_of(&err), 69, "{err:#}");
+    }
 
     fn record(
         name: &str,
