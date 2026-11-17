@@ -139,7 +139,7 @@ pub(crate) async fn warp(mut args: WarpArgs) -> Result<()> {
         WarpCommand::Up { .. }
         | WarpCommand::Down
         | WarpCommand::Export(_)
-        | WarpCommand::Env
+        | WarpCommand::Env { .. }
         | WarpCommand::Exec { .. }
         | WarpCommand::Shell(_)
         | WarpCommand::SshConfig { .. }

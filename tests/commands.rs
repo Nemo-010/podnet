@@ -243,6 +243,42 @@ fn forward_name_listens_on_the_port_of_its_target() {
     );
 }
 
+/// #626: with no TCP listener, `warp env` exits 69, and `warp env --unix`
+/// prints PODNET_PROXY on the unix socket of warp up.
+#[test]
+fn warp_env_unix_gives_the_socket_proxy() {
+    let env = Env::new();
+    let run = env.path("run");
+    let record = podnet::instances::Record {
+        name: "warp".into(),
+        pid: std::process::id(),
+        started: podnet::instances::now(),
+        command: "warp proxy".into(),
+        state: "ready".into(),
+        ..Default::default()
+    };
+    std::fs::create_dir_all(&run).unwrap();
+    podnet::instances::write(&run, &record).unwrap();
+    let _alive =
+        podnet::instances::lock(&podnet::instances::paths(&run, "warp").unwrap().lock).unwrap();
+    let socket = run.join("warp.sock");
+    std::fs::write(
+        run.join("warp.env"),
+        format!("export PODNET_PROXY='socks5h+unix:{}'\n", socket.display()),
+    )
+    .unwrap();
+    let out = env.run(&["warp", "env"]);
+    assert_eq!(out.status.code(), Some(69));
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("warp env --unix"), "{err}");
+    // No socket: --unix exits 69 too.
+    assert_eq!(env.run(&["warp", "env", "--unix"]).status.code(), Some(69));
+    let _listener = std::os::unix::net::UnixListener::bind(&socket).unwrap();
+    let out = text(&env.run(&["warp", "env", "--unix"]));
+    let want = format!("export PODNET_PROXY='socks5h+unix:{}'", socket.display());
+    assert!(out.lines().any(|l| l == want), "{out}");
+}
+
 #[test]
 fn agent_status_with_no_agent_names_each_task() {
     test_host::need_loopback!();

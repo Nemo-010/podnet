@@ -51,7 +51,23 @@ pub(crate) async fn before_client(args: &WarpArgs) -> Result<bool> {
             podnet::warp::route::resolv::reconcile_system();
             done
         }
-        WarpCommand::Env => {
+        WarpCommand::Env { unix: true } => {
+            // #626: the unix socket is a proxy for podnet itself.
+            podnet::warp::up::env_text()?;
+            let socket = podnet::warp::up::socket_path()?;
+            if !is_socket(&socket) {
+                return Err(podnet::exit::fault(
+                    Fault::Unavailable,
+                    anyhow::anyhow!(
+                        "warp env --unix: the unix socket {} of podnet warp up is absent; use: eval \"$(podnet warp env)\"",
+                        socket.display()
+                    ),
+                ));
+            }
+            print!("{}", unix_env_text(&socket));
+            Ok(())
+        }
+        WarpCommand::Env { unix: false } => {
             let text = podnet::warp::up::env_text()?;
             // Issue 255: no proxy variables is not a success: a script
             // that runs `eval "$(podnet warp env)" && CMD` must not run CMD
@@ -60,7 +76,7 @@ pub(crate) async fn before_client(args: &WarpArgs) -> Result<bool> {
                 return Err(podnet::exit::fault(
                     Fault::Unavailable,
                     anyhow::anyhow!(
-                        "warp env: the TCP listener of podnet warp up did not start, so there are no proxy variables; use: podnet warp exec -- CMD"
+                        "warp env: the TCP listener of podnet warp up did not start, so there are no proxy variables; use: podnet warp exec -- CMD, or for podnet itself: eval \"$(podnet warp env --unix)\""
                     ),
                 ));
             }
@@ -475,6 +491,24 @@ pub(crate) fn warp_up_args(
         ready_timeout.to_string(),
     ]);
     argv
+}
+
+/// Whether `path` is a unix socket.
+fn is_socket(path: &std::path::Path) -> bool {
+    use std::os::unix::fs::FileTypeExt as _;
+    std::fs::metadata(path).is_ok_and(|m| m.file_type().is_socket())
+}
+
+/// The lines of `warp env --unix` for `socket`: the variables that podnet
+/// reads, quoted for `sh`.
+fn unix_env_text(socket: &std::path::Path) -> String {
+    let quote = |s: &str| format!("'{}'", s.replace('\'', "'\\''"));
+    let path = socket.display().to_string();
+    format!(
+        "export PODNET_WARP_SOCKET={}\nexport PODNET_PROXY={}\n",
+        quote(&path),
+        quote(&format!("socks5h+unix:{path}"))
+    )
 }
 
 #[cfg(test)]

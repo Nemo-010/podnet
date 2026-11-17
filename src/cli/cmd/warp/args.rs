@@ -445,7 +445,14 @@ pub(crate) enum WarpCommand {
     /// Print the proxy variables of the running podnet warp up, for
     /// `eval "$(podnet warp env)"`. Exit 69 with no output when warp up has no
     /// TCP listener (no proxy variables).
-    Env,
+    Env {
+        /// Print the variables of podnet for the unix socket of warp up
+        /// (PODNET_PROXY=socks5h+unix:SOCKET and PODNET_WARP_SOCKET), with
+        /// or without the TCP listener. Only podnet reads them. Exit 69 when
+        /// the socket is absent.
+        #[arg(long)]
+        unix: bool,
+    },
     /// Run a program under the pod of the running podnet warp up: TCP, DNS
     /// and UDP go through WARP, also for static binaries. With --detach or
     /// --name, the pod is an instance (podnet ps, logs, stop): it lives
