@@ -201,6 +201,22 @@ const SERVER_COMMANDS: &[&str] = &[
     "ssh-relay",
 ];
 
+/// The flags that end a server command without a stop signal: it runs in
+/// the background, stops after a time or an event, or does one task and
+/// exits (issue 617: --check, --hash-password, --stdio).
+const ENDS_ALONE: &[&str] = &[
+    "--detach",
+    "--run-for",
+    "--exit-on-verify",
+    "--stop-after",
+    "--idle-secs",
+    "--check",
+    "--hash-password",
+    "--stdio",
+    "--help",
+    "-h",
+];
+
 /// E12: one line for a server command in the foreground with no terminal
 /// (a tool call of an agent waits for its end): --detach or --run-for.
 pub(crate) fn foreground_hint(
@@ -217,10 +233,7 @@ pub(crate) fn foreground_hint(
         argv.iter()
             .any(|a| a == flag || a.starts_with(&format!("{flag}=")))
     };
-    if ["--detach", "--run-for", "--exit-on-verify", "--help", "-h"]
-        .iter()
-        .any(|f| given(f))
-    {
+    if ENDS_ALONE.iter().any(|f| given(f)) {
         return None;
     }
     Some(format!(

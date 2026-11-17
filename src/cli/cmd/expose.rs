@@ -87,6 +87,78 @@ pub(crate) fn plan(
     Ok(words)
 }
 
+/// The command line and the parse of the command that `cli` (an `expose`)
+/// stands for (issue 612). main runs that command as if the user typed
+/// it: the arguments after `--` (--detach, --name) reach the detach of
+/// main. The global options of `cli` stay; a global option after `--`
+/// replaces the one of `cli`. The token file of the arguments after `--`
+/// is read before the parse.
+pub(crate) fn resolve(
+    argv: &[String],
+    cli: crate::cli::Cli,
+) -> std::result::Result<(Vec<String>, crate::cli::Cli), clap::Error> {
+    use clap::error::ErrorKind;
+    use clap::FromArgMatches as _;
+    let crate::cli::Command::Expose(args) = &cli.command else {
+        return Ok((argv.to_vec(), cli));
+    };
+    let fail = |kind: ErrorKind, err: anyhow::Error| {
+        let mut top = crate::cli::help::top_command();
+        top.build();
+        top.find_subcommand_mut("expose").map_or_else(
+            || clap::Error::raw(kind, format!("{err:#}\n")),
+            |sub| sub.error(kind, format!("{err:#}")),
+        )
+    };
+    let words = plan(args.via, &args.target, args.virt.as_deref(), &args.rest)
+        .map_err(|e| fail(ErrorKind::MissingRequiredArgument, e))?;
+    // T-060: each --egress after `--` becomes its old flag, as in main.
+    let inner = crate::cli::way::egress_aliases(
+        std::iter::once("podnet".to_string())
+            .chain(words)
+            .map(Into::into)
+            .collect(),
+    )
+    .map_err(|e| fail(ErrorKind::ValueValidation, anyhow::anyhow!(e)))?;
+    let inner: Vec<String> = inner
+        .iter()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+    crate::cli::argv::apply_token_files(&inner).map_err(|e| fail(ErrorKind::ValueValidation, e))?;
+    let parsed = crate::cli::help::top_command()
+        .try_get_matches_from(&inner)
+        .and_then(|matches| crate::cli::Cli::from_arg_matches(&matches))?;
+    Ok((inner, merge(cli, parsed)))
+}
+
+/// `outer` with the command of `inner`, and each global option that
+/// `inner` sets.
+fn merge(outer: crate::cli::Cli, inner: crate::cli::Cli) -> crate::cli::Cli {
+    let pick = |inner: String, outer: String, default: &str| {
+        if inner == default {
+            outer
+        } else {
+            inner
+        }
+    };
+    crate::cli::Cli {
+        ca_file: inner.ca_file.or(outer.ca_file),
+        proxy: inner.proxy.or(outer.proxy),
+        no_proxy: inner.no_proxy || outer.no_proxy,
+        egress: if inner.egress.is_empty() {
+            outer.egress
+        } else {
+            inner.egress
+        },
+        resolve: inner.resolve.or(outer.resolve),
+        quiet: inner.quiet || outer.quiet,
+        verbose: inner.verbose.max(outer.verbose),
+        color: pick(inner.color, outer.color, "auto"),
+        log_format: pick(inner.log_format, outer.log_format, "text"),
+        command: inner.command,
+    }
+}
+
 /// Run the command that `args` names.
 pub(crate) async fn expose(args: ExposeArgs) -> Result<()> {
     use clap::Parser as _;
@@ -150,6 +222,60 @@ mod tests {
             assert_eq!(words, ["tunnel", flag[0], flag[1]], "{target}");
             assert!(matches!(parse(&words), Command::Tunnel(_)), "{target}");
         }
+    }
+
+    /// Issue 612: the arguments after `--` reach the detach of main, and
+    /// the global options before and after `expose` stay.
+    #[test]
+    fn expose_gives_its_command_line_to_main() {
+        let argv: Vec<String> = "podnet -q expose 3000 --via switch --as 10.66.0.2:8080 \
+             --proxy socks5h://127.0.0.1:1 -- --detach --name web -v"
+            .split_whitespace()
+            .map(String::from)
+            .collect();
+        let cli = Cli::try_parse_from(&argv).unwrap();
+        let (inner, cli) = resolve(&argv, cli).unwrap();
+        assert_eq!(
+            inner,
+            [
+                "podnet",
+                "net",
+                "proxy",
+                "--forward",
+                "10.66.0.2:8080=127.0.0.1:3000",
+                "--detach",
+                "--name",
+                "web",
+                "-v"
+            ]
+        );
+        let detach = crate::cli::opts::detach_of(&cli.command).expect("net proxy detaches");
+        assert!(detach.detach);
+        assert_eq!(detach.name.as_deref(), Some("web"));
+        assert!(cli.quiet && cli.verbose == 1);
+        assert_eq!(cli.proxy.as_deref(), Some("socks5h://127.0.0.1:1"));
+        assert_eq!(
+            crate::cli::argv::command_name(&inner).as_deref(),
+            Some("net proxy")
+        );
+        for (via, extra) in [("tunnel", &[][..]), ("relay", &["pair-name"][..])] {
+            let mut argv: Vec<String> = ["podnet", "expose", "3000", "--via", via, "--"]
+                .map(String::from)
+                .to_vec();
+            argv.extend(extra.iter().map(|w| w.to_string()));
+            argv.push("--detach".into());
+            let cli = Cli::try_parse_from(&argv).unwrap();
+            let (_, cli) = resolve(&argv, cli).unwrap();
+            let detach = crate::cli::opts::detach_of(&cli.command).expect(via);
+            assert!(detach.detach, "{via}");
+        }
+        let argv: Vec<String> = ["podnet", "expose", "3000", "--via", "switch"]
+            .map(String::from)
+            .to_vec();
+        let cli = Cli::try_parse_from(&argv).unwrap();
+        let err = resolve(&argv, cli).unwrap_err();
+        assert!(err.to_string().contains("--as VIRT"), "{err}");
+        assert!(err.render().to_string().contains("podnet expose"), "{err}");
     }
 
     #[test]

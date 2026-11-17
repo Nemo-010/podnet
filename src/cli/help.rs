@@ -236,6 +236,12 @@ pub(crate) fn usage_hints(err: &clap::Error) -> Vec<String> {
                 );
                 return lines;
             }
+            // Issue 616: a newer release can know only an unknown flag
+            // name. A value, an extra positional or a flag of another
+            // command gets no update line.
+            if !unknown_flag(&Cli::command(), name) {
+                return lines;
+            }
         }
         _ => return lines,
     }
@@ -245,6 +251,33 @@ pub(crate) fn usage_hints(err: &clap::Error) -> Vec<String> {
         invalid().map_or_else(|| "it".to_string(), |w| format!("'{w}'"))
     ));
     lines
+}
+
+/// Whether `name` has the form of a flag (`--word` or `-w`) and no command
+/// of `cmd` knows it.
+pub(crate) fn unknown_flag(cmd: &clap::Command, name: &str) -> bool {
+    fn knows(cmd: &clap::Command, long: Option<&str>, short: Option<char>) -> bool {
+        cmd.get_arguments().any(|a| {
+            long.is_some_and(|l| {
+                a.get_long() == Some(l) || a.get_all_aliases().is_some_and(|n| n.contains(&l))
+            }) || short.is_some_and(|c| {
+                a.get_short() == Some(c)
+                    || a.get_all_short_aliases().is_some_and(|n| n.contains(&c))
+            })
+        }) || cmd.get_subcommands().any(|sub| knows(sub, long, short))
+    }
+    let (long, short) = match name.strip_prefix("--") {
+        Some(long) => (Some(long), None),
+        None => match name.strip_prefix('-') {
+            Some(rest) if rest.chars().count() == 1 => (None, rest.chars().next()),
+            _ => return false,
+        },
+    };
+    let first = long.and_then(|l| l.chars().next()).or(short);
+    if !first.is_some_and(|c| c.is_ascii_alphabetic()) {
+        return false;
+    }
+    !knows(cmd, long, short)
 }
 
 /// The command for a word that is no command of podnet.

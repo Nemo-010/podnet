@@ -451,3 +451,65 @@ fn shim_takes_forwards() {
     );
     assert!(doc.get("PODNET_VNET_SOCKS").is_none(), "{doc}");
 }
+
+/// Issue 612: `expose -- --detach` runs the command of expose in the
+/// background: one JSON document, exit 0, and podnet ps shows it.
+#[test]
+fn expose_detaches_with_the_arguments_after_the_separator() {
+    let dir = tempfile::tempdir().unwrap();
+    let command = |args: &[&str]| {
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_podnet"));
+        cmd.args(args)
+            .env("PODNET_STATE_DIR", dir.path().join("state"))
+            .env("PODNET_RUN_DIR", dir.path().join("run"))
+            .env_remove("RUST_LOG")
+            .env_remove("PODNET_ERROR_PROGRAM")
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+        cmd
+    };
+    let run = |args: &[&str]| command(args).output().unwrap();
+    // A process in the foreground does not end: kill it after 60 s.
+    let run_bounded = |args: &[&str]| {
+        let mut child = command(args).spawn().unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
+        while child.try_wait().unwrap().is_none() {
+            if std::time::Instant::now() > deadline {
+                child.kill().unwrap();
+                let out = child.wait_with_output().unwrap();
+                panic!("expose stays in the foreground: {}", stderr(&out));
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        child.wait_with_output().unwrap()
+    };
+    let listen = format!("unix:{}", dir.path().join("p.socks").display());
+    let out = run_bounded(&[
+        "expose",
+        "127.0.0.1:9",
+        "--via",
+        "switch",
+        "--as",
+        "10.66.0.2:8080",
+        "--",
+        "--listen",
+        &listen,
+        "--detach",
+        "--name",
+        "exposed",
+        "--ready-timeout",
+        "20",
+    ]);
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+    let doc: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(doc["name"], "exposed", "{doc}");
+    assert_eq!(doc["command"], "net proxy", "{doc}");
+    let ps = run(&["ps", "--json"]);
+    assert!(
+        String::from_utf8_lossy(&ps.stdout).contains("\"exposed\""),
+        "{}",
+        String::from_utf8_lossy(&ps.stdout)
+    );
+    assert_eq!(run(&["stop", "exposed"]).status.code(), Some(0));
+}

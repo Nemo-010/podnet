@@ -1,6 +1,6 @@
 use crate::cli::help::{
-    example_path, first_sentence, scenarios, top_command, usage_hints, word_hint, EXPERIMENTAL,
-    HELP_GROUPS,
+    example_path, first_sentence, scenarios, top_command, unknown_flag, usage_hints, word_hint,
+    EXPERIMENTAL, HELP_GROUPS,
 };
 use crate::cli::Cli;
 use clap::{CommandFactory as _, Parser as _};
@@ -159,6 +159,37 @@ fn an_unknown_command_names_the_version() {
         usage_hints(&err).is_empty(),
         "a bad value is no unknown flag"
     );
+}
+
+/// Issue 616: a value, an extra positional or a flag of another command
+/// is a syntax error: no update line. Only a flag that no command knows
+/// gets it.
+#[test]
+fn only_a_flag_that_no_command_knows_names_the_update() {
+    let hints = |line: &str| {
+        let err = top_command()
+            .try_get_matches_from(line.split_whitespace())
+            .unwrap_err();
+        usage_hints(&err)
+    };
+    for line in [
+        "podnet serve www --pin 123456",
+        "podnet relay node X --json",
+        "podnet tunnel --hash-password",
+        "podnet tunnel -L 1",
+        "podnet tunnel -5",
+    ] {
+        assert!(hints(line).is_empty(), "{line}: {:?}", hints(line));
+    }
+    for line in ["podnet tunnel --bogus", "podnet relay node X --bogus-flag"] {
+        let lines = hints(line);
+        assert_eq!(lines.len(), 1, "{line}: {lines:?}");
+        assert!(lines[0].contains("podnet update --check"), "{line}");
+    }
+    assert!(unknown_flag(&top_command(), "--bogus"));
+    assert!(!unknown_flag(&top_command(), "--json"));
+    assert!(!unknown_flag(&top_command(), "-q"));
+    assert!(!unknown_flag(&top_command(), "123456"));
 }
 
 #[test]
