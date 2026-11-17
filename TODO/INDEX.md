@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**448 entries: 11 open, 11 partial, 35 blocked, 391 done.**
-**448 entries: 11 open, 11 partial, 35 blocked, 391 done.**
+**456 entries: 19 open, 11 partial, 35 blocked, 391 done.**
+**456 entries: 19 open, 11 partial, 35 blocked, 391 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 2 | 2 | 47 | 52 |
-| P2 | 3 | 6 | 10 | 200 | 219 |
+| P1 | 8 | 2 | 2 | 47 | 59 |
+| P2 | 4 | 6 | 10 | 200 | 220 |
 | P3 | 7 | 3 | 23 | 143 | 176 |
-| **All** | 11 | 11 | 35 | 391 | 448 |
-| P2 | 3 | 6 | 10 | 200 | 219 |
+| **All** | 19 | 11 | 35 | 391 | 456 |
+| P2 | 4 | 6 | 10 | 200 | 220 |
 | P3 | 7 | 3 | 23 | 143 | 176 |
-| **All** | 11 | 11 | 35 | 391 | 448 |
+| **All** | 19 | 11 | 35 | 391 | 456 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -498,3 +498,11 @@ M8 Overlays, M9 Later.
 | [T-447](fixes.md) | P3 | S | M6 | feature | done | `ssh-relay` has no `--run-for`, and `-q` prints the banner (GitHub #632) |
 | [T-448](fixes.md) | P3 | S | M6 | feature | done | No way to add a user to the users file of `serve` (GitHub #633) |
 | [T-449](fixes.md) | P1 | S | M5 | defect | done | live: four checks read the log lines of the tunnel before the take of `pod-cloudflare` |
+| [T-450](fixes.md) | P1 | S | M5 | chore | open | Rule: an issue closes only with a test that reproduces it |
+| [T-451](fixes.md) | P1 | M | M5 | chore | open | Contract tests from the manual: each flag of the help exists, each example parses, each JSON document has one schema |
+| [T-452](fixes.md) | P1 | M | M5 | chore | open | Error-path rows of the lane: dead, refused, rejected, unreachable, no DNS |
+| [T-453](fixes.md) | P1 | S | M5 | chore | open | A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program |
+| [T-454](fixes.md) | P1 | M | M5 | chore | open | A black-box QA pass before each beta |
+| [T-455](fixes.md) | P2 | M | M5 | chore | open | Readiness: the promises with a test, in place of the commands with a scenario |
+| [T-456](fixes.md) | P1 | S | M7 | defect | open | `pod --backend seccomp`: a connect to a loopback port gives EOPNOTSUPP (PodUtils/podrunner#213) |
+| [T-457](fixes.md) | P1 | S | M7 | defect | open | `pod --backend seccomp`: the runner times out to github.com under the hold (PodUtils/podrunner#142) |

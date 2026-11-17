@@ -9523,3 +9523,251 @@ python3 scripts/check-workflows.py
 the run of the race (`the edge leg quic+warp won after 38111 ms`) match the new checks. The other texts of the tunnel that
 `live.yml` reads (`no proxy carries UDP`, `registered over HTTP/2`, `the UDP probe was refused`, `moved to a new leg`,
 `lost its leg`, `NAME: stopping`) are in the source.
+
+# T-450: Rule: an issue closes only with a test that reproduces it
+
+**Source:** the owner's review of the QA round, 2026-11-17 (`docs/decisions.md`, The QA round and the release freeze).
+**Category:** chore
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+An issue of a defect closed with a Done section that names a test, but no rule asked that the test reproduces the
+report and fails on the code before the fix.
+
+## Premise
+
+- Most fixes of the QA round (T-424 to T-448) have such a test and a control. The rule is not written.
+
+## Approach
+
+1. `TODO/RULES.md`: the Done section of a defect names the test that reproduces the report, and the result of the test
+   on the code before the fix (the control).
+2. `cargo todo check` refuses a defect that is `done` with no test name in its Done section (a name of a test function,
+   or a path under `tests/`).
+
+## Prove
+
+```sh
+cargo todo check   # a done defect with no test is a fault
+```
+
+# T-451: Contract tests from the manual: each flag of the help exists, each example parses, each JSON document has one schema
+
+**Source:** the owner's review of the QA round, 2026-11-17; GitHub #612, #641, #642, #647.
+**Category:** chore
+**Milestone:** M5
+**Priority:** P1
+**Effort:** M
+**Status:** open
+
+## Problem
+
+The help named flags that the command refused (`ssh-relay --no-restart` names `--stop-after`, #647), arguments that had
+no effect (`expose -- --detach`, #612), and `--json` documents with keys of their own (#641, #642). No test reads the
+promises of the help.
+
+## Premise
+
+- The help and the manual come from one model (`pod-manual`, `podnet man --json`): each command, flag and example.
+
+## Approach
+
+1. A test walks the model: each flag that a long help names (`--word`) exists on that command or on a command that the
+   text names; each example of the help parses with clap.
+2. A JSON schema for each kind of document (`ready`, `detached`, `status`, `doctor`, event lines), in `docs/schema/`, and
+   a test that each command with `--json` gives a document of its kind.
+3. The release gate runs the tests on the release binary.
+
+## Prove
+
+```sh
+cargo test -p podnet --test contracts
+```
+
+# T-452: Error-path rows of the lane: dead, refused, rejected, unreachable, no DNS
+
+**Source:** the owner's review of the QA round, 2026-11-17; GitHub #610, #611, #635, #639, PodUtils/podrunner#142.
+**Category:** chore
+**Milestone:** M5
+**Priority:** P1
+**Effort:** M
+**Status:** open
+
+## Problem
+
+The rows of the lane run one success path of each command. A dead upstream made a program hang (#610); an error line
+named its cause twice (#635); `bench` exited 0 when each request failed (#639). No row checks a failure.
+
+## Premise
+
+- The labs of `pod-lab` give the host classes; `scripts/lab-lane.sh` runs the rows.
+
+## Approach
+
+1. For each command that dials (`pod`, `connect`, `forward`, `net proxy`, `relay connect`, `warp proxy`, `bench`,
+   `tunnel`): five cases: a dead upstream, a refused connect, a reject rule, an unreachable target, a name that does not
+   resolve. Each row checks: the end within a limit (no hang), the documented exit code, one error line that names each
+   cause once.
+2. The rows run in each lab where the case applies.
+
+## Prove
+
+```sh
+LANE_DIR=/var/tmp/lane/out sh scripts/lab-lane.sh PODLAB PODNET
+```
+
+# T-453: A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program
+
+**Source:** GitHub #610 (it showed only where podnet cannot write the memory of the program).
+**Category:** chore
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The lane has no lab where the seccomp backend cannot write the memory of the program. The defect of #610 hid there.
+
+## Premise
+
+- The test hook `PODNET_NETNS_TEST_MEM=none` gives the class to the tests of the seccomp backend.
+- `pod-lab` has `bind-denied`; a lab of the three parts together may not exist.
+
+## Approach
+
+1. Ask podcrates (COORD) for a profile of `pod-lab` with the three parts, or make the lane give the hook in `bind-denied`.
+2. The pod rows and the error-path rows (T-452) run there.
+
+## Prove
+
+```sh
+LANE_DIR=/var/tmp/lane/out sh scripts/lab-lane.sh PODLAB PODNET bind-denied
+```
+
+# T-454: A black-box QA pass before each beta
+
+**Source:** the owner's review of the QA round, 2026-11-17.
+**Category:** chore
+**Milestone:** M5
+**Priority:** P1
+**Effort:** M
+**Status:** open
+
+## Problem
+
+External testers found 40 issues in one hour with the documents and the help only. podnet ran no such pass.
+
+## Premise
+
+- The faults were in the promises of the help and the documents, the error paths and the output.
+
+## Approach
+
+1. `docs/maintenance.md`, Release: before the dry run, an agent with the release binary, the documents and the help only
+   (no source) runs each command in the labs and writes each finding as an issue. The release waits until each finding
+   is an entry.
+2. The prompt of the pass is a file of the repository (a new file `qa-pass.md` in `scripts/agent/`), so each pass is
+   the same.
+
+## Prove
+
+```sh
+ls scripts/agent/ | grep -x qa-pass.md
+```
+
+# T-455: Readiness: the promises with a test, in place of the commands with a scenario
+
+**Source:** the owner's review of the QA round, 2026-11-17.
+**Category:** chore
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`scripts/gate-scenarios.py` marks a command as tested when one step calls it. The release notes gave that count as a
+measure of maturity.
+
+## Premise
+
+- A command has more promises than one call: its flags, its examples, its JSON, its error paths, its exit codes.
+
+## Approach
+
+1. For each command: the count of its promises (from the model of T-451 and the rows of T-452) and the count with a
+   test. The notes of a release give both.
+2. The help of a command whose promises have no test says "Experimental".
+
+## Prove
+
+```sh
+python3 -I scripts/gate-scenarios.py --check
+```
+
+# T-456: `pod --backend seccomp`: a connect to a loopback port gives EOPNOTSUPP (PodUtils/podrunner#213)
+
+**Source:** PodUtils/podrunner#213 (2026-11-17, a member of the team): under `podnet pod --backend seccomp --egress
+direct`, the official runner of GitHub gets `Runner connect error: Operation not supported (127.0.0.1:PORT)` to the
+broker on the loopback.
+**Category:** defect
+**Milestone:** M7
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+A program in a seccomp pod cannot connect to a port of the loopback that a program of the host serves.
+
+## Premise
+
+- The report is podrunner's, with podnet `0.4.0-beta.13`; T-357 (`PODNET_VNET_FORWARD`) is in beta.14 and later.
+
+## Approach
+
+1. Reproduce with podnet of the head: a .NET or a Python client in `pod --backend seccomp --egress direct` to a TCP
+   server of the host on 127.0.0.1, with and without the hook `PODNET_NETNS_TEST_MEM=none`.
+2. Fix the path that gives EOPNOTSUPP, with a test of `tests/pod_seccomp`.
+
+## Prove
+
+```sh
+cargo test -p podnet --test pod_seccomp -- loopback
+```
+
+# T-457: `pod --backend seccomp`: the runner times out to github.com under the hold (PodUtils/podrunner#142)
+
+**Source:** PodUtils/podrunner#142 (2026-11-15, a member of the team), podnet `0.4.0-beta.8`.
+**Category:** defect
+**Milestone:** M7
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+Under the seccomp hold (advisory) with podrunner's egress module, each `GET .../_apis/connectionData` of the runner
+timed out after 60 s; `curl` and Node to a plain CONNECT proxy reached github.com.
+
+## Premise
+
+- T-430 (a non-blocking connect that looked connected where podnet cannot write the memory of the program) is a likely
+  cause; the report is of beta.8.
+
+## Approach
+
+1. Reproduce with a .NET client (`HttpClient`, non-blocking connects) in a seccomp pod with an HTTP CONNECT upstream, on
+   the head; with and without `PODNET_NETNS_TEST_MEM=none`.
+2. If the head passes, ask podrunner (COORD) to run the case again with the next release.
+
+## Prove
+
+```sh
+cargo test -p podnet --test pod_seccomp -- dotnet
+```
