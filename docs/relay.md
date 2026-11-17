@@ -44,6 +44,10 @@ podnet relay stop NAME
   still holds the lost socket of this node (409) for 60 s, the node stops
   on that route too (T-406): with a pair directory it takes the next stored
   pair, else it exits 69 and says to make a new pair or to use another relay.
+* `podnet relay node --json` prints one JSON line on stdout when the node is
+  connected to the relay: `event` (`ready`), `pair`, `relay`, `target`,
+  `expires` and `expires_in`. The node stays in the foreground. `--detach`
+  prints the same document and returns.
 * `podnet relay connect NAME` waits for `ready`, then copies stdin and stdout.
   A name that is not a valid pair name exits 64.
   A refused session exits 69 with the cause from the node. A refused token
@@ -226,6 +230,9 @@ podnet ssh-relay --server relay.example.net:443 --user podnet \
   connection. `--proxy`, `--egress` and `--resolve` apply as for the other commands ([proxies.md](proxies.md)).
 * `--json` prints each URL as one JSON line: `{"event": "ready" or "reconnected", "url", "remote_port",
   "relay"}`.
+* The banner of the relay goes to stderr, with the prefix `[relay]`. `-q` hides it. The line of the URL on
+  stdout stays.
+* `--run-for SECONDS` stops the command after that time, with exit 0.
 * `--detach`, `--name` and the other options of [background.md](background.md) work. The ready document
   has the URL. `podnet ps` shows the new URL after each reconnect.
 * `podnet doctor --ssh-relay HOST:PORT --ssh-user USER [--connect-proxy HOST:PORT]` tests the relay with no

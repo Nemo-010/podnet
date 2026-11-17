@@ -518,6 +518,13 @@ podnet serve
     --hash-password
         Read a password from the first line of stdin, print its hash for
         --users, and exit.
+    --add-user USER:ROLE
+        Add a user to the file of --users, and exit: USER:ROLE (ROLE is read or
+        write). The password comes from the first line of stdin; the line holds
+        its hash. A new file gets mode 0600. A user that is in the file already
+        is refused, unless --replace-user is given.
+    --replace-user
+        With --add-user: replace the line of a user that is in the file.
     --ingress ROAD
         The road to the visitors, ROAD: tunnel (the default with no --local),
         relay, or none (the default with --local). --ingress tunnel or relay
@@ -618,6 +625,20 @@ podnet serve
 
     Give only one of --hash-password, --ingress.
 
+    Give only one of --add-user, DIR.
+
+    Give only one of --add-user, --dir.
+
+    Give only one of --add-user, --pin.
+
+    Give only one of --add-user, --anon-read.
+
+    Give only one of --add-user, --local.
+
+    Give only one of --add-user, --ingress.
+
+    Give only one of --add-user, --hash-password.
+
     Give only one of --at, --ingress.
 
     Give only one of --at, --pair.
@@ -637,6 +658,10 @@ podnet serve
     --auth-password-file needs --auth-user.
 
     --max-upload needs --upload.
+
+    --add-user needs --users.
+
+    --replace-user needs --add-user.
 
     --at needs --at-listen.
 
@@ -1679,10 +1704,11 @@ podnet forward
     --name NAME=HOST:PORT
         A name for a client that takes only HOST:PORT: NAME=HOST:PORT
         (repeatable, 254 at most). Each name gets the next address of 127.0.0.2
-        to 127.0.0.255, a listener there on --alias-port, and a forward to
-        HOST:PORT. --dns answers each name with its address.
+        to 127.0.0.255, a listener there on PORT (or on --alias-port), and a
+        forward to HOST:PORT. --dns answers each name with its address.
     --alias-port PORT
-        The port of the listeners of --name.
+        The port of the listeners of --name, for each name. The default is the
+        PORT of each name.
     --dns ADDR:PORT
         A DNS door: answer DNS queries on ADDR:PORT (UDP and TCP) through the
         network, from the resolver at --dns-upstream. The names of --name get
@@ -1754,8 +1780,6 @@ podnet forward
     Give only one of --no-proxy, --proxy.
 
     Give only one of --quiet, --verbose.
-
-    --name needs --alias-port.
 
     --alias-port needs --name.
 
@@ -2015,6 +2039,8 @@ podnet ssh-relay
     --json
         Print each URL as one JSON line on stdout: {"event": "ready" or
         "reconnected", "url", "remote_port", "relay"}.
+    --run-for SECONDS
+        Stop after this many seconds.
     --detach
         Run in the background: podnet prints one JSON document when the command
         is ready (its URL or its listen address) and exits 0. The instance
@@ -2190,7 +2216,8 @@ podnet exit
         length (big endian), then a SOCKS5 UDP datagram. UDP ASSOCIATE (command
         3) is refused with the reply 0x07. UDP leaves from this host when the
         process has no proxy; with a proxy it is refused (reply 0x07). The run
-        ends when the client closes stdin.
+        ends when the client closes stdin. This is the only mode and the
+        default: the flag is optional.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -5726,6 +5753,11 @@ podnet warp env
   Usage: podnet warp env [OPTIONS]
 
   Options:
+    --unix
+        Print the variables of podnet for the unix socket of warp up
+        (PODNET_PROXY=socks5h+unix:SOCKET and PODNET_WARP_SOCKET), with or
+        without the TCP listener. Only podnet reads them. Exit 69 when the
+        socket is absent.
     --identity PATH
         The file that keeps the device and its MASQUE key, so that each run
         uses the same device. Default: warp.json in the state directory (see
@@ -7103,6 +7135,11 @@ podnet relay node
     --allow FILE
         With --seal: the allow list file of the operator keys (the form of
         `link listen --allow`).
+    --json
+        Print the ready document as one JSON line on stdout when the node is
+        connected to the relay: pair, relay, target, expires and expires_in.
+        The node stays in the foreground. --detach prints the same document,
+        with or without --json.
     --detach
         Run in the background: podnet prints one JSON document when the command
         is ready (its URL or its listen address) and exits 0. The instance
@@ -9141,7 +9178,7 @@ podnet autostart
     add     Add an entry that runs `podnet ARGS`. The token and a proxy
             password go to a private env file (mode 0600), not to the unit, the
             crontab or the command line. Exit 69 when this host has no systemd
-            user manager and no crontab
+            user manager and no crontab, unless --manual is given
     remove  Remove an entry: its unit or its crontab line, and its files. Other
             units and crontab lines stay as they are
     list    List the entries
@@ -9200,7 +9237,8 @@ podnet autostart
 podnet autostart add
   Add an entry that runs `podnet ARGS`. The token and a proxy password go to a
   private env file (mode 0600), not to the unit, the crontab or the command
-  line. Exit 69 when this host has no systemd user manager and no crontab.
+  line. Exit 69 when this host has no systemd user manager and no crontab,
+  unless --manual is given.
 
   Usage: podnet autostart add [OPTIONS] NAME [ARGS]...
 
@@ -9215,6 +9253,9 @@ podnet autostart add
     --from INSTANCE
         Take the command and its arguments from the detached instance INSTANCE
         (podnet ps), with no --detach options.
+    --manual
+        Install no unit and no crontab line: write the entry, print the line to
+        run at login (for example in ~/.profile) and exit 0.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -9330,6 +9371,10 @@ podnet autostart list
   Usage: podnet autostart list [OPTIONS]
 
   Options:
+    --json
+        Print one JSON document: {"entries": [...]}. Each entry has its name,
+        its arguments, the names of its variables (not the values), its way
+        (systemd, cron or manual) and its run line.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -9390,7 +9435,8 @@ podnet autostart run
 
   Options:
     --dir DIR
-        The directory of the entries (`<state>/autostart`). Required.
+        The directory of the entries. The default is `<state>/autostart`, the
+        directory of `autostart add`.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -11641,6 +11687,8 @@ archive (`application/x-tar`, `PATH.tar`). The archive has the same rules:
 no dot name, no link out of `--dir`, no FIFO, socket or device. A link to a
 directory is not followed. A name that does not fit in ustar (more than 255
 bytes) is left out with a warning. Without `--tar`, `?tar` has no effect.
+With `--list --tar`, the HTML listing of each directory has a link to
+`?tar`.
 
 ```sh
 podnet serve --dir ./public --tar --local 127.0.0.1:8080
@@ -11675,7 +11723,10 @@ the tunnel and the relay):
 * `--pin`: the files are locked with a 6-digit PIN, as `share --password`
   (the unlock flow is under `podnet share`).
   podnet prints the PIN (`pin` in the `--json` line). With no users, the
-  PIN gives the write role.
+  PIN gives the write role. The line `podnet: unlock` (`unlock` in the
+  `--json` line and in the ready document: `/__podnet/unlock`) tells how a
+  client opens the site: POST the form fields `password=PIN` and
+  `next=PATH` to `/__podnet/unlock`. The answer sets the cookie `podnet_pin`.
 * `--anon-read`: a GET or HEAD needs no user and no PIN. A change still
   needs a write user (or the PIN).
 
@@ -11686,11 +11737,16 @@ challenge. A read user that sends a change gets 403.
 stdin and prints its hash (`pbkdf2-sha256$ITERATIONS$SALT$KEY`, PBKDF2 with
 HMAC-SHA256, hex):
 
+`podnet serve --add-user USER:ROLE --users FILE` reads a password from the
+first line of stdin and adds the line `USER:ROLE:HASH` to `FILE`. A new
+`FILE` gets mode 0600. An old `FILE` must be private, as for `--users`. A
+user that is in `FILE` already is refused (exit 64): `--replace-user`
+replaces its line.
+
 ```sh
 printf '%s\n' "$PASSWORD" | podnet serve --hash-password
 # pbkdf2-sha256$210000$...$...
-install -m 600 /dev/null users
-echo "alice:read:$(printf '%s\n' "$PASSWORD" | podnet serve --hash-password)" >> users
+printf '%s\n' "$PASSWORD" | podnet serve --add-user alice:read --users users
 podnet serve --dir ./public --list --users users --local 127.0.0.1:8080
 curl -fsS -u alice http://127.0.0.1:8080/
 ```
@@ -11780,7 +11836,8 @@ podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
   exist).
 * The public path is `/s/<token>/`. The token has 32 random bytes, and a
   path with another token answers 404.
-* `--password` adds a 6-digit PIN. The host shows the PIN. The PIN check uses
+* `--password` adds a 6-digit PIN. The host shows the PIN, and the line
+  `podnet: unlock` (`unlock` in the `--json` line), as for `serve --pin`. The PIN check uses
   a constant-time compare. After 10 wrong codes, no code opens the session:
   start a new one. Requests at the same time get at most 10 compares in
   total. A correct code sets the count of wrong codes to 0. After the
@@ -12313,6 +12370,10 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   * `eval "$(podnet warp env)"`: `ALL_PROXY`, `HTTPS_PROXY`, `HTTP_PROXY`,
     `NO_PROXY` (and the lower-case forms), `CARGO_HTTP_PROXY` and the npm
     variables. The proxy also forwards `http://` URLs (for apt).
+  * `eval "$(podnet warp env --unix)"`: `PODNET_PROXY=socks5h+unix:SOCKET` and
+    `PODNET_WARP_SOCKET`, with or without the TCP listener. Only podnet reads
+    them (for example `podnet pod`), so other tools get no proxy from them.
+    `warp env --unix` exits 69 when the socket is absent.
   * `podnet warp exec -- CMD` and `podnet warp shell`: the command runs under
     the pod of the socket: TCP, DNS and UDP go through WARP, also for static
     binaries, with no proxy variable. `--backend auto|netns|seccomp` selects
@@ -12412,7 +12473,10 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   worked goes first at the next session. `--no-relay` turns this off.
   `--masque-endpoint IP:PORT` and `--masque-sni NAME` replace the front
   door and its TLS name. With no IPv4 default route, the IPv6 door of the device record goes
-  first. `podnet tunnel` takes `--masque-endpoint` too.
+  first. `podnet tunnel` takes `--masque-endpoint` too. `warp scan` prints the
+  first door that answers as a command: `podnet warp up --masque-endpoint IP:PORT`. The flag is an option of each
+  subcommand of `podnet warp` (for example `warp proxy`, `warp run`, `warp tun`, `warp probe`), not of `podnet warp`
+  alone.
 * `--resolver SPEC` (repeatable; `PODNET_WARP_RESOLVERS`): the resolver of the DNS inside the tunnel, in
   place of `1.1.1.1:53`. `SPEC` is `IP[:PORT]` (UDP) or `tls://IP[:PORT][#NAME]` (DNS over TLS, port 853;
   the certificate must have `NAME`, or the IP address). The first resolver that answers wins.
@@ -13472,8 +13536,9 @@ podnet forward --network relay --alias-port 7000 \
 ```
 
 * `--name NAME=HOST:PORT` (repeatable, 254 at most) gives the name the next address of `127.0.0.2` to `127.0.0.255`
-  and a forward from that address on `--alias-port PORT` to `HOST:PORT`. The client connects to `NAME:PORT`. `--name`
-  and `--alias-port` need each other. The whole of `127.0.0.0/8` is the loopback of Linux: no interface is added.
+  and a forward from that address to `HOST:PORT`. The listener takes the `PORT` of the name, or `--alias-port PORT` for
+  each name. The client connects to `NAME:PORT`. `--alias-port` needs `--name`. The whole of `127.0.0.0/8` is the
+  loopback of Linux: no interface is added.
 * With `--dns ADDR:PORT`, the DNS door answers each name with its address (type A, on UDP and on TCP) and sends each
   other name to `--dns-upstream` through the network. With no `--dns`, the lines `podnet: name ADDRESS NAME` are the
   lines of a hosts file.
@@ -13592,6 +13657,10 @@ podnet relay stop NAME
   still holds the lost socket of this node (409) for 60 s, the node stops
   on that route too (T-406): with a pair directory it takes the next stored
   pair, else it exits 69 and says to make a new pair or to use another relay.
+* `podnet relay node --json` prints one JSON line on stdout when the node is
+  connected to the relay: `event` (`ready`), `pair`, `relay`, `target`,
+  `expires` and `expires_in`. The node stays in the foreground. `--detach`
+  prints the same document and returns.
 * `podnet relay connect NAME` waits for `ready`, then copies stdin and stdout.
   A name that is not a valid pair name exits 64.
   A refused session exits 69 with the cause from the node. A refused token
@@ -13774,6 +13843,9 @@ podnet ssh-relay --server relay.example.net:443 --user podnet \
   connection. `--proxy`, `--egress` and `--resolve` apply as for the other commands ([proxies.md](proxies.md)).
 * `--json` prints each URL as one JSON line: `{"event": "ready" or "reconnected", "url", "remote_port",
   "relay"}`.
+* The banner of the relay goes to stderr, with the prefix `[relay]`. `-q` hides it. The line of the URL on
+  stdout stays.
+* `--run-for SECONDS` stops the command after that time, with exit 0.
 * `--detach`, `--name` and the other options of [background.md](background.md) work. The ready document
   has the URL. `podnet ps` shows the new URL after each reconnect.
 * `podnet doctor --ssh-relay HOST:PORT --ssh-user USER [--connect-proxy HOST:PORT]` tests the relay with no
@@ -14022,10 +14094,11 @@ confirmed), to TLS early data, to `net proxy`, to `net tailscale`, to `podnet ro
 
 ## Exit on stdio
 
-`podnet exit --stdio` serves one SOCKS5 session on stdin and stdout. It has no listener. Use it as the far end of
+`podnet exit` serves one SOCKS5 session on stdin and stdout. It has no listener. Stdio is its only mode, so the
+flag `--stdio` is optional. Use it as the far end of
 a byte channel (`ssh HOST podnet exit --stdio`, an `exec:` road): the machine of the far end is the exit. The
 server side is the door of `podnet pod --serve` (`crates/podnet-netns/src/door.rs`). The run ends when the
-client closes stdin.
+client closes stdin. When the client closes stdin before it sends a byte, the exit status is 0.
 
 The way out is the way of the process: `--proxy`, `--no-proxy`, `--egress` and the proxy variables, as for
 the other commands. The log goes to stderr; stdout carries the session only.
@@ -14147,11 +14220,14 @@ or a container that kills each process of its run also ends it.
 `podnet autostart` starts a podnet command at boot and after a logout, with no
 root. It uses a systemd user unit when `systemctl --user` answers, else an
 `@reboot` line in the crontab. With neither, it prints the line to run at
-login and exits 69.
+login and exits 69. `--manual` installs no unit and no crontab line: it writes
+the entry, prints the line to run at login and exits 0.
 
 ```sh
 TUNNEL_TOKEN=... podnet autostart add web -- tunnel --url http://127.0.0.1:8080
 podnet autostart list
+podnet autostart list --json
+podnet autostart add --manual web -- tunnel --url http://127.0.0.1:8080
 podnet autostart remove web
 ```
 
@@ -14172,10 +14248,16 @@ podnet autostart remove web
   marker comment on the crontab line).
 * Each program that `add` or `remove` runs has a limit of 10 s.
 * `podnet autostart run NAME --dir DIR` is the entry point of the unit and of the crontab line. It reads
-  `NAME.args` and `NAME.env` in DIR and runs the command in the place of its own process. Do not call it by hand.
+  `NAME.args` and `NAME.env` in DIR and runs the command in the place of its own process. The default
+  DIR is `<state>/autostart`, the directory of `add`. Use `podnet autostart run NAME` to run an entry
+  by hand. The unit and the crontab line give `--dir`.
+* `podnet autostart list --json` prints one document: `{"entries": [...]}`. Each entry has `name`,
+  `args` (the arguments, with no secret), `env` (the names of the variables, not the values), `way`
+  (`systemd`, `cron` or `manual`) and `line` (the run line).
 * With no systemd user manager and no cron, `add` exits 69. Its error text
   gives a `nohup` line: put it in a login script (for example
-  `~/.profile`).
+  `~/.profile`). The entry stays. `add --manual` writes the entry, prints the
+  same line and exits 0.
 
 <!-- document: docs/doctor.md -->
 

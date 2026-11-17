@@ -502,7 +502,10 @@ pub(crate) enum Step {
 pub(crate) fn feed(banner: &mut Banner, msg: Option<ChannelMsg>) -> Step {
     match msg {
         Some(ChannelMsg::Data { data }) => {
-            eprint!("  [relay] {}", String::from_utf8_lossy(&data));
+            // #632: the banner shows at the level info, so -q hides it.
+            if tracing::enabled!(tracing::Level::INFO) {
+                eprint!("  [relay] {}", String::from_utf8_lossy(&data));
+            }
             banner
                 .push(&data)
                 .map_or(Step::More, |u| Step::Url(u.to_string()))

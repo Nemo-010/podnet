@@ -73,11 +73,14 @@ or a container that kills each process of its run also ends it.
 `podnet autostart` starts a podnet command at boot and after a logout, with no
 root. It uses a systemd user unit when `systemctl --user` answers, else an
 `@reboot` line in the crontab. With neither, it prints the line to run at
-login and exits 69.
+login and exits 69. `--manual` installs no unit and no crontab line: it writes
+the entry, prints the line to run at login and exits 0.
 
 ```sh
 TUNNEL_TOKEN=... podnet autostart add web -- tunnel --url http://127.0.0.1:8080
 podnet autostart list
+podnet autostart list --json
+podnet autostart add --manual web -- tunnel --url http://127.0.0.1:8080
 podnet autostart remove web
 ```
 
@@ -98,7 +101,13 @@ podnet autostart remove web
   marker comment on the crontab line).
 * Each program that `add` or `remove` runs has a limit of 10 s.
 * `podnet autostart run NAME --dir DIR` is the entry point of the unit and of the crontab line. It reads
-  `NAME.args` and `NAME.env` in DIR and runs the command in the place of its own process. Do not call it by hand.
+  `NAME.args` and `NAME.env` in DIR and runs the command in the place of its own process. The default
+  DIR is `<state>/autostart`, the directory of `add`. Use `podnet autostart run NAME` to run an entry
+  by hand. The unit and the crontab line give `--dir`.
+* `podnet autostart list --json` prints one document: `{"entries": [...]}`. Each entry has `name`,
+  `args` (the arguments, with no secret), `env` (the names of the variables, not the values), `way`
+  (`systemd`, `cron` or `manual`) and `line` (the run line).
 * With no systemd user manager and no cron, `add` exits 69. Its error text
   gives a `nohup` line: put it in a login script (for example
-  `~/.profile`).
+  `~/.profile`). The entry stays. `add --manual` writes the entry, prints the
+  same line and exits 0.

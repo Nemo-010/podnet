@@ -145,3 +145,21 @@ fn exit_stdio_ends_with_stdin() {
     let status = exit.child.wait().unwrap();
     assert!(status.code().is_some(), "{status:?}");
 }
+
+/// Stdio is the only mode (#623): `podnet exit` with no flag serves the
+/// session and exits 0 at the end of stdin.
+#[test]
+fn exit_without_flag_serves_stdio() {
+    let out = Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(["--no-proxy", "exit"])
+        .env_remove("RUST_LOG")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}

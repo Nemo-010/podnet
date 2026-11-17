@@ -154,10 +154,11 @@ confirmed), to TLS early data, to `net proxy`, to `net tailscale`, to `podnet ro
 
 ## Exit on stdio
 
-`podnet exit --stdio` serves one SOCKS5 session on stdin and stdout. It has no listener. Use it as the far end of
+`podnet exit` serves one SOCKS5 session on stdin and stdout. It has no listener. Stdio is its only mode, so the
+flag `--stdio` is optional. Use it as the far end of
 a byte channel (`ssh HOST podnet exit --stdio`, an `exec:` road): the machine of the far end is the exit. The
 server side is the door of `podnet pod --serve` (`crates/podnet-netns/src/door.rs`). The run ends when the
-client closes stdin.
+client closes stdin. When the client closes stdin before it sends a byte, the exit status is 0.
 
 The way out is the way of the process: `--proxy`, `--no-proxy`, `--egress` and the proxy variables, as for
 the other commands. The log goes to stderr; stdout carries the session only.

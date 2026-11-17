@@ -355,6 +355,7 @@ fn ready_doc(doc: serde_json::Value) -> serde_json::Value {
 pub fn ready(doc: serde_json::Value) {
     arm_stop();
     let mut doc = ready_doc(doc);
+    foreground::send(&doc);
     if REGISTERED.load(Ordering::SeqCst) && !is_child() {
         // Issue 209: a registered process records its ready document; its
         // terminal and its stdout stay.
@@ -788,6 +789,7 @@ pub fn previous_of(path: &Path) -> PathBuf {
     path.with_file_name(name)
 }
 
+pub mod foreground;
 /// The supervisor of a detached child (issue 73). It has no async runtime.
 mod supervise;
 

@@ -139,6 +139,146 @@ fn autostart_run_starts_the_recorded_command() {
     assert_eq!(out.status.code(), Some(78));
 }
 
+/// #624: with no --dir, `autostart run` reads the entry in
+/// `<state>/autostart`, the directory of `autostart add`.
+#[test]
+fn autostart_run_defaults_to_the_state_dir() {
+    let env = Env::new();
+    let dir = env.path("state").join("podnet").join("autostart");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("web.args"), r#"["bug-report"]"#).unwrap();
+    std::fs::write(dir.join("web.env"), "PODNET_AUTOSTART_PROBE=1\n").unwrap();
+    let out = text(&env.run(&["autostart", "run", "web"]));
+    assert!(out.starts_with("podnet bug-report\n"), "{out}");
+    assert!(
+        out.lines().any(|l| l.trim() == "PODNET_AUTOSTART_PROBE"),
+        "{out}"
+    );
+}
+
+/// #630: `add --manual` writes the entry with no unit and no
+/// crontab line and exits 0; `list --json` shows it with no secret; `run`
+/// with no --dir finds it in the directory of `add`.
+#[test]
+fn autostart_manual_entry_lists_as_json_and_runs_with_no_dir() {
+    let env = Env::new();
+    let secret = "tok3n-of-the-autostart-test";
+    let out = env
+        .cmd(&["autostart", "add", "--manual", "web", "--", "bug-report"])
+        .env("PODNET_AUTOSTART_PROBE", secret)
+        .output()
+        .unwrap();
+    let added = text(&out);
+    assert!(added.contains("added (manual)"), "{added}");
+    assert!(added.contains("nohup "), "{added}");
+    assert!(added.contains("autostart run web --dir "), "{added}");
+    let listed = text(&env.run(&["autostart", "list", "--json"]));
+    assert!(!listed.contains(secret), "{listed}");
+    let doc: serde_json::Value = serde_json::from_str(&listed).unwrap();
+    let entry = &doc["entries"][0];
+    assert_eq!(entry["name"], "web", "{listed}");
+    assert_eq!(entry["args"], serde_json::json!(["bug-report"]), "{listed}");
+    assert_eq!(entry["way"], "manual", "{listed}");
+    assert!(
+        entry["env"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|k| k == "PODNET_AUTOSTART_PROBE"),
+        "{listed}"
+    );
+    assert!(
+        entry["line"]
+            .as_str()
+            .unwrap()
+            .contains("autostart run web --dir "),
+        "{listed}"
+    );
+    let out = text(&env.run(&["autostart", "run", "web"]));
+    assert!(out.starts_with("podnet bug-report\n"), "{out}");
+    assert!(
+        out.lines().any(|l| l.trim() == "PODNET_AUTOSTART_PROBE"),
+        "{out}"
+    );
+}
+
+/// A free TCP port on `ip`.
+fn free_port(ip: &str) -> u16 {
+    std::net::TcpListener::bind((ip, 0))
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port()
+}
+
+/// #625: with no --alias-port, each --name listens on the port of its
+/// target; --alias-port gives one port for each name.
+#[test]
+fn forward_name_listens_on_the_port_of_its_target() {
+    test_host::need_loopback!();
+    let env = Env::new();
+    let (one, two) = (free_port("127.0.0.2"), free_port("127.0.0.3"));
+    let a = format!("a.test=127.0.0.1:{one}");
+    let b = format!("b.test=127.0.0.1:{two}");
+    let args = ["--no-proxy", "forward", "--name", &a, "--name", &b];
+    let out = text(&env.run(&[&args[..], &["--run-for", "1"]].concat()));
+    assert!(
+        out.contains(&format!("forward  127.0.0.2:{one}  ->")),
+        "{out}"
+    );
+    assert!(
+        out.contains(&format!("forward  127.0.0.3:{two}  ->")),
+        "{out}"
+    );
+    let port = free_port("127.0.0.2").to_string();
+    let over = [&args[..], &["--alias-port", &port, "--run-for", "1"]].concat();
+    let out = text(&env.run(&over));
+    assert!(
+        out.contains(&format!("forward  127.0.0.2:{port}  ->")),
+        "{out}"
+    );
+    assert!(
+        out.contains(&format!("forward  127.0.0.3:{port}  ->")),
+        "{out}"
+    );
+}
+
+/// #626: with no TCP listener, `warp env` exits 69, and `warp env --unix`
+/// prints PODNET_PROXY on the unix socket of warp up.
+#[test]
+fn warp_env_unix_gives_the_socket_proxy() {
+    let env = Env::new();
+    let run = env.path("run");
+    let record = podnet::instances::Record {
+        name: "warp".into(),
+        pid: std::process::id(),
+        started: podnet::instances::now(),
+        command: "warp proxy".into(),
+        state: "ready".into(),
+        ..Default::default()
+    };
+    std::fs::create_dir_all(&run).unwrap();
+    podnet::instances::write(&run, &record).unwrap();
+    let _alive =
+        podnet::instances::lock(&podnet::instances::paths(&run, "warp").unwrap().lock).unwrap();
+    let socket = run.join("warp.sock");
+    std::fs::write(
+        run.join("warp.env"),
+        format!("export PODNET_PROXY='socks5h+unix:{}'\n", socket.display()),
+    )
+    .unwrap();
+    let out = env.run(&["warp", "env"]);
+    assert_eq!(out.status.code(), Some(69));
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("warp env --unix"), "{err}");
+    // No socket: --unix exits 69 too.
+    assert_eq!(env.run(&["warp", "env", "--unix"]).status.code(), Some(69));
+    let _listener = std::os::unix::net::UnixListener::bind(&socket).unwrap();
+    let out = text(&env.run(&["warp", "env", "--unix"]));
+    let want = format!("export PODNET_PROXY='socks5h+unix:{}'", socket.display());
+    assert!(out.lines().any(|l| l == want), "{out}");
+}
+
 #[test]
 fn agent_status_with_no_agent_names_each_task() {
     test_host::need_loopback!();

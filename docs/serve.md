@@ -106,6 +106,8 @@ archive (`application/x-tar`, `PATH.tar`). The archive has the same rules:
 no dot name, no link out of `--dir`, no FIFO, socket or device. A link to a
 directory is not followed. A name that does not fit in ustar (more than 255
 bytes) is left out with a warning. Without `--tar`, `?tar` has no effect.
+With `--list --tar`, the HTML listing of each directory has a link to
+`?tar`.
 
 ```sh
 podnet serve --dir ./public --tar --local 127.0.0.1:8080
@@ -140,7 +142,10 @@ the tunnel and the relay):
 * `--pin`: the files are locked with a 6-digit PIN, as `share --password`
   (the unlock flow is under `podnet share`).
   podnet prints the PIN (`pin` in the `--json` line). With no users, the
-  PIN gives the write role.
+  PIN gives the write role. The line `podnet: unlock` (`unlock` in the
+  `--json` line and in the ready document: `/__podnet/unlock`) tells how a
+  client opens the site: POST the form fields `password=PIN` and
+  `next=PATH` to `/__podnet/unlock`. The answer sets the cookie `podnet_pin`.
 * `--anon-read`: a GET or HEAD needs no user and no PIN. A change still
   needs a write user (or the PIN).
 
@@ -151,11 +156,16 @@ challenge. A read user that sends a change gets 403.
 stdin and prints its hash (`pbkdf2-sha256$ITERATIONS$SALT$KEY`, PBKDF2 with
 HMAC-SHA256, hex):
 
+`podnet serve --add-user USER:ROLE --users FILE` reads a password from the
+first line of stdin and adds the line `USER:ROLE:HASH` to `FILE`. A new
+`FILE` gets mode 0600. An old `FILE` must be private, as for `--users`. A
+user that is in `FILE` already is refused (exit 64): `--replace-user`
+replaces its line.
+
 ```sh
 printf '%s\n' "$PASSWORD" | podnet serve --hash-password
 # pbkdf2-sha256$210000$...$...
-install -m 600 /dev/null users
-echo "alice:read:$(printf '%s\n' "$PASSWORD" | podnet serve --hash-password)" >> users
+printf '%s\n' "$PASSWORD" | podnet serve --add-user alice:read --users users
 podnet serve --dir ./public --list --users users --local 127.0.0.1:8080
 curl -fsS -u alice http://127.0.0.1:8080/
 ```
@@ -245,7 +255,8 @@ podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
   exist).
 * The public path is `/s/<token>/`. The token has 32 random bytes, and a
   path with another token answers 404.
-* `--password` adds a 6-digit PIN. The host shows the PIN. The PIN check uses
+* `--password` adds a 6-digit PIN. The host shows the PIN, and the line
+  `podnet: unlock` (`unlock` in the `--json` line), as for `serve --pin`. The PIN check uses
   a constant-time compare. After 10 wrong codes, no code opens the session:
   start a new one. Requests at the same time get at most 10 compares in
   total. A correct code sets the count of wrong codes to 0. After the

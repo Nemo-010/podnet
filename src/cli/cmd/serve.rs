@@ -100,6 +100,15 @@ pub(crate) struct ServeArgs {
     /// --users, and exit.
     #[arg(long, conflicts_with_all = ["path", "dir", "users", "pin", "anon_read", "local", "ingress"])]
     hash_password: bool,
+    /// Add a user to the file of --users, and exit: USER:ROLE (ROLE is read
+    /// or write). The password comes from the first line of stdin; the line
+    /// holds its hash. A new file gets mode 0600. A user that is in the file
+    /// already is refused, unless --replace-user is given.
+    #[arg(long, value_name = "USER:ROLE", requires = "users", conflicts_with_all = ["path", "dir", "pin", "anon_read", "local", "ingress", "hash_password"])]
+    add_user: Option<String>,
+    /// With --add-user: replace the line of a user that is in the file.
+    #[arg(long, requires = "add_user")]
+    replace_user: bool,
     /// The road to the visitors, ROAD: tunnel (the default with no --local),
     /// relay, or none (the default with --local). --ingress tunnel or relay
     /// with --local serves the local listeners too. `peer:FINGERPRINT/SERVICE`
@@ -166,6 +175,9 @@ impl ServeArgs {
 pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
     if args.hash_password {
         return hash_password();
+    }
+    if let (Some(spec), Some(users)) = (&args.add_user, &args.users) {
+        return super::serve_users::add_user(spec, users, args.replace_user);
     }
     let usage = |msg: &str| podnet::exit::fault(Fault::Usage, anyhow::anyhow!("{msg}"));
     if args.path.is_none() && args.dir.is_none() {
@@ -302,18 +314,8 @@ fn announce_locals(show: Show, dir: &Path, locals: &[Local]) {
 
 /// `--hash-password`: the hash of the first line of stdin.
 fn hash_password() -> Result<()> {
-    let mut line = String::new();
-    std::io::stdin()
-        .read_line(&mut line)
-        .context("reading the password from stdin")?;
-    let password = line.trim_end_matches(['\r', '\n']);
-    if password.is_empty() {
-        return Err(podnet::exit::fault(
-            Fault::Usage,
-            anyhow::anyhow!("--hash-password: give the password on the first line of stdin"),
-        ));
-    }
-    println!("{}", podnet::files::hash_password(password));
+    let password = super::serve_users::read_password("--hash-password")?;
+    println!("{}", podnet::files::hash_password(&password));
     Ok(())
 }
 
@@ -378,6 +380,7 @@ async fn serve_local(args: &ServeArgs, locals: Vec<Local>, pin: Option<&str>) ->
             "listens": listens,
             "dir": args.dir().display().to_string(),
             "pin": pin,
+            "unlock": super::unlock_key(pin),
         });
         println!("{}", podnet::status::stamped(doc));
     } else {
@@ -390,6 +393,7 @@ async fn serve_local(args: &ServeArgs, locals: Vec<Local>, pin: Option<&str>) ->
         }
         if let Some(pin) = pin {
             println!("podnet: PIN    {pin}");
+            println!("podnet: unlock {}", super::unlock_hint("/"));
         }
     }
     // A QR code of a unix socket has no use.
@@ -401,6 +405,7 @@ async fn serve_local(args: &ServeArgs, locals: Vec<Local>, pin: Option<&str>) ->
         "listen": listen,
         "listens": listens,
         "pin": pin,
+        "unlock": super::unlock_key(pin),
     }));
     let mut servers = tokio::task::JoinSet::new();
     let mut files = Vec::new();

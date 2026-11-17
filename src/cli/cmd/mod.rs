@@ -22,12 +22,29 @@ pub(crate) mod run;
 pub(crate) mod serve;
 mod serve_at;
 mod serve_relay;
+mod serve_users;
 pub(crate) mod share;
 pub(crate) mod ssh_relay;
 pub(crate) mod transfer;
 pub(crate) mod tunnel;
 pub(crate) mod warp;
 pub(crate) mod wg;
+
+/// The key `unlock` of a ready document (#628): the path of the unlock
+/// form when a PIN locks the site, else none.
+pub(crate) fn unlock_key(pin: Option<&str>) -> Option<&'static str> {
+    pin.map(|_| podnet::gate::UNLOCK_PATH)
+}
+
+/// The text after the PIN line (#628): how a client opens the site. `next`
+/// is the path to go to after the unlock.
+pub(crate) fn unlock_hint(next: &str) -> String {
+    format!(
+        "open the URL and enter the PIN, or POST {} with the form fields password=PIN and next={next}; the answer sets the cookie {}",
+        podnet::gate::UNLOCK_PATH,
+        podnet::gate::COOKIE_NAME
+    )
+}
 
 #[cfg(test)]
 mod agent_tests;

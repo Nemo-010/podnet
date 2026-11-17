@@ -200,6 +200,10 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   * `eval "$(podnet warp env)"`: `ALL_PROXY`, `HTTPS_PROXY`, `HTTP_PROXY`,
     `NO_PROXY` (and the lower-case forms), `CARGO_HTTP_PROXY` and the npm
     variables. The proxy also forwards `http://` URLs (for apt).
+  * `eval "$(podnet warp env --unix)"`: `PODNET_PROXY=socks5h+unix:SOCKET` and
+    `PODNET_WARP_SOCKET`, with or without the TCP listener. Only podnet reads
+    them (for example `podnet pod`), so other tools get no proxy from them.
+    `warp env --unix` exits 69 when the socket is absent.
   * `podnet warp exec -- CMD` and `podnet warp shell`: the command runs under
     the pod of the socket: TCP, DNS and UDP go through WARP, also for static
     binaries, with no proxy variable. `--backend auto|netns|seccomp` selects
@@ -299,7 +303,10 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   worked goes first at the next session. `--no-relay` turns this off.
   `--masque-endpoint IP:PORT` and `--masque-sni NAME` replace the front
   door and its TLS name. With no IPv4 default route, the IPv6 door of the device record goes
-  first. `podnet tunnel` takes `--masque-endpoint` too.
+  first. `podnet tunnel` takes `--masque-endpoint` too. `warp scan` prints the
+  first door that answers as a command: `podnet warp up --masque-endpoint IP:PORT`. The flag is an option of each
+  subcommand of `podnet warp` (for example `warp proxy`, `warp run`, `warp tun`, `warp probe`), not of `podnet warp`
+  alone.
 * `--resolver SPEC` (repeatable; `PODNET_WARP_RESOLVERS`): the resolver of the DNS inside the tunnel, in
   place of `1.1.1.1:53`. `SPEC` is `IP[:PORT]` (UDP) or `tls://IP[:PORT][#NAME]` (DNS over TLS, port 853;
   the certificate must have `NAME`, or the IP address). The first resolver that answers wins.

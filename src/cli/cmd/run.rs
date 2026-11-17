@@ -107,6 +107,7 @@ pub(crate) async fn run_share(
         println!("  podnet: session  {public}");
         if let Some(pin) = &pin {
             println!("  podnet: PIN      {pin}");
+            println!("  podnet: unlock   {}", super::unlock_hint(&path));
         }
         println!(
             "  podnet: edge     {} ({})",
@@ -135,6 +136,7 @@ pub(crate) async fn run_share(
     }
     let mut doc = tunnel_doc(&handle, Some(&public), verify, unverified);
     doc["pin"] = pin.clone().into();
+    doc["unlock"] = super::unlock_key(pin.as_deref()).into();
     podnet::detach::ready(doc);
     let controls = services.share_controls();
     serve_until(&handle, wait_with_idle(deadline, controls, idle_secs)).await?;
@@ -300,6 +302,7 @@ fn share_ready_doc(
         "locations": locations,
         "leg": leg,
         "pin": pin,
+        "unlock": super::unlock_key(pin.as_deref()),
     }))
 }
 

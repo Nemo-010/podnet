@@ -77,14 +77,20 @@ fn wants_json(request: &axum::extract::Request) -> bool {
         })
 }
 
+/// The link of the HTML listing to the directory as one tar stream (#629).
+pub(crate) const TAR_LINK: &str =
+    "<p><a href=\"?tar\" download>Download this directory as tar</a></p>";
+
 /// The answer for a GET or HEAD of the directory `real`. A path with no
 /// `/` at its end is sent to the path with the `/` (308), so each relative
-/// link of the listing names an entry of this directory.
+/// link of the listing names an entry of this directory. With `tar`, the
+/// HTML listing has a link to `?tar`.
 pub(crate) fn answer(
     root: &Path,
     real: &Path,
     request: &axum::extract::Request,
     upload: bool,
+    tar: bool,
 ) -> Response {
     let path = request.uri().path();
     if !path.ends_with('/') {
@@ -110,12 +116,14 @@ pub(crate) fn answer(
             .extensions()
             .get::<super::access::Granted>()
             .is_some_and(|g| g.0 == super::Role::Write);
-        let form = if upload && writer {
-            super::upload::form_html()
-        } else {
-            ""
-        };
-        Html(html(&shown, &list, form)).into_response()
+        let mut tools = String::new();
+        if tar {
+            tools.push_str(TAR_LINK);
+        }
+        if upload && writer {
+            tools.push_str(super::upload::form_html());
+        }
+        Html(html(&shown, &list, &tools)).into_response()
     };
     response
         .headers_mut()
