@@ -168,6 +168,35 @@ fn serve_local_serves_files_on_a_unix_socket() {
     assert_eq!(std::fs::read_to_string(&sock).unwrap(), "keep");
 }
 
+/// GitHub #613: a client that half-closes its connection after the request
+/// (`printf ... | podnet link dial`, `nc -N`) still gets the file.
+#[test]
+fn serve_local_answers_a_client_that_half_closes() {
+    use std::io::{Read as _, Write as _};
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("a.txt"), "after a half close").unwrap();
+    let sock = dir.path().join("h.sock");
+    let addr = format!("unix:{}", sock.display());
+    let (child, line) = serve_local(dir.path(), &addr);
+    assert!(line.contains(&addr), "{line:?}");
+    for version in ["1.0", "1.1"] {
+        let mut stream = std::os::unix::net::UnixStream::connect(&sock).unwrap();
+        stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(10)))
+            .unwrap();
+        write!(stream, "GET /a.txt HTTP/{version}\r\nHost: x\r\n\r\n").unwrap();
+        stream.shutdown(std::net::Shutdown::Write).unwrap();
+        let mut reply = String::new();
+        stream.read_to_string(&mut reply).unwrap();
+        assert!(reply.contains(" 200 "), "HTTP/{version}: {reply:?}");
+        assert!(
+            reply.ends_with("after a half close"),
+            "HTTP/{version}: {reply:?}"
+        );
+    }
+    stop(child);
+}
+
 /// One request over `stream` with extra header lines; the status line, the
 /// head and the body.
 pub(super) fn http_send(

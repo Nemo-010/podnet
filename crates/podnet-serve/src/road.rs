@@ -158,9 +158,7 @@ impl Road for Local {
                 let ready = serde_json::json!({ "road": "local", "url": url });
                 let run = async move {
                     let _file = Removed(path);
-                    axum::serve(listener, service)
-                        .await
-                        .context("the local listener")
+                    Ok(serve(listener, service).await?)
                 };
                 return Ok(Published::new(Some(url), ready, Box::pin(run)));
             }
@@ -172,13 +170,40 @@ impl Road for Local {
             let bound = listener.local_addr()?;
             let url = format!("http://{bound}/");
             let ready = serde_json::json!({ "road": "local", "url": url });
-            let run = async move {
-                axum::serve(listener, service)
-                    .await
-                    .context("the local listener")
-            };
+            let run = async move { Ok(serve(listener, service).await?) };
             Ok(Published::new(Some(url), ready, Box::pin(run)))
         })
+    }
+}
+
+/// Serve `service` on each connection of `listener` until the task ends.
+///
+/// This is `axum::serve` with one change (GitHub #613): an HTTP/1
+/// connection supports a half close. A client can close its write side
+/// after the request (`printf ... | podnet link dial`, `nc -N`) and still
+/// gets the answer. Without it, hyper closes the connection when it reads
+/// the end of the stream before the answer is ready.
+pub async fn serve<L>(mut listener: L, service: axum::Router) -> std::io::Result<()>
+where
+    L: axum::serve::Listener,
+{
+    use hyper_util::rt::{TokioExecutor, TokioIo};
+    use hyper_util::server::conn::auto::Builder;
+    use hyper_util::service::TowerToHyperService;
+    loop {
+        // The accept of axum retries a failed accept itself.
+        let (io, _) = listener.accept().await;
+        let service = TowerToHyperService::new(service.clone());
+        tokio::spawn(async move {
+            let mut builder = Builder::new(TokioExecutor::new());
+            builder.http1().half_close(true);
+            if let Err(err) = builder
+                .serve_connection_with_upgrades(TokioIo::new(io), service)
+                .await
+            {
+                tracing::trace!(error = %err, "a connection of the road ended with an error");
+            }
+        });
     }
 }
 
@@ -218,9 +243,7 @@ pub fn private_socket(
     let file = Removed(path.clone());
     let run = async move {
         let _file = file;
-        axum::serve(listener, service)
-            .await
-            .context("the private socket of the road")
+        Ok(serve(listener, service).await?)
     };
     Ok((path, Box::pin(run)))
 }

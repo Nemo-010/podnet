@@ -98,6 +98,40 @@ async fn ingress_local_road_serves_a_table_on_a_unix_socket() {
     assert!(!path.exists(), "the end of the road removes its socket");
 }
 
+/// GitHub #613: a client that sends its request and then closes its write
+/// side (a half close: `printf ... | podnet link dial`, `nc -N`) still gets
+/// the answer.
+#[tokio::test]
+async fn local_road_answers_a_client_that_half_closes() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("half.sock");
+    let road = Local {
+        listen: format!("unix:{}", path.display()),
+        replace: false,
+    };
+    // The answer takes some time, as a file read does: the server reads the
+    // end of the request before it answers.
+    let slow = axum::Router::new().fallback(get(|| async {
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        "half"
+    }));
+    let server = tokio::spawn(road.publish(slow).await.unwrap().run());
+    for version in ["1.0", "1.1"] {
+        let mut stream = tokio::net::UnixStream::connect(&path).await.unwrap();
+        let head = format!("GET / HTTP/{version}\r\nHost: x\r\n\r\n");
+        stream.write_all(head.as_bytes()).await.unwrap();
+        stream.shutdown().await.unwrap();
+        let mut answer = String::new();
+        tokio::time::timeout(Duration::from_secs(10), stream.read_to_string(&mut answer))
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(answer.starts_with("HTTP/1."), "HTTP/{version}: {answer:?}");
+        assert!(answer.ends_with("half"), "HTTP/{version}: {answer:?}");
+    }
+    server.abort();
+}
+
 #[tokio::test]
 async fn ingress_local_road_on_tcp_names_the_bound_port() {
     pod_testkit::need_loopback!();

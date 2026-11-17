@@ -38,6 +38,9 @@ bytes = "1"
 futures = "0.3"
 getrandom = "0.4"
 http = "1"
+# The connections of a road: axum::serve with the HTTP/1 half close on
+# (GitHub #613). axum uses the same crate.
+hyper-util = { version = "0.1", features = ["http1", "server", "service", "tokio"] }
 libc = "0.2"
 qrcode = { version = "0.14", default-features = false }
 # The path: of an ingress rule is a regular expression, as in cloudflared

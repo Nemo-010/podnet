@@ -340,6 +340,41 @@ fn dial_check_prints_the_fingerprint_of_the_peer() {
     assert_eq!(doc["schema"], 1);
 }
 
+/// GitHub #622 item 8: a network address on the default unix carrier is a
+/// usage error that names `--carrier tcp`. The listener makes no socket.
+#[test]
+fn a_network_address_on_the_unix_carrier_exits_64_and_names_the_carrier() {
+    let host = Install::new();
+    let allow = host.allow("allow", &[&host.fingerprint()]);
+    for address in ["tcp://127.0.0.1:18084", "127.0.0.1:18084"] {
+        let mut cmd = host.command(&["link", "listen", address, "--allow"]);
+        cmd.arg(&allow).current_dir(host.path(""));
+        cmd.stdout(Stdio::null()).stderr(Stdio::piped());
+        let mut child = cmd.spawn().unwrap();
+        // A listener that took the address as a path would run: stop it.
+        let end = Instant::now() + Duration::from_secs(10);
+        while child.try_wait().unwrap().is_none() && Instant::now() < end {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        let _ = child.kill();
+        let out = child.wait_with_output().unwrap();
+        let err = text(&out.stderr);
+        assert_eq!(out.status.code(), Some(64), "{address}: {err}");
+        assert!(err.contains("--carrier tcp"), "{address}: {err}");
+        assert!(!host.path("127.0.0.1:18084").exists(), "{address}");
+    }
+    let out = host.run(&[
+        "link",
+        "dial",
+        "wss://example.org/link",
+        "--peer",
+        &host.fingerprint(),
+    ]);
+    let err = text(&out.stderr);
+    assert_eq!(out.status.code(), Some(64), "{err}");
+    assert!(err.contains("--carrier ws"), "{err}");
+}
+
 #[test]
 fn a_dialer_with_no_trusted_listener_exits_64() {
     let client = Install::new();
