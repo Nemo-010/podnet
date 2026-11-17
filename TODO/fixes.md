@@ -8476,4 +8476,5 @@ cargo test -p podnet-serve --lib relay::
 
 2026-11-17, the commit of this entry. With the fake that refuses another address and the old `0.0.0.0`,
 `the_supervisor_reconnects_and_announces_the_new_url` and `the_supervisor_sees_a_connection_that_the_relay_ends` fail;
-with `localhost`, the 37 tests of `relay::` pass. The next live run shows localhost.run.
+with `localhost`, the 37 tests of `relay::` pass. Live 44031540675 on 3d85179: `localhost-run: the origin answered
+through the relay (try 1)`.

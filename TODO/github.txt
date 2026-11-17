@@ -305,3 +305,4 @@
 604 issue open
 605 issue closed
 606 issue open
+607 issue closed
