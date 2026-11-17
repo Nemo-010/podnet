@@ -47,7 +47,7 @@ None. The head is the commit of this handoff.
    the case or of podnet).
 1. T-400 is done.
 2. T-406: wait for the answer of podssh on COORD-098 (#604).
-3. T-398: read the new live steps of `ssh-relay` and `warp license` (its fifth part). `net tailscale` stays experimental.
+3. T-398: the live steps of `ssh-relay` and `warp license` passed (live 44005215136). `net tailscale` stays experimental.
 4. T-358, what remains: the row `way-out` (a quick tunnel in `podlab run --way-out proxy-only`) is a default row now; the lane rows with `podlab run --way-out PROFILE` and `--serve PORT`, WebSocket through the
    proxy, `ipv6-only` on a host with IPv6, the `icmp` rows; the relay and the tunnel as podssh and podrunner call them.
 5. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
@@ -77,6 +77,7 @@ scripts/lab-lane.sh PODLAB DIR/podnet [PROFILE...]`.
 | #560 (COORD-081, the take of v0.45.0) | The answer of podcrates on the ws listener (a refused pin: `Refused` or no peer). |
 | #555 (COORD-079) | The fuzz crash of `pod-proxy` is fixed in v0.45.0 (T-349); the crash of `pod-cloudflare` waits for its take (their entry 029). |
 | #597 (COORD-096, the takes of v0.58.0 to v0.66.0) | podcrates reads it; close it when podcrates closes #200 to #216. |
+| #607 (COORD-100, `remote-port` = 80 for localhost-run) | podcrates adds the fact; podnet takes the next tag. |
 | #604 (COORD-098, the relay holds a lost socket) | podssh answers ask 1 (T-406); ask 2 is in v0.65.0 (T-410). |
 | #592 (COORD-095) | T-358 (the release gate; step 4 is done); T-380 and T-381 are done. |
 | #587, #589 | podcrates closes #185 and #188. |
