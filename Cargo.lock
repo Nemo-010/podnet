@@ -2830,8 +2830,8 @@ dependencies = [
 
 [[package]]
 name = "pod-todo"
-version = "0.69.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.69.0#d85f2d245b9de93b6932124c06463c7f6416203e"
+version = "0.81.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.81.0#0707cfa3ea7d6e6fc9fa54ba2f2889f530b17e23"
 
 [[package]]
 name = "pod-turn"
@@ -4177,7 +4177,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
